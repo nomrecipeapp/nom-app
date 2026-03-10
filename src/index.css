@@ -1,0 +1,39 @@
+:root {
+  --cream: #FAF6EF;
+  --warm-white: #FDF9F4;
+  --parchment: #F0E8D8;
+  --tan: #D9C9B0;
+  --clay: #C4713A;
+  --rust: #B85C2C;
+  --terracotta: #D4784A;
+  --ember: #E8A87C;
+  --sage: #7A8C6E;
+  --forest: #4A5E42;
+  --ink: #1C1A17;
+  --charcoal: #3A3630;
+  --muted: #8A8070;
+  --accent-lime: #C8D96A;
+  --accent-berry: #9B4F6A;
+
+  --font-display: 'Fraunces', serif;
+  --font-body: 'DM Sans', sans-serif;
+
+  --radius-sm: 8px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --radius-pill: 100px;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background: var(--cream);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.6;
+}
