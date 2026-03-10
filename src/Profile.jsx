@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from './supabase'
 
-export default function Profile({ session }) {
+export default function Profile({ session, onBack }) {
   const [loading, setLoading] = useState(true)
   const [username, setUsername] = useState('')
   const [fullName, setFullName] = useState('')
@@ -72,13 +72,16 @@ export default function Profile({ session }) {
           paddingBottom: '20px',
           borderBottom: '1px solid var(--parchment)'
         }}>
-          <div style={{
-            fontFamily: 'var(--font-display)',
-            fontSize: '28px',
-            fontWeight: '700',
-            color: 'var(--clay)',
-            letterSpacing: '-1px'
-          }}>Nom</div>
+          <button onClick={onBack} style={{
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            fontFamily: 'var(--font-body)',
+            fontSize: '13px',
+            fontWeight: '600',
+            color: 'var(--muted)',
+            padding: '0'
+          }}>← Back</button>
           <button
             onClick={() => supabase.auth.signOut()}
             style={{
