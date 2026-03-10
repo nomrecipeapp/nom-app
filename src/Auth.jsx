@@ -16,9 +16,11 @@ export default function Auth() {
     setMessage(null)
 
     if (mode === 'signup') {
-      const { error } = await supabase.auth.signUp({ email, password })
+      const { data, error } = await supabase.auth.signUp({ email, password })
       if (error) setError(error.message)
-      else setMessage('Check your email to confirm your account.')
+      else if (data?.user && !data?.user?.confirmed_at && data?.user?.identities?.length === 0) {
+        setError('An account with this email already exists. Try logging in instead.')
+      } else setMessage('Check your email to confirm your account.')
     } else {
       const { error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) setError(error.message)
