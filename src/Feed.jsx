@@ -46,11 +46,18 @@ export default function Feed({ session, onSelectRecipe }) {
   async function fetchRequests() {
     const { data } = await supabase
       .from('follows')
-      .select('*, profiles!follows_follower_id_fkey(*)')
+      .select('*, profiles(*)')
       .eq('following_id', session.user.id)
       .eq('status', 'pending')
     if (data) setRequests(data)
   }
+```
+
+Save, push, and test again:
+```
+git add .
+git commit -m "fix follow request query"
+git push
 
   async function approveRequest(id) {
     await supabase.from('follows').update({ status: 'approved' }).eq('id', id)
