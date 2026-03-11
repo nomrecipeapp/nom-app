@@ -40,48 +40,52 @@ export default function App() {
   if (loading) return null
   if (!session) return <Auth />
 
-  if (screen === 'add') return (
-    <AddRecipe
-      session={session}
-      onSave={() => setScreen('cookbook')}
-      onCancel={() => setScreen('cookbook')}
-    />
-  )
-
-  if (screen === 'profile') return (
-    <Profile
-      session={session}
-      onBack={() => setScreen('feed')}
-    />
-  )
-
-  if (screen === 'recipe' && selectedRecipe) return (
-    <RecipeDetail
-      recipe={selectedRecipe}
-      session={session}
-      onBack={() => setScreen('cookbook')}
-      onUpdate={async () => {
-        const { data } = await supabase
-          .from('recipes')
-          .select('*')
-          .eq('id', selectedRecipe.id)
-          .single()
-        if (data) setSelectedRecipe(data)
-        setScreen('recipe')
-      }}
-    />
-  )
-
-  if (screen === 'friendProfile' && selectedUserId) return (
-    <FriendProfile
-      userId={selectedUserId}
-      session={session}
-      onBack={() => setScreen(prevScreen)}
-    />
-  )
+  // Screens that hide the nav
+  const hideNav = screen === 'add'
 
   return (
     <>
+      {/* ── Screens ── */}
+      {screen === 'add' && (
+        <AddRecipe
+          session={session}
+          onSave={() => setScreen('cookbook')}
+          onCancel={() => setScreen('cookbook')}
+        />
+      )}
+
+      {screen === 'profile' && (
+        <Profile
+          session={session}
+          onBack={() => setScreen('feed')}
+        />
+      )}
+
+      {screen === 'recipe' && selectedRecipe && (
+        <RecipeDetail
+          recipe={selectedRecipe}
+          session={session}
+          onBack={() => setScreen('cookbook')}
+          onUpdate={async () => {
+            const { data } = await supabase
+              .from('recipes')
+              .select('*')
+              .eq('id', selectedRecipe.id)
+              .single()
+            if (data) setSelectedRecipe(data)
+            setScreen('recipe')
+          }}
+        />
+      )}
+
+      {screen === 'friendProfile' && selectedUserId && (
+        <FriendProfile
+          userId={selectedUserId}
+          session={session}
+          onBack={() => setScreen(prevScreen)}
+        />
+      )}
+
       {screen === 'feed' && (
         <Feed
           session={session}
@@ -111,65 +115,91 @@ export default function App() {
         />
       )}
 
-      {/* Bottom nav */}
-      <div style={{
-        position: 'fixed',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        background: 'var(--warm-white)',
-        borderTop: '1px solid var(--parchment)',
-        display: 'flex',
-        justifyContent: 'space-around',
-        padding: '12px 0 20px',
-        zIndex: 100
-      }}>
-        <button onClick={() => setScreen('feed')} style={{
-          background: 'none', border: 'none', cursor: 'pointer',
-          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '4px 16px'
+      {/* ── Bottom Nav ── */}
+      {!hideNav && (
+        <div style={{
+          position: 'fixed',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          background: 'var(--warm-white)',
+          borderTop: '1px solid var(--parchment)',
+          display: 'flex',
+          justifyContent: 'space-around',
+          alignItems: 'center',
+          padding: '12px 0 20px',
+          zIndex: 100
         }}>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-            <rect x="3" y="3" width="8" height="8" rx="2" stroke={screen === 'feed' ? 'var(--clay)' : 'var(--muted)'} strokeWidth="1.8"/>
-            <rect x="13" y="3" width="8" height="8" rx="2" stroke={screen === 'feed' ? 'var(--clay)' : 'var(--muted)'} strokeWidth="1.8"/>
-            <rect x="3" y="13" width="8" height="8" rx="2" stroke={screen === 'feed' ? 'var(--clay)' : 'var(--muted)'} strokeWidth="1.8"/>
-            <rect x="13" y="13" width="8" height="8" rx="2" stroke={screen === 'feed' ? 'var(--clay)' : 'var(--muted)'} strokeWidth="1.8"/>
-          </svg>
-          <span style={{ fontSize: '10px', fontWeight: '600', color: screen === 'feed' ? 'var(--clay)' : 'var(--muted)' }}>Feed</span>
-        </button>
+          {/* Feed */}
+          <button onClick={() => setScreen('feed')} style={{
+            background: 'none', border: 'none', cursor: 'pointer',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '4px 16px'
+          }}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+              <rect x="3" y="3" width="8" height="8" rx="2" stroke={screen === 'feed' ? 'var(--clay)' : 'var(--muted)'} strokeWidth="1.8"/>
+              <rect x="13" y="3" width="8" height="8" rx="2" stroke={screen === 'feed' ? 'var(--clay)' : 'var(--muted)'} strokeWidth="1.8"/>
+              <rect x="3" y="13" width="8" height="8" rx="2" stroke={screen === 'feed' ? 'var(--clay)' : 'var(--muted)'} strokeWidth="1.8"/>
+              <rect x="13" y="13" width="8" height="8" rx="2" stroke={screen === 'feed' ? 'var(--clay)' : 'var(--muted)'} strokeWidth="1.8"/>
+            </svg>
+            <span style={{ fontSize: '10px', fontWeight: '600', color: screen === 'feed' ? 'var(--clay)' : 'var(--muted)' }}>Feed</span>
+          </button>
 
-        <button onClick={() => setScreen('search')} style={{
-          background: 'none', border: 'none', cursor: 'pointer',
-          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '4px 16px'
-        }}>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-            <circle cx="11" cy="11" r="7" stroke={screen === 'search' ? 'var(--clay)' : 'var(--muted)'} strokeWidth="1.8"/>
-            <path d="M16.5 16.5L21 21" stroke={screen === 'search' ? 'var(--clay)' : 'var(--muted)'} strokeWidth="1.8" strokeLinecap="round"/>
-          </svg>
-          <span style={{ fontSize: '10px', fontWeight: '600', color: screen === 'search' ? 'var(--clay)' : 'var(--muted)' }}>Find Cooks</span>
-        </button>
+          {/* Find Cooks */}
+          <button onClick={() => setScreen('search')} style={{
+            background: 'none', border: 'none', cursor: 'pointer',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '4px 16px'
+          }}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+              <circle cx="11" cy="11" r="7" stroke={screen === 'search' ? 'var(--clay)' : 'var(--muted)'} strokeWidth="1.8"/>
+              <path d="M16.5 16.5L21 21" stroke={screen === 'search' ? 'var(--clay)' : 'var(--muted)'} strokeWidth="1.8" strokeLinecap="round"/>
+            </svg>
+            <span style={{ fontSize: '10px', fontWeight: '600', color: screen === 'search' ? 'var(--clay)' : 'var(--muted)' }}>Find Cooks</span>
+          </button>
 
-        <button onClick={() => setScreen('cookbook')} style={{
-          background: 'none', border: 'none', cursor: 'pointer',
-          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '4px 16px'
-        }}>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-            <path d="M4 19V8a2 2 0 012-2h12a2 2 0 012 2v11" stroke={screen === 'cookbook' ? 'var(--clay)' : 'var(--muted)'} strokeWidth="1.8" strokeLinecap="round"/>
-            <path d="M4 19h16M9 11h6M9 15h4" stroke={screen === 'cookbook' ? 'var(--clay)' : 'var(--muted)'} strokeWidth="1.8" strokeLinecap="round"/>
-          </svg>
-          <span style={{ fontSize: '10px', fontWeight: '600', color: screen === 'cookbook' ? 'var(--clay)' : 'var(--muted)' }}>Cookbook</span>
-        </button>
+          {/* + Add button — center */}
+          <button onClick={() => setScreen('add')} style={{
+            background: 'var(--clay)',
+            border: 'none',
+            cursor: 'pointer',
+            width: '48px',
+            height: '48px',
+            borderRadius: '50%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginBottom: '8px',
+            boxShadow: '0 4px 12px rgba(196, 113, 58, 0.4)'
+          }}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+              <path d="M12 5v14M5 12h14" stroke="white" strokeWidth="2.2" strokeLinecap="round"/>
+            </svg>
+          </button>
 
-        <button onClick={() => setScreen('profile')} style={{
-          background: 'none', border: 'none', cursor: 'pointer',
-          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '4px 16px'
-        }}>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-            <circle cx="12" cy="8" r="4" stroke={screen === 'profile' ? 'var(--clay)' : 'var(--muted)'} strokeWidth="1.8"/>
-            <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke={screen === 'profile' ? 'var(--clay)' : 'var(--muted)'} strokeWidth="1.8" strokeLinecap="round"/>
-          </svg>
-          <span style={{ fontSize: '10px', fontWeight: '600', color: screen === 'profile' ? 'var(--clay)' : 'var(--muted)' }}>Profile</span>
-        </button>
-      </div>
+          {/* Cookbook */}
+          <button onClick={() => setScreen('cookbook')} style={{
+            background: 'none', border: 'none', cursor: 'pointer',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '4px 16px'
+          }}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+              <path d="M4 19V8a2 2 0 012-2h12a2 2 0 012 2v11" stroke={screen === 'cookbook' ? 'var(--clay)' : 'var(--muted)'} strokeWidth="1.8" strokeLinecap="round"/>
+              <path d="M4 19h16M9 11h6M9 15h4" stroke={screen === 'cookbook' ? 'var(--clay)' : 'var(--muted)'} strokeWidth="1.8" strokeLinecap="round"/>
+            </svg>
+            <span style={{ fontSize: '10px', fontWeight: '600', color: screen === 'cookbook' ? 'var(--clay)' : 'var(--muted)' }}>Cookbook</span>
+          </button>
+
+          {/* Profile */}
+          <button onClick={() => setScreen('profile')} style={{
+            background: 'none', border: 'none', cursor: 'pointer',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '4px 16px'
+          }}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="8" r="4" stroke={screen === 'profile' ? 'var(--clay)' : 'var(--muted)'} strokeWidth="1.8"/>
+              <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke={screen === 'profile' ? 'var(--clay)' : 'var(--muted)'} strokeWidth="1.8" strokeLinecap="round"/>
+            </svg>
+            <span style={{ fontSize: '10px', fontWeight: '600', color: screen === 'profile' ? 'var(--clay)' : 'var(--muted)' }}>Profile</span>
+          </button>
+        </div>
+      )}
     </>
   )
 }
