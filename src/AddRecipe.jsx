@@ -262,6 +262,18 @@ export default function AddRecipe({ session, onSave, onCancel }) {
                 </div>
               </div>
               <div>
+                <label style={labelStyle}>Image URL (optional)</label>
+                <input value={recipe.image_url || ''} onChange={e => setRecipe({...recipe, image_url: e.target.value})} placeholder="https://..." style={inputStyle} />
+              </div>
+              <div>
+                <label style={labelStyle}>Ingredients (optional)</label>
+                <textarea value={recipe.ingredients || ''} onChange={e => setRecipe({...recipe, ingredients: e.target.value})} placeholder="One ingredient per line..." rows={4} style={{ ...inputStyle, resize: 'vertical' }} />
+              </div>
+              <div>
+                <label style={labelStyle}>Instructions (optional)</label>
+                <textarea value={recipe.instructions || ''} onChange={e => setRecipe({...recipe, instructions: e.target.value})} placeholder="Steps..." rows={4} style={{ ...inputStyle, resize: 'vertical' }} />
+              </div>
+              <div>
                 <label style={labelStyle}>Notes (optional)</label>
                 <textarea value={recipe.notes} onChange={e => setRecipe({...recipe, notes: e.target.value})} placeholder="Anything you want to remember..." rows={3} style={{ ...inputStyle, resize: 'vertical' }} />
               </div>
@@ -315,6 +327,10 @@ export default function AddRecipe({ session, onSave, onCancel }) {
               <div>
                 <label style={labelStyle}>Source</label>
                 <input value={sourceName} onChange={e => setSourceName(e.target.value)} placeholder="e.g. Grandma's recipe, NYT Cooking" style={inputStyle} />
+              </div>
+              <div>
+                <label style={labelStyle}>Image URL (optional)</label>
+                <input value={url} onChange={e => setUrl(e.target.value)} placeholder="https://..." style={inputStyle} />
               </div>
               <div style={{ display: 'flex', gap: '12px' }}>
                 <div style={{ flex: 1 }}>

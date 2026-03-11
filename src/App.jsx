@@ -7,6 +7,7 @@ import AddRecipe from './AddRecipe'
 import RecipeDetail from './RecipeDetail'
 import Feed from './Feed'
 import Search from './Search'
+import FriendProfile from './FriendProfile'
 import './index.css'
 
 export default function App() {
@@ -14,6 +15,8 @@ export default function App() {
   const [loading, setLoading] = useState(true)
   const [screen, setScreen] = useState('feed')
   const [selectedRecipe, setSelectedRecipe] = useState(null)
+  const [selectedUserId, setSelectedUserId] = useState(null)
+  const [prevScreen, setPrevScreen] = useState('feed')
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -27,6 +30,12 @@ export default function App() {
 
     return () => subscription.unsubscribe()
   }, [])
+
+  function goToFriendProfile(userId) {
+    setPrevScreen(screen)
+    setSelectedUserId(userId)
+    setScreen('friendProfile')
+  }
 
   if (loading) return null
   if (!session) return <Auth />
@@ -63,6 +72,14 @@ export default function App() {
     />
   )
 
+  if (screen === 'friendProfile' && selectedUserId) return (
+    <FriendProfile
+      userId={selectedUserId}
+      session={session}
+      onBack={() => setScreen(prevScreen)}
+    />
+  )
+
   return (
     <>
       {screen === 'feed' && (
@@ -72,11 +89,15 @@ export default function App() {
             setSelectedRecipe(recipe)
             setScreen('recipe')
           }}
+          onSelectUser={goToFriendProfile}
         />
       )}
 
       {screen === 'search' && (
-        <Search session={session} />
+        <Search
+          session={session}
+          onSelectUser={goToFriendProfile}
+        />
       )}
 
       {screen === 'cookbook' && (

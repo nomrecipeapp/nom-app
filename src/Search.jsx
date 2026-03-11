@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { supabase } from './supabase'
 
-export default function Search({ session }) {
+export default function Search({ session, onSelectUser }) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState([])
   const [loading, setLoading] = useState(false)
@@ -118,8 +118,9 @@ export default function Search({ session }) {
                 padding: '16px 20px',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'space-between'
-              }}>
+                justifyContent: 'space-between',
+                cursor: 'pointer'
+              }} onClick={() => onSelectUser(profile.id)}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <div style={{
                     width: '42px', height: '42px',
