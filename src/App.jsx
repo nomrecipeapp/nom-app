@@ -5,12 +5,14 @@ import Profile from './Profile'
 import Cookbook from './Cookbook'
 import AddRecipe from './AddRecipe'
 import RecipeDetail from './RecipeDetail'
+import Feed from './Feed'
+import Search from './Search'
 import './index.css'
 
 export default function App() {
   const [session, setSession] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [screen, setScreen] = useState('cookbook')
+  const [screen, setScreen] = useState('feed')
   const [selectedRecipe, setSelectedRecipe] = useState(null)
 
   useEffect(() => {
@@ -40,7 +42,7 @@ export default function App() {
   if (screen === 'profile') return (
     <Profile
       session={session}
-      onBack={() => setScreen('cookbook')}
+      onBack={() => setScreen('feed')}
     />
   )
 
@@ -63,14 +65,30 @@ export default function App() {
 
   return (
     <>
-      <Cookbook
-        session={session}
-        onAddRecipe={() => setScreen('add')}
-        onSelectRecipe={(recipe) => {
-          setSelectedRecipe(recipe)
-          setScreen('recipe')
-        }}
-      />
+      {screen === 'feed' && (
+        <Feed
+          session={session}
+          onSelectRecipe={(recipe) => {
+            setSelectedRecipe(recipe)
+            setScreen('recipe')
+          }}
+        />
+      )}
+
+      {screen === 'search' && (
+        <Search session={session} />
+      )}
+
+      {screen === 'cookbook' && (
+        <Cookbook
+          session={session}
+          onAddRecipe={() => setScreen('add')}
+          onSelectRecipe={(recipe) => {
+            setSelectedRecipe(recipe)
+            setScreen('recipe')
+          }}
+        />
+      )}
 
       {/* Bottom nav */}
       <div style={{
@@ -85,15 +103,33 @@ export default function App() {
         padding: '12px 0 20px',
         zIndex: 100
       }}>
+        <button onClick={() => setScreen('feed')} style={{
+          background: 'none', border: 'none', cursor: 'pointer',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '4px 16px'
+        }}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+            <rect x="3" y="3" width="8" height="8" rx="2" stroke={screen === 'feed' ? 'var(--clay)' : 'var(--muted)'} strokeWidth="1.8"/>
+            <rect x="13" y="3" width="8" height="8" rx="2" stroke={screen === 'feed' ? 'var(--clay)' : 'var(--muted)'} strokeWidth="1.8"/>
+            <rect x="3" y="13" width="8" height="8" rx="2" stroke={screen === 'feed' ? 'var(--clay)' : 'var(--muted)'} strokeWidth="1.8"/>
+            <rect x="13" y="13" width="8" height="8" rx="2" stroke={screen === 'feed' ? 'var(--clay)' : 'var(--muted)'} strokeWidth="1.8"/>
+          </svg>
+          <span style={{ fontSize: '10px', fontWeight: '600', color: screen === 'feed' ? 'var(--clay)' : 'var(--muted)' }}>Feed</span>
+        </button>
+
+        <button onClick={() => setScreen('search')} style={{
+          background: 'none', border: 'none', cursor: 'pointer',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '4px 16px'
+        }}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+            <circle cx="11" cy="11" r="7" stroke={screen === 'search' ? 'var(--clay)' : 'var(--muted)'} strokeWidth="1.8"/>
+            <path d="M16.5 16.5L21 21" stroke={screen === 'search' ? 'var(--clay)' : 'var(--muted)'} strokeWidth="1.8" strokeLinecap="round"/>
+          </svg>
+          <span style={{ fontSize: '10px', fontWeight: '600', color: screen === 'search' ? 'var(--clay)' : 'var(--muted)' }}>Find Cooks</span>
+        </button>
+
         <button onClick={() => setScreen('cookbook')} style={{
-          background: 'none',
-          border: 'none',
-          cursor: 'pointer',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: '4px',
-          padding: '4px 20px'
+          background: 'none', border: 'none', cursor: 'pointer',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '4px 16px'
         }}>
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
             <path d="M4 19V8a2 2 0 012-2h12a2 2 0 012 2v11" stroke={screen === 'cookbook' ? 'var(--clay)' : 'var(--muted)'} strokeWidth="1.8" strokeLinecap="round"/>
@@ -103,14 +139,8 @@ export default function App() {
         </button>
 
         <button onClick={() => setScreen('profile')} style={{
-          background: 'none',
-          border: 'none',
-          cursor: 'pointer',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: '4px',
-          padding: '4px 20px'
+          background: 'none', border: 'none', cursor: 'pointer',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '4px 16px'
         }}>
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
             <circle cx="12" cy="8" r="4" stroke={screen === 'profile' ? 'var(--clay)' : 'var(--muted)'} strokeWidth="1.8"/>
