@@ -174,7 +174,6 @@ export default function Feed({ session, onSelectRecipe, onSelectUser }) {
         </div>
       ) : feed.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--muted)' }}>
-          <div style={{ fontSize: '32px', marginBottom: '12px' }}>👥</div>
           <div style={{
             fontFamily: 'var(--font-display)',
             fontSize: '20px',
@@ -201,6 +200,8 @@ export default function Feed({ session, onSelectRecipe, onSelectUser }) {
                 border: '1px solid var(--parchment)',
                 overflow: 'hidden'
               }}>
+
+                {/* Post header — tappable to friend profile */}
                 <div
                   onClick={() => onSelectUser && onSelectUser(cook.user_id)}
                   style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '14px 16px', cursor: 'pointer' }}
@@ -227,12 +228,12 @@ export default function Feed({ session, onSelectRecipe, onSelectUser }) {
                   </div>
                 </div>
 
-                {recipe.image_url ? (
+                {/* Hero image — only if exists, no fallback */}
+                {recipe.image_url && (
                   <img src={recipe.image_url} alt="" style={{ width: '100%', height: '200px', objectFit: 'cover', display: 'block' }} />
-                ) : (
-                  <div style={{ height: '160px', background: 'linear-gradient(135deg, var(--clay) 0%, var(--ember) 60%, var(--tan) 100%)' }} />
                 )}
 
+                {/* Card body */}
                 <div style={{ padding: '14px 16px' }}>
                   {v && (
                     <div style={{
@@ -288,6 +289,7 @@ export default function Feed({ session, onSelectRecipe, onSelectUser }) {
                     }}>+ Save to Cookbook</button>
                   </div>
                 </div>
+
               </div>
             )
           })}
