@@ -49,7 +49,15 @@ export default function App() {
       recipe={selectedRecipe}
       session={session}
       onBack={() => setScreen('cookbook')}
-      onUpdate={() => setScreen('cookbook')}
+      onUpdate={async () => {
+        const { data } = await supabase
+          .from('recipes')
+          .select('*')
+          .eq('id', selectedRecipe.id)
+          .single()
+        if (data) setSelectedRecipe(data)
+        setScreen('recipe')
+      }}
     />
   )
 

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from './supabase'
 
 const verdictOptions = [
@@ -22,6 +22,8 @@ export default function RecipeDetail({ recipe, session, onBack, onUpdate }) {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
   const [deleting, setDeleting] = useState(false)
+  const [cooks, setCooks] = useState([])
+  const [loadingCooks, setLoadingCooks] = useState(true)
 
   async function logCook() {
     if (!verdict) { setError('Please select a verdict.'); return }
@@ -32,18 +34,38 @@ export default function RecipeDetail({ recipe, session, onBack, onUpdate }) {
       : verdict === 'never_again' ? 'never_again'
       : 'cooked'
 
-    const { error } = await supabase
+    // Save the cook log
+    const { error: cookError } = await supabase
+      .from('cooks')
+      .insert({
+        user_id: session.user.id,
+        recipe_id: recipe.id,
+        verdict,
+        flavor: scores.flavor || null,
+        effort: scores.effort || null,
+        would_share: scores.would_share || null,
+        true_to_recipe: scores.true_to_recipe || null,
+        notes: cookNotes || null
+      })
+
+    if (cookError) { setError(cookError.message); setSaving(false); return }
+
+    // Update recipe status
+    const { error: recipeError } = await supabase
       .from('recipes')
       .update({
         status: newStatus,
-        notes: cookNotes || recipe.notes,
         updated_at: new Date().toISOString()
       })
       .eq('id', recipe.id)
 
-    if (error) setError(error.message)
+    if (recipeError) setError(recipeError.message)
     else {
       setLogging(false)
+      setVerdict(null)
+      setScores({ flavor: 0, effort: 0, would_share: 0, true_to_recipe: 0 })
+      setCookNotes('')
+      await fetchCooks()
       onUpdate()
     }
     setSaving(false)
@@ -54,6 +76,21 @@ export default function RecipeDetail({ recipe, session, onBack, onUpdate }) {
     setDeleting(true)
     await supabase.from('recipes').delete().eq('id', recipe.id)
     onBack()
+  }
+
+  useEffect(() => {
+    fetchCooks()
+  }, [recipe.id])
+
+  async function fetchCooks() {
+    setLoadingCooks(true)
+    const { data } = await supabase
+      .from('cooks')
+      .select('*')
+      .eq('recipe_id', recipe.id)
+      .order('cooked_at', { ascending: false })
+    if (data) setCooks(data)
+    setLoadingCooks(false)
   }
 
   const statusColors = {
@@ -379,6 +416,78 @@ export default function RecipeDetail({ recipe, session, onBack, onUpdate }) {
           </a>
         )}
 
+        {/* Cook history */}
+        {cooks.length > 0 && (
+          <div style={{
+            background: 'var(--warm-white)',
+            borderRadius: 'var(--radius-lg)',
+            border: '1px solid var(--parchment)',
+            padding: '20px',
+            marginBottom: '16px'
+          }}>
+            <div style={{
+              fontSize: '11px',
+              fontWeight: '600',
+              letterSpacing: '0.12em',
+              textTransform: 'uppercase',
+              color: 'var(--muted)',
+              marginBottom: '16px'
+            }}>Cook History</div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {cooks.map((cook, i) => {
+                const v = verdictOptions.find(v => v.value === cook.verdict)
+                return (
+                  <div key={cook.id} style={{
+                    paddingBottom: i < cooks.length - 1 ? '12px' : '0',
+                    borderBottom: i < cooks.length - 1 ? '1px solid var(--parchment)' : 'none'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                      <div style={{
+                        display: 'inline-flex',
+                        padding: '4px 10px',
+                        borderRadius: 'var(--radius-pill)',
+                        background: v?.bg || 'var(--parchment)',
+                        border: `1px solid ${v?.border || 'var(--tan)'}`,
+                        fontSize: '11px',
+                        fontWeight: '600',
+                        color: v?.color || 'var(--charcoal)'
+                      }}>{v?.label || cook.verdict}</div>
+                      <span style={{ fontSize: '11px', color: 'var(--muted)' }}>
+                        {new Date(cook.cooked_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </span>
+                    </div>
+
+                    {(cook.flavor || cook.effort || cook.would_share || cook.true_to_recipe) && (
+                      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '6px' }}>
+                        {[
+                          { key: 'flavor', label: 'Flavor' },
+                          { key: 'effort', label: 'Effort' },
+                          { key: 'would_share', label: 'Share' },
+                          { key: 'true_to_recipe', label: 'True to Recipe' }
+                        ].map(s => cook[s.key] ? (
+                          <span key={s.key} style={{ fontSize: '11px', color: 'var(--muted)' }}>
+                            {s.label} <strong style={{ color: 'var(--clay)' }}>{cook[s.key]}/5</strong>
+                          </span>
+                        ) : null)}
+                      </div>
+                    )}
+
+                    {cook.notes && (
+                      <div style={{
+                        fontSize: '13px',
+                        color: 'var(--charcoal)',
+                        fontStyle: 'italic',
+                        lineHeight: '1.5'
+                      }}>"{cook.notes}"</div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+        
         {/* Delete */}
         <button onClick={deleteRecipe} disabled={deleting} style={{
           width: '100%',
