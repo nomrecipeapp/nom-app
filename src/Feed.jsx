@@ -7,7 +7,7 @@ const verdictStyles = {
   never_again: { bg: '#F4E8E8', border: '#C47070', color: '#9B4040', label: 'Never Again' },
 }
 
-export default function Feed({ session, onSelectRecipe }) {
+export default function Feed({ session, onSelectRecipe, onSelectUser }) {
   const [feed, setFeed] = useState([])
   const [loading, setLoading] = useState(true)
   const [requests, setRequests] = useState([])
@@ -201,7 +201,11 @@ export default function Feed({ session, onSelectRecipe }) {
                 border: '1px solid var(--parchment)',
                 overflow: 'hidden'
               }}>
-                <div onClick={() => onSelectUser && onSelectUser(cook.user_id)} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '14px 16px', cursor: 'pointer' }}>                  <div style={{
+                <div
+                  onClick={() => onSelectUser && onSelectUser(cook.user_id)}
+                  style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '14px 16px', cursor: 'pointer' }}
+                >
+                  <div style={{
                     width: '36px', height: '36px',
                     borderRadius: '50%',
                     background: 'linear-gradient(135deg, var(--clay), var(--ember))',
