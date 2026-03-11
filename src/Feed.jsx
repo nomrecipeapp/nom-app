@@ -31,17 +31,29 @@ export default function Feed({ session, onSelectRecipe }) {
 
     const { data: cooks } = await supabase
       .from('cooks')
-      .select('*, recipes(*), profiles(*)')
+      .select('*, recipes(*)')
       .in('user_id', ids)
       .order('cooked_at', { ascending: false })
       .limit(40)
 
-    if (cooks) setFeed(cooks)
+    if (!cooks) { setLoading(false); return }
+
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('*')
+      .in('id', ids)
+
+    const cooksWithProfiles = cooks.map(c => ({
+      ...c,
+      profiles: profiles?.find(p => p.id === c.user_id) || null
+    }))
+
+    setFeed(cooksWithProfiles)
     setLoading(false)
   }
 
   async function fetchRequests() {
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from('follows')
       .select('*')
       .eq('following_id', session.user.id)
