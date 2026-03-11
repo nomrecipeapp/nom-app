@@ -19,8 +19,6 @@ export default function Feed({ session, onSelectRecipe }) {
 
   async function fetchFeed() {
     setLoading(true)
-
-    // Get approved following ids
     const { data: follows } = await supabase
       .from('follows')
       .select('following_id')
@@ -31,7 +29,6 @@ export default function Feed({ session, onSelectRecipe }) {
 
     const ids = follows.map(f => f.following_id)
 
-    // Get recent cooks from those users
     const { data: cooks } = await supabase
       .from('cooks')
       .select('*, recipes(*), profiles(*)')
@@ -43,14 +40,26 @@ export default function Feed({ session, onSelectRecipe }) {
     setLoading(false)
   }
 
-    async function fetchRequests() {
+  async function fetchRequests() {
     const { data, error } = await supabase
       .from('follows')
       .select('*')
       .eq('following_id', session.user.id)
       .eq('status', 'pending')
-    console.log('requests data:', data, 'error:', error, 'user id:', session.user.id)
-    if (data) setRequests(data)
+    if (data && data.length > 0) {
+      const followerIds = data.map(r => r.follower_id)
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('*')
+        .in('id', followerIds)
+      const requestsWithProfiles = data.map(r => ({
+        ...r,
+        profiles: profiles?.find(p => p.id === r.follower_id) || null
+      }))
+      setRequests(requestsWithProfiles)
+    } else {
+      setRequests([])
+    }
   }
 
   async function approveRequest(id) {
@@ -81,7 +90,6 @@ export default function Feed({ session, onSelectRecipe }) {
   return (
     <div style={{ maxWidth: '480px', margin: '0 auto', padding: '24px 16px 100px' }}>
 
-      {/* Header */}
       <div style={{
         fontFamily: 'var(--font-display)',
         fontSize: '32px',
@@ -91,7 +99,6 @@ export default function Feed({ session, onSelectRecipe }) {
         marginBottom: '24px'
       }}>Nom</div>
 
-      {/* Follow requests */}
       {requests.length > 0 && (
         <div style={{
           background: 'var(--warm-white)',
@@ -149,17 +156,12 @@ export default function Feed({ session, onSelectRecipe }) {
         </div>
       )}
 
-      {/* Feed */}
       {loading ? (
         <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--muted)', fontSize: '14px' }}>
           Loading...
         </div>
       ) : feed.length === 0 ? (
-        <div style={{
-          textAlign: 'center',
-          padding: '60px 20px',
-          color: 'var(--muted)'
-        }}>
+        <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--muted)' }}>
           <div style={{ fontSize: '32px', marginBottom: '12px' }}>👥</div>
           <div style={{
             fontFamily: 'var(--font-display)',
@@ -187,7 +189,6 @@ export default function Feed({ session, onSelectRecipe }) {
                 border: '1px solid var(--parchment)',
                 overflow: 'hidden'
               }}>
-                {/* Post header */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '14px 16px' }}>
                   <div style={{
                     width: '36px', height: '36px',
@@ -211,14 +212,12 @@ export default function Feed({ session, onSelectRecipe }) {
                   </div>
                 </div>
 
-                {/* Recipe image */}
                 {recipe.image_url ? (
                   <img src={recipe.image_url} alt="" style={{ width: '100%', height: '200px', objectFit: 'cover', display: 'block' }} />
                 ) : (
                   <div style={{ height: '160px', background: 'linear-gradient(135deg, var(--clay) 0%, var(--ember) 60%, var(--tan) 100%)' }} />
                 )}
 
-                {/* Post body */}
                 <div style={{ padding: '14px 16px' }}>
                   {v && (
                     <div style={{
@@ -226,7 +225,7 @@ export default function Feed({ session, onSelectRecipe }) {
                       alignItems: 'center',
                       gap: '6px',
                       background: v.bg,
-                      border: `1px solid ${v.border}`,
+                      border: '1px solid ' + v.border,
                       borderRadius: 'var(--radius-pill)',
                       padding: '5px 12px',
                       fontSize: '12px',
