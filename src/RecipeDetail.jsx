@@ -400,14 +400,13 @@ export default function RecipeDetail({ recipe, session, onBack, onUpdate }) {
         {/* Source link */}
         {recipe.source_url && (
           <a href={recipe.source_url} target="_blank" rel="noopener noreferrer" style={{
-            display: 'block',
+            display: 'flex',
             background: 'var(--warm-white)',
             borderRadius: 'var(--radius-lg)',
             border: '1px solid var(--parchment)',
             padding: '16px 20px',
             textDecoration: 'none',
             marginBottom: '16px',
-            display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between'
           }}>
