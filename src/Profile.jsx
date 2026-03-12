@@ -7,7 +7,7 @@ const verdictStyles = {
   never_again: { bg: '#F4E8E8', border: '#C47070', color: '#9B4040', label: 'Never' },
 }
 
-export default function Profile({ session, onBack }) {
+export default function Profile({ session, onBack, onSelectRecipe }) {
   const [profile, setProfile] = useState({ full_name: '', username: '' })
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -325,7 +325,7 @@ export default function Profile({ session, onBack }) {
                 const recipe = cook.recipes
                 if (!recipe) return null
                 return (
-                  <div key={cook.id} style={{ flexShrink: 0, width: '88px' }}>
+                  <div key={cook.id} onClick={() => onSelectRecipe(recipe)} style={{ flexShrink: 0, width: '88px', cursor: 'pointer' }}>
                     <div style={{
                       width: '88px', height: '88px',
                       borderRadius: 'var(--radius-md)',
@@ -363,7 +363,7 @@ export default function Profile({ session, onBack }) {
                 const recipe = cook.recipes
                 if (!recipe) return null
                 return (
-                  <div key={cook.id} style={{ flexShrink: 0, width: '88px' }}>
+                  <div key={cook.id} onClick={() => onSelectRecipe(recipe)} style={{ flexShrink: 0, width: '88px', cursor: 'pointer' }}>
                     <div style={{
                       width: '88px', height: '88px',
                       borderRadius: 'var(--radius-md)',
@@ -394,8 +394,9 @@ export default function Profile({ session, onBack }) {
               <div style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--muted)' }}>Want to Make</div>
             </div>
             <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', padding: '0 20px 4px', scrollbarWidth: 'none' }}>
-              {wantToMake.map(recipe => (
-                <div key={recipe.id} style={{ flexShrink: 0, width: '88px' }}>
+                            {wantToMake.map(recipe => (
+                <div key={recipe.id} onClick={() => onSelectRecipe(recipe)} style={{ flexShrink: 0, width: '88px', cursor: 'pointer' }}>
+
                   <div style={{
                     width: '88px', height: '88px',
                     borderRadius: 'var(--radius-md)',

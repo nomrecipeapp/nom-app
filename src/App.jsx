@@ -94,10 +94,11 @@ export default function App() {
         />
       )}
 
-      {screen === 'profile' && (
+{screen === 'profile' && (
         <Profile
           session={session}
           onBack={() => setScreen('feed')}
+          onSelectRecipe={(recipe) => { setSelectedRecipe(recipe); setScreen('recipe') }}
         />
       )}
 
