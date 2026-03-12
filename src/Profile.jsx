@@ -7,6 +7,39 @@ const verdictStyles = {
   never_again: { bg: '#F4E8E8', border: '#C47070', color: '#9B4040', label: 'Never' },
 }
 
+function RecipeInitial({ title, dashed }) {
+  const letter = (title || '?')[0].toUpperCase()
+  return (
+    <div style={{
+      width: '36px', height: '36px',
+      borderRadius: 'var(--radius-md)',
+      background: dashed ? 'transparent' : 'linear-gradient(135deg, var(--clay), var(--ember))',
+      border: dashed ? '1.5px dashed var(--tan)' : 'none',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      flexShrink: 0,
+      fontFamily: 'var(--font-display)',
+      fontSize: '14px', fontWeight: '700',
+      color: dashed ? 'var(--tan)' : 'var(--cream)'
+    }}>{letter}</div>
+  )
+}
+
+function RecipeThumbnailSmall({ recipe, dashed }) {
+  if (recipe.image_url) {
+    return (
+      <div style={{
+        width: '36px', height: '36px',
+        borderRadius: 'var(--radius-md)',
+        overflow: 'hidden', flexShrink: 0,
+        border: dashed ? '1.5px dashed var(--tan)' : 'none'
+      }}>
+        <img src={recipe.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+      </div>
+    )
+  }
+  return <RecipeInitial title={recipe.title} dashed={dashed} />
+}
+
 export default function Profile({ session, onBack, onSelectRecipe }) {
   const [profile, setProfile] = useState({ full_name: '', username: '' })
   const [editing, setEditing] = useState(false)
@@ -129,63 +162,20 @@ export default function Profile({ session, onBack, onSelectRecipe }) {
     outline: 'none'
   }
 
-  function HorizontalRow({ items, renderItem }) {
-    if (items.length === 0) return null
-    return (
-      <div style={{
-        display: 'flex',
-        gap: '10px',
-        overflowX: 'auto',
-        padding: '0 20px 4px',
-        scrollbarWidth: 'none'
-      }}>
-        {items.map(renderItem)}
-      </div>
-    )
+  const sectionLabel = {
+    fontSize: '11px',
+    fontWeight: '600',
+    letterSpacing: '0.12em',
+    textTransform: 'uppercase',
+    color: 'var(--muted)',
+    marginBottom: '12px'
   }
 
-  function RecipeThumbnail({ imageUrl, title, badge, dashed }) {
-    return (
-      <div style={{ flexShrink: 0, width: '88px' }}>
-        <div style={{
-          width: '88px', height: '88px',
-          borderRadius: 'var(--radius-md)',
-          background: imageUrl ? 'var(--parchment)' : dashed ? 'var(--parchment)' : 'linear-gradient(135deg, var(--clay), var(--ember))',
-          marginBottom: '6px',
-          position: 'relative',
-          overflow: 'hidden',
-          border: dashed ? '1.5px dashed var(--tan)' : 'none'
-        }}>
-          {imageUrl && !dashed && (
-            <img src={imageUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-          )}
-          {badge && (
-            <div style={{
-              position: 'absolute',
-              bottom: '4px',
-              left: '4px',
-              background: badge.bg,
-              border: badge.border ? '1px solid ' + badge.border : 'none',
-              borderRadius: '100px',
-              padding: '2px 6px',
-              fontSize: '8px',
-              fontWeight: '700',
-              color: badge.color
-            }}>{badge.label}</div>
-          )}
-        </div>
-        <div style={{
-          fontSize: '11px',
-          color: 'var(--charcoal)',
-          fontWeight: '500',
-          lineHeight: '1.3',
-          overflow: 'hidden',
-          display: '-webkit-box',
-          WebkitLineClamp: 2,
-          WebkitBoxOrient: 'vertical'
-        }}>{title}</div>
-      </div>
-    )
+  const listRow = {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    padding: '6px 0'
   }
 
   return (
@@ -256,7 +246,7 @@ export default function Profile({ session, onBack, onSelectRecipe }) {
           </div>
         )}
 
-        {/* Avatar + name */}
+        {/* Avatar + name — centered */}
         <div style={{
           display: 'flex', flexDirection: 'column',
           alignItems: 'center', padding: '8px 20px 20px'
@@ -278,7 +268,6 @@ export default function Profile({ session, onBack, onSelectRecipe }) {
           {profile.username && (
             <div style={{ fontSize: '12px', color: 'var(--muted)', marginBottom: '16px' }}>@{profile.username}</div>
           )}
-          {/* Following / Followers */}
           <div style={{ display: 'flex', gap: '32px', textAlign: 'center' }}>
             <div>
               <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: '700', color: 'var(--ink)' }}>{following}</div>
@@ -291,33 +280,32 @@ export default function Profile({ session, onBack, onSelectRecipe }) {
           </div>
         </div>
 
-        {/* Stats row */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '8px', padding: '0 20px 20px' }}>
-          {[
-            { value: stats.saved, label: 'Recipes\nSaved' },
-            { value: stats.cooked, label: 'Recipes\nCooked' },
-            { value: '—', label: 'Top\nCuisine' }
-          ].map((s, i) => (
-            <div key={i} style={{
-              background: 'var(--warm-white)',
-              borderRadius: 'var(--radius-md)',
-              border: '1px solid var(--parchment)',
-              padding: '12px 8px',
-              textAlign: 'center'
-            }}>
-              <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: '700', color: 'var(--ink)', marginBottom: '4px' }}>{s.value}</div>
-              <div style={{ fontSize: '10px', color: 'var(--muted)', lineHeight: '1.4', whiteSpace: 'pre-line' }}>{s.label}</div>
-            </div>
-          ))}
+        {/* Stats strip — borderless inline */}
+        <div style={{
+          display: 'flex',
+          borderTop: '1px solid var(--parchment)',
+          borderBottom: '1px solid var(--parchment)',
+          margin: '0 0 20px'
+        }}>
+          <div style={{ flex: 1, padding: '12px 0', textAlign: 'center', borderRight: '1px solid var(--parchment)' }}>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: '700', color: 'var(--ink)' }}>{stats.saved}</div>
+            <div style={{ fontSize: '10px', color: 'var(--muted)', marginTop: '2px' }}>Saved</div>
+          </div>
+          <div style={{ flex: 1, padding: '12px 0', textAlign: 'center', borderRight: '1px solid var(--parchment)' }}>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: '700', color: 'var(--ink)' }}>{stats.cooked}</div>
+            <div style={{ fontSize: '10px', color: 'var(--muted)', marginTop: '2px' }}>Cooked</div>
+          </div>
+          <div style={{ flex: 1, padding: '12px 0', textAlign: 'center' }}>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: '700', color: 'var(--ink)' }}>—</div>
+            <div style={{ fontSize: '10px', color: 'var(--muted)', marginTop: '2px' }}>Top cuisine</div>
+          </div>
         </div>
 
-        <div style={{ height: '1px', background: 'var(--parchment)', margin: '0 20px 20px' }} />
-
-        {/* Recently Cooked */}
+        {/* Recently Cooked — horizontal thumbnails */}
         {recentCooks.length > 0 && (
           <div style={{ marginBottom: '20px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px', marginBottom: '12px' }}>
-              <div style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--muted)' }}>Recently Cooked</div>
+            <div style={{ padding: '0 20px', marginBottom: '12px' }}>
+              <div style={sectionLabel}>Recently Cooked</div>
             </div>
             <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', padding: '0 20px 4px', scrollbarWidth: 'none' }}>
               {recentCooks.map(cook => {
@@ -330,9 +318,13 @@ export default function Profile({ session, onBack, onSelectRecipe }) {
                       width: '88px', height: '88px',
                       borderRadius: 'var(--radius-md)',
                       background: recipe.image_url ? 'var(--parchment)' : 'linear-gradient(135deg, var(--clay), var(--ember))',
-                      marginBottom: '6px', position: 'relative', overflow: 'hidden'
+                      marginBottom: '6px', position: 'relative', overflow: 'hidden',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center'
                     }}>
-                      {recipe.image_url && <img src={recipe.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+                      {recipe.image_url
+                        ? <img src={recipe.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        : <span style={{ fontFamily: 'var(--font-display)', fontSize: '28px', fontWeight: '700', color: 'var(--cream)' }}>{(recipe.title || '?')[0].toUpperCase()}</span>
+                      }
                       {v && (
                         <div style={{
                           position: 'absolute', bottom: '4px', left: '4px',
@@ -352,32 +344,27 @@ export default function Profile({ session, onBack, onSelectRecipe }) {
 
         <div style={{ height: '1px', background: 'var(--parchment)', margin: '0 20px 20px' }} />
 
-        {/* Top Rated */}
+        {/* Top Rated — list rows */}
         {topRated.length > 0 && (
-          <div style={{ marginBottom: '20px' }}>
-            <div style={{ padding: '0 20px', marginBottom: '12px' }}>
-              <div style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--muted)' }}>Top Rated</div>
-            </div>
-            <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', padding: '0 20px 4px', scrollbarWidth: 'none' }}>
+          <div style={{ padding: '0 20px', marginBottom: '20px' }}>
+            <div style={sectionLabel}>Top Rated</div>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
               {topRated.map(cook => {
                 const recipe = cook.recipes
                 if (!recipe) return null
                 return (
-                  <div key={cook.id} onClick={() => onSelectRecipe(recipe)} style={{ flexShrink: 0, width: '88px', cursor: 'pointer' }}>
-                    <div style={{
-                      width: '88px', height: '88px',
-                      borderRadius: 'var(--radius-md)',
-                      background: recipe.image_url ? 'var(--parchment)' : 'linear-gradient(135deg, var(--clay), var(--ember))',
-                      marginBottom: '6px', position: 'relative', overflow: 'hidden'
-                    }}>
-                      {recipe.image_url && <img src={recipe.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
-                      <div style={{
-                        position: 'absolute', bottom: '4px', left: '4px',
-                        background: 'var(--ink)', borderRadius: '100px',
-                        padding: '2px 6px', fontSize: '8px', fontWeight: '700', color: 'var(--cream)'
-                      }}>{cook.flavor}/5</div>
+                  <div key={cook.id} onClick={() => onSelectRecipe(recipe)} style={{ ...listRow, cursor: 'pointer' }}>
+                    <RecipeThumbnailSmall recipe={recipe} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: '13px', color: 'var(--ink)', fontWeight: '500', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{recipe.title}</div>
+                      {recipe.source_name && <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '1px' }}>{recipe.source_name}</div>}
                     </div>
-                    <div style={{ fontSize: '11px', color: 'var(--charcoal)', fontWeight: '500', lineHeight: '1.3', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{recipe.title}</div>
+                    <div style={{
+                      background: 'var(--ink)', borderRadius: '100px',
+                      padding: '3px 8px', fontSize: '10px',
+                      fontWeight: '700', color: 'var(--cream)',
+                      flexShrink: 0
+                    }}>{cook.flavor}/5</div>
                   </div>
                 )
               })}
@@ -387,26 +374,18 @@ export default function Profile({ session, onBack, onSelectRecipe }) {
 
         <div style={{ height: '1px', background: 'var(--parchment)', margin: '0 20px 20px' }} />
 
-        {/* Want to Make */}
+        {/* Want to Make — list rows */}
         {wantToMake.length > 0 && (
-          <div style={{ marginBottom: '20px' }}>
-            <div style={{ padding: '0 20px', marginBottom: '12px' }}>
-              <div style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--muted)' }}>Want to Make</div>
-            </div>
-            <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', padding: '0 20px 4px', scrollbarWidth: 'none' }}>
-                            {wantToMake.map(recipe => (
-                <div key={recipe.id} onClick={() => onSelectRecipe(recipe)} style={{ flexShrink: 0, width: '88px', cursor: 'pointer' }}>
-
-                  <div style={{
-                    width: '88px', height: '88px',
-                    borderRadius: 'var(--radius-md)',
-                    background: recipe.image_url ? 'var(--parchment)' : 'var(--parchment)',
-                    marginBottom: '6px', position: 'relative', overflow: 'hidden',
-                    border: '1.5px dashed var(--tan)'
-                  }}>
-                    {recipe.image_url && <img src={recipe.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+          <div style={{ padding: '0 20px', marginBottom: '20px' }}>
+            <div style={sectionLabel}>Want to Make</div>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              {wantToMake.map(recipe => (
+                <div key={recipe.id} onClick={() => onSelectRecipe(recipe)} style={{ ...listRow, cursor: 'pointer' }}>
+                  <RecipeThumbnailSmall recipe={recipe} dashed />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '13px', color: 'var(--ink)', fontWeight: '500', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{recipe.title}</div>
+                    {recipe.source_name && <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '1px' }}>{recipe.source_name}</div>}
                   </div>
-                  <div style={{ fontSize: '11px', color: 'var(--charcoal)', fontWeight: '500', lineHeight: '1.3', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{recipe.title}</div>
                 </div>
               ))}
             </div>
