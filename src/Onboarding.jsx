@@ -46,7 +46,7 @@ export default function Onboarding({ onComplete }) {
     setAuthLoading(true)
     setAuthError(null)
 
-    // Check username availability first
+    // Check username availability
     const { data: existingUsername } = await supabase
       .from('profiles')
       .select('id')
@@ -55,6 +55,19 @@ export default function Onboarding({ onComplete }) {
 
     if (existingUsername) {
       setAuthError('That username is already taken. Try another one.')
+      setAuthLoading(false)
+      return
+    }
+
+    // Check email availability
+    const { data: existingEmail } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('email', email)
+      .single()
+
+    if (existingEmail) {
+      setAuthError('An account with this email already exists. Try logging in instead.')
       setAuthLoading(false)
       return
     }
@@ -73,11 +86,11 @@ export default function Onboarding({ onComplete }) {
     const user = data?.user
     if (!user) { setAuthError('Something went wrong. Please try again.'); setAuthLoading(false); return }
 
-    // Create profile
     await supabase.from('profiles').upsert({
       id: user.id,
       full_name: fullName,
       username: username || null,
+      email: email,
       onboarding_complete: false
     })
 
@@ -161,7 +174,6 @@ export default function Onboarding({ onComplete }) {
       maxWidth: '480px',
       margin: '0 auto'
     }}>
-      {/* Hero illustration */}
       <div style={{
         background: 'linear-gradient(160deg, var(--clay) 0%, var(--ember) 60%, var(--parchment) 100%)',
         height: '45vh',
@@ -184,24 +196,15 @@ export default function Onboarding({ onComplete }) {
         </svg>
       </div>
 
-      {/* Content */}
       <div style={{ flex: 1, padding: '32px 28px 40px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
         <div>
           <div style={{
-            fontFamily: 'var(--font-display)',
-            fontSize: '40px',
-            fontWeight: '700',
-            color: 'var(--clay)',
-            letterSpacing: '-1.5px',
-            marginBottom: '12px'
+            fontFamily: 'var(--font-display)', fontSize: '40px', fontWeight: '700',
+            color: 'var(--clay)', letterSpacing: '-1.5px', marginBottom: '12px'
           }}>Nom</div>
           <div style={{
-            fontFamily: 'var(--font-display)',
-            fontSize: '26px',
-            fontWeight: '700',
-            color: 'var(--ink)',
-            lineHeight: '1.2',
-            marginBottom: '12px'
+            fontFamily: 'var(--font-display)', fontSize: '26px', fontWeight: '700',
+            color: 'var(--ink)', lineHeight: '1.2', marginBottom: '12px'
           }}>What's cookin'<br />good lookin'?</div>
           <div style={{ fontSize: '14px', color: 'var(--muted)', lineHeight: '1.6' }}>
             Finally, a place for all the recipes you've been meaning to cook.
@@ -229,55 +232,38 @@ export default function Onboarding({ onComplete }) {
   )
 
   // ── STEP 2: CREATE ACCOUNT ──
-if (step === 2) return (
+  if (step === 2) return (
     <div style={{
-      minHeight: '100vh',
-      background: 'var(--cream)',
-      display: 'flex',
-      flexDirection: 'column',
-      maxWidth: '480px',
-      margin: '0 auto',
-      padding: '48px 28px 40px'
+      minHeight: '100vh', background: 'var(--cream)',
+      display: 'flex', flexDirection: 'column',
+      maxWidth: '480px', margin: '0 auto', padding: '48px 28px 40px'
     }}>
       <button onClick={() => setStep(1)} style={{
         background: 'none', border: 'none', cursor: 'pointer',
         display: 'flex', alignItems: 'center', gap: '6px',
         color: 'var(--muted)', fontFamily: 'var(--font-body)',
-        fontSize: '13px', fontWeight: '600', padding: '0 0 24px',
+        fontSize: '13px', fontWeight: '600', padding: '0 0 24px'
       }}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
           <path d="M19 12H5M5 12l7-7M5 12l7 7" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
         </svg>
         Back
       </button>
-      <div style={{ flex: 1 }}>
-        <div style={{
-          fontFamily: 'var(--font-display)',
-          fontSize: '24px', fontWeight: '700',
-          color: 'var(--ink)', marginBottom: '4px'
-        }}>Create your account</div>
-        <div style={{ fontSize: '13px', color: 'var(--muted)', marginBottom: '28px' }}>
-          Your Cookbook starts here.
-        </div>
 
-        {/* Name */}
+      <div style={{ flex: 1 }}>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: '24px', fontWeight: '700', color: 'var(--ink)', marginBottom: '4px' }}>Create your account</div>
+        <div style={{ fontSize: '13px', color: 'var(--muted)', marginBottom: '28px' }}>Your Cookbook starts here.</div>
+
         <div style={{ marginBottom: '14px' }}>
           <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--charcoal)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '6px' }}>Your name</label>
-          <input
-            type="text"
-            value={fullName}
-            onChange={e => setFullName(e.target.value)}
-            placeholder="Alex"
-            style={{
-              width: '100%', padding: '13px 16px',
-              border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-md)',
-              background: 'var(--parchment)', fontFamily: 'var(--font-body)',
-              fontSize: '14px', color: 'var(--ink)', outline: 'none', boxSizing: 'border-box'
-            }}
-          />
+          <input type="text" value={fullName} onChange={e => setFullName(e.target.value)} placeholder="Alex" style={{
+            width: '100%', padding: '13px 16px', border: '1.5px solid var(--tan)',
+            borderRadius: 'var(--radius-md)', background: 'var(--parchment)',
+            fontFamily: 'var(--font-body)', fontSize: '14px', color: 'var(--ink)',
+            outline: 'none', boxSizing: 'border-box'
+          }}/>
         </div>
 
-        {/* Username */}
         <div style={{ marginBottom: '14px' }}>
           <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--charcoal)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '6px' }}>Username</label>
           <div style={{ position: 'relative' }}>
@@ -285,54 +271,36 @@ if (step === 2) return (
               position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)',
               fontSize: '14px', color: 'var(--muted)', fontFamily: 'var(--font-body)'
             }}>@</span>
-            <input
-              type="text"
-              value={username}
+            <input type="text" value={username}
               onChange={e => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
-              placeholder="alexcooks"
-              style={{
+              placeholder="alexcooks" style={{
                 width: '100%', padding: '13px 16px 13px 28px',
                 border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-md)',
                 background: 'var(--parchment)', fontFamily: 'var(--font-body)',
                 fontSize: '14px', color: 'var(--ink)', outline: 'none', boxSizing: 'border-box'
-              }}
-            />
+              }}/>
           </div>
           <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '4px' }}>Letters, numbers, and underscores only</div>
         </div>
 
-        {/* Email */}
         <div style={{ marginBottom: '14px' }}>
           <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--charcoal)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '6px' }}>Email</label>
-          <input
-            type="email"
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            placeholder="you@example.com"
-            style={{
-              width: '100%', padding: '13px 16px',
-              border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-md)',
-              background: 'var(--parchment)', fontFamily: 'var(--font-body)',
-              fontSize: '14px', color: 'var(--ink)', outline: 'none', boxSizing: 'border-box'
-            }}
-          />
+          <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" style={{
+            width: '100%', padding: '13px 16px', border: '1.5px solid var(--tan)',
+            borderRadius: 'var(--radius-md)', background: 'var(--parchment)',
+            fontFamily: 'var(--font-body)', fontSize: '14px', color: 'var(--ink)',
+            outline: 'none', boxSizing: 'border-box'
+          }}/>
         </div>
 
-        {/* Password */}
         <div style={{ marginBottom: '24px' }}>
           <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--charcoal)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '6px' }}>Password</label>
-          <input
-            type="password"
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-            placeholder="••••••••"
-            style={{
-              width: '100%', padding: '13px 16px',
-              border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-md)',
-              background: 'var(--parchment)', fontFamily: 'var(--font-body)',
-              fontSize: '14px', color: 'var(--ink)', outline: 'none', boxSizing: 'border-box'
-            }}
-          />
+          <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" style={{
+            width: '100%', padding: '13px 16px', border: '1.5px solid var(--tan)',
+            borderRadius: 'var(--radius-md)', background: 'var(--parchment)',
+            fontFamily: 'var(--font-body)', fontSize: '14px', color: 'var(--ink)',
+            outline: 'none', boxSizing: 'border-box'
+          }}/>
         </div>
 
         {authError && (
@@ -346,9 +314,8 @@ if (step === 2) return (
 
       <div>
         <ProgressDots step={2} />
-        <button
-          onClick={handleCreateAccount}
-                    disabled={authLoading || !fullName || !username || !email || !password}
+        <button onClick={handleCreateAccount}
+          disabled={authLoading || !fullName || !username || !email || !password}
           style={{
             width: '100%', padding: '15px',
             background: (authLoading || !fullName || !username || !email || !password) ? 'var(--tan)' : 'var(--clay)',
@@ -366,68 +333,50 @@ if (step === 2) return (
   )
 
   // ── STEP 3: FIND FELLOW COOKS ──
-if (step === 3) return (
+  if (step === 3) return (
     <div style={{
-      minHeight: '100vh',
-      background: 'var(--cream)',
-      display: 'flex',
-      flexDirection: 'column',
-      maxWidth: '480px',
-      margin: '0 auto',
-      padding: '48px 28px 40px'
+      minHeight: '100vh', background: 'var(--cream)',
+      display: 'flex', flexDirection: 'column',
+      maxWidth: '480px', margin: '0 auto', padding: '48px 28px 40px'
     }}>
       <button onClick={() => setStep(2)} style={{
         background: 'none', border: 'none', cursor: 'pointer',
         display: 'flex', alignItems: 'center', gap: '6px',
         color: 'var(--muted)', fontFamily: 'var(--font-body)',
-        fontSize: '13px', fontWeight: '600', padding: '0 0 24px',
+        fontSize: '13px', fontWeight: '600', padding: '0 0 24px'
       }}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
           <path d="M19 12H5M5 12l7-7M5 12l7 7" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
         </svg>
         Back
       </button>
-      <div style={{ flex: 1 }}>
-        <div style={{
-          fontFamily: 'var(--font-display)',
-          fontSize: '24px', fontWeight: '700',
-          color: 'var(--ink)', lineHeight: '1.2', marginBottom: '4px'
-        }}>Find fellow<br />friendly cooks.</div>
-        <div style={{ fontSize: '13px', color: 'var(--muted)', marginBottom: '24px' }}>
-          Nom is private by default — send a request to cook together.
-        </div>
 
-        {/* Search */}
+      <div style={{ flex: 1 }}>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: '24px', fontWeight: '700', color: 'var(--ink)', lineHeight: '1.2', marginBottom: '4px' }}>Find fellow<br />friendly cooks.</div>
+        <div style={{ fontSize: '13px', color: 'var(--muted)', marginBottom: '24px' }}>Nom is private by default — send a request to cook together.</div>
+
         <div style={{
           display: 'flex', alignItems: 'center', gap: '10px',
           background: 'var(--parchment)', borderRadius: 'var(--radius-md)',
-          padding: '12px 16px', marginBottom: '16px',
-          border: '1.5px solid var(--tan)'
+          padding: '12px 16px', marginBottom: '16px', border: '1.5px solid var(--tan)'
         }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
             <circle cx="11" cy="11" r="7" stroke="var(--muted)" strokeWidth="1.8"/>
             <path d="M16.5 16.5L21 21" stroke="var(--muted)" strokeWidth="1.8" strokeLinecap="round"/>
           </svg>
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={e => searchUsers(e.target.value)}
-            placeholder="Search by name or username"
-            style={{
+          <input type="text" value={searchQuery} onChange={e => searchUsers(e.target.value)}
+            placeholder="Search by name or username" style={{
               flex: 1, border: 'none', background: 'none',
               fontFamily: 'var(--font-body)', fontSize: '14px',
               color: 'var(--ink)', outline: 'none'
-            }}
-          />
+            }}/>
         </div>
 
-        {/* Results */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {searchResults.map(u => (
             <div key={u.id} style={{
               display: 'flex', alignItems: 'center', gap: '12px',
-              background: 'var(--parchment)', borderRadius: 'var(--radius-md)',
-              padding: '12px 14px'
+              background: 'var(--parchment)', borderRadius: 'var(--radius-md)', padding: '12px 14px'
             }}>
               <div style={{
                 width: '36px', height: '36px', borderRadius: '50%',
@@ -435,24 +384,19 @@ if (step === 3) return (
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: '700',
                 color: 'var(--cream)', flexShrink: 0
-              }}>
-                {(u.full_name || u.username || '?')[0].toUpperCase()}
-              </div>
+              }}>{(u.full_name || u.username || '?')[0].toUpperCase()}</div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--ink)' }}>{u.full_name || u.username}</div>
                 {u.username && <div style={{ fontSize: '11px', color: 'var(--muted)' }}>@{u.username}</div>}
               </div>
-              <button
-                onClick={() => !requested[u.id] && sendFollowRequest(u.id)}
-                style={{
-                  padding: '7px 14px',
-                  background: requested[u.id] ? '#EEF4E5' : 'var(--clay)',
-                  color: requested[u.id] ? 'var(--forest)' : 'var(--cream)',
-                  border: 'none', borderRadius: 'var(--radius-pill)',
-                  fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600',
-                  cursor: requested[u.id] ? 'default' : 'pointer'
-                }}
-              >{requested[u.id] ? 'Sent ✓' : '+ Request'}</button>
+              <button onClick={() => !requested[u.id] && sendFollowRequest(u.id)} style={{
+                padding: '7px 14px',
+                background: requested[u.id] ? '#EEF4E5' : 'var(--clay)',
+                color: requested[u.id] ? 'var(--forest)' : 'var(--cream)',
+                border: 'none', borderRadius: 'var(--radius-pill)',
+                fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600',
+                cursor: requested[u.id] ? 'default' : 'pointer'
+              }}>{requested[u.id] ? 'Sent ✓' : '+ Request'}</button>
             </div>
           ))}
         </div>
@@ -468,10 +412,8 @@ if (step === 3) return (
           cursor: 'pointer', marginBottom: '10px'
         }}>Continue</button>
         <button onClick={() => setStep(4)} style={{
-          width: '100%', padding: '10px',
-          background: 'none', border: 'none',
-          fontFamily: 'var(--font-body)', fontSize: '13px',
-          color: 'var(--muted)', cursor: 'pointer'
+          width: '100%', padding: '10px', background: 'none', border: 'none',
+          fontFamily: 'var(--font-body)', fontSize: '13px', color: 'var(--muted)', cursor: 'pointer'
         }}>Skip for now</button>
       </div>
     </div>
@@ -480,85 +422,60 @@ if (step === 3) return (
   // ── STEP 4: FIRST RECIPE ──
   if (step === 4) return (
     <div style={{
-      minHeight: '100vh',
-      background: 'var(--cream)',
-      display: 'flex',
-      flexDirection: 'column',
-      maxWidth: '480px',
-      margin: '0 auto',
-      padding: '48px 28px 40px'
+      minHeight: '100vh', background: 'var(--cream)',
+      display: 'flex', flexDirection: 'column',
+      maxWidth: '480px', margin: '0 auto', padding: '48px 28px 40px'
     }}>
       <button onClick={() => setStep(3)} style={{
         background: 'none', border: 'none', cursor: 'pointer',
         display: 'flex', alignItems: 'center', gap: '6px',
         color: 'var(--muted)', fontFamily: 'var(--font-body)',
-        fontSize: '13px', fontWeight: '600', padding: '0 0 24px',
+        fontSize: '13px', fontWeight: '600', padding: '0 0 24px'
       }}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
           <path d="M19 12H5M5 12l7-7M5 12l7 7" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
         </svg>
         Back
       </button>
+
       <div style={{ flex: 1 }}>
-        <div style={{
-          fontFamily: 'var(--font-display)',
-          fontSize: '24px', fontWeight: '700',
-          color: 'var(--ink)', lineHeight: '1.2', marginBottom: '4px'
-        }}>Ready to chef<br />it up?</div>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: '24px', fontWeight: '700', color: 'var(--ink)', lineHeight: '1.2', marginBottom: '4px' }}>Ready to chef<br />it up?</div>
+        <div style={{ fontSize: '13px', color: 'var(--muted)', marginBottom: '24px' }}>Save your first recipe to your Cookbook.</div>
 
-        <div style={{ fontSize: '13px', color: 'var(--muted)', marginBottom: '24px' }}>
-          Save your first recipe to your Cookbook.
-        </div>
-
-        {/* URL paste */}
         <div style={{ marginBottom: '8px' }}>
           <div style={{ fontSize: '11px', fontWeight: '700', color: 'var(--charcoal)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '6px' }}>Paste a link</div>
           <div style={{ display: 'flex', gap: '8px' }}>
-            <input
-              type="url"
-              value={recipeUrl}
+            <input type="url" value={recipeUrl}
               onChange={e => { setRecipeUrl(e.target.value); setImportedRecipe(null); setImportError(null) }}
-              placeholder="https://nytcooking.com/recipe..."
-              style={{
-                flex: 1, padding: '13px 16px',
-                border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-md)',
-                background: 'var(--parchment)', fontFamily: 'var(--font-body)',
-                fontSize: '13px', color: 'var(--ink)', outline: 'none', boxSizing: 'border-box'
-              }}
-            />
-            <button
-              onClick={importRecipe}
-              disabled={importing || !recipeUrl.trim()}
-              style={{
-                padding: '13px 16px',
-                background: importing || !recipeUrl.trim() ? 'var(--tan)' : 'var(--clay)',
-                color: 'var(--cream)', border: 'none', borderRadius: 'var(--radius-md)',
-                fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '600',
-                cursor: importing || !recipeUrl.trim() ? 'not-allowed' : 'pointer',
-                whiteSpace: 'nowrap'
-              }}
-            >{importing ? '...' : 'Import'}</button>
+              placeholder="https://nytcooking.com/recipe..." style={{
+                flex: 1, padding: '13px 16px', border: '1.5px solid var(--tan)',
+                borderRadius: 'var(--radius-md)', background: 'var(--parchment)',
+                fontFamily: 'var(--font-body)', fontSize: '13px', color: 'var(--ink)',
+                outline: 'none', boxSizing: 'border-box'
+              }}/>
+            <button onClick={importRecipe} disabled={importing || !recipeUrl.trim()} style={{
+              padding: '13px 16px',
+              background: importing || !recipeUrl.trim() ? 'var(--tan)' : 'var(--clay)',
+              color: 'var(--cream)', border: 'none', borderRadius: 'var(--radius-md)',
+              fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '600',
+              cursor: importing || !recipeUrl.trim() ? 'not-allowed' : 'pointer',
+              whiteSpace: 'nowrap'
+            }}>{importing ? '...' : 'Import'}</button>
           </div>
         </div>
 
-        {importError && (
-          <div style={{ fontSize: '12px', color: '#B85252', marginBottom: '12px' }}>{importError}</div>
-        )}
+        {importError && <div style={{ fontSize: '12px', color: '#B85252', marginBottom: '12px' }}>{importError}</div>}
 
-        {/* Imported preview */}
         {importedRecipe && (
           <div style={{
             background: 'var(--warm-white)', border: '1px solid var(--parchment)',
-            borderRadius: 'var(--radius-md)', padding: '14px',
-            marginBottom: '16px', marginTop: '12px'
+            borderRadius: 'var(--radius-md)', padding: '14px', marginBottom: '16px', marginTop: '12px'
           }}>
             {importedRecipe.image_url && (
-              <img src={importedRecipe.image_url} alt="" style={{ width: '100%', height: '140px', objectFit: 'cover', borderRadius: '8px', marginBottom: '10px' }} />
+              <img src={importedRecipe.image_url} alt="" style={{ width: '100%', height: '140px', objectFit: 'cover', borderRadius: '8px', marginBottom: '10px' }}/>
             )}
             <div style={{ fontFamily: 'var(--font-display)', fontSize: '15px', fontWeight: '600', color: 'var(--ink)', marginBottom: '4px' }}>{importedRecipe.title}</div>
-            {importedRecipe.source_name && (
-              <div style={{ fontSize: '11px', color: 'var(--muted)' }}>{importedRecipe.source_name}</div>
-            )}
+            {importedRecipe.source_name && <div style={{ fontSize: '11px', color: 'var(--muted)' }}>{importedRecipe.source_name}</div>}
           </div>
         )}
       </div>
@@ -580,13 +497,11 @@ if (step === 3) return (
             border: 'none', borderRadius: 'var(--radius-pill)',
             fontFamily: 'var(--font-body)', fontSize: '15px', fontWeight: '700',
             cursor: 'pointer', marginBottom: '10px'
-          }}>Save Recipe</button>
+          }}>Skip for now</button>
         )}
         <button onClick={() => setStep(5)} style={{
-          width: '100%', padding: '10px',
-          background: 'none', border: 'none',
-          fontFamily: 'var(--font-body)', fontSize: '13px',
-          color: 'var(--muted)', cursor: 'pointer'
+          width: '100%', padding: '10px', background: 'none', border: 'none',
+          fontFamily: 'var(--font-body)', fontSize: '13px', color: 'var(--muted)', cursor: 'pointer'
         }}>I'll do it later</button>
       </div>
     </div>
@@ -597,13 +512,9 @@ if (step === 3) return (
     <div style={{
       minHeight: '100vh',
       background: 'linear-gradient(160deg, var(--clay) 0%, var(--rust) 50%, var(--ink) 100%)',
-      display: 'flex',
-      flexDirection: 'column',
-      maxWidth: '480px',
-      margin: '0 auto',
-      padding: '60px 28px 40px'
+      display: 'flex', flexDirection: 'column',
+      maxWidth: '480px', margin: '0 auto', padding: '60px 28px 40px'
     }}>
-      {/* Kitchen scene */}
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <svg width="240" height="180" viewBox="0 0 240 180" fill="none">
           <rect x="0" y="120" width="240" height="60" fill="rgba(255,255,255,0.1)"/>
@@ -624,20 +535,15 @@ if (step === 3) return (
         </svg>
       </div>
 
-      {/* Content */}
       <div>
         <div style={{
-          fontFamily: 'var(--font-display)',
-          fontSize: '32px', fontWeight: '700',
-          color: 'rgba(255,255,255,0.95)', lineHeight: '1.15',
-          marginBottom: '10px'
+          fontFamily: 'var(--font-display)', fontSize: '32px', fontWeight: '700',
+          color: 'rgba(255,255,255,0.95)', lineHeight: '1.15', marginBottom: '10px'
         }}>Your Cookbook<br />is open.</div>
         <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.65)', marginBottom: '32px' }}>
           Now go find something delicious.
         </div>
-
         <ProgressDots step={5} />
-
         <button onClick={finishOnboarding} style={{
           width: '100%', padding: '15px',
           background: 'rgba(255,255,255,0.95)', color: 'var(--clay)',
