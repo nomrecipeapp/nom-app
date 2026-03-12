@@ -1,60 +1,6 @@
 import { useState } from 'react'
 import { supabase } from './supabase'
 
-function parseSchemaRecipe(html) {
-  try {
-    const matches = html.match(/<script[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/gi)
-    if (!matches) return null
-    for (const match of matches) {
-      const json = match.replace(/<script[^>]*>/, '').replace(/<\/script>/, '')
-      const data = JSON.parse(json)
-      const recipes = []
-      function findRecipes(obj) {
-        if (!obj || typeof obj !== 'object') return
-        if (Array.isArray(obj)) { obj.forEach(findRecipes); return }
-        const type = obj['@type']
-        if (type === 'Recipe' || (Array.isArray(type) && type.includes('Recipe'))) recipes.push(obj)
-        Object.values(obj).forEach(findRecipes)
-      }
-      findRecipes(data)
-      if (recipes.length > 0) return recipes[0]
-    }
-  } catch {}
-  return null
-}
-
-function extractIngredients(schema) {
-  const raw = schema.recipeIngredient || schema.ingredients
-  if (!raw) return ''
-  if (Array.isArray(raw)) return raw.join('\n')
-  return raw
-}
-
-function extractInstructions(schema) {
-  const raw = schema.recipeInstructions
-  if (!raw) return ''
-  if (typeof raw === 'string') return raw
-  if (Array.isArray(raw)) {
-    return raw.map((step, i) => {
-      if (typeof step === 'string') return `${i + 1}. ${step}`
-      if (step.text) return `${i + 1}. ${step.text}`
-      return ''
-    }).filter(Boolean).join('\n')
-  }
-  return ''
-}
-
-function extractCookTime(schema) {
-  const raw = schema.totalTime || schema.cookTime
-  if (!raw) return ''
-  // Convert ISO 8601 duration PT1H30M → "1 hr 30 min"
-  const match = raw.match(/PT(?:(\d+)H)?(?:(\d+)M)?/)
-  if (!match) return raw
-  const hours = match[1] ? `${match[1]} hr` : ''
-  const mins = match[2] ? `${match[2]} min` : ''
-  return [hours, mins].filter(Boolean).join(' ') || raw
-}
-
 export default function AddRecipe({ session, onSave, onCancel }) {
   const [mode, setMode] = useState('url')
   const [url, setUrl] = useState('')
@@ -77,42 +23,37 @@ export default function AddRecipe({ session, onSave, onCancel }) {
     setError(null)
 
     try {
-      // Step 1: get metadata (title, image, publisher) from Microlink
-      const metaRes = await fetch(`https://api.microlink.io?url=${encodeURIComponent(url)}&meta=false`)
-      const metaData = await metaRes.json()
+      const apiKey = import.meta.env.VITE_SPOONACULAR_KEY
+      const res = await fetch(`https://api.spoonacular.com/recipes/extract?url=${encodeURIComponent(url)}&apiKey=${apiKey}`)
+      const data = await res.json()
 
-      const base = {
-        title: metaData.data?.title || '',
+      if (data.code === 402) {
+        setError('Daily import limit reached. Try again tomorrow or add manually.')
+        setLoading(false)
+        return
+      }
+
+      const ingredients = data.extendedIngredients
+        ? data.extendedIngredients.map(i => i.original).join('\n')
+        : ''
+
+      const instructions = data.analyzedInstructions?.[0]?.steps
+        ? data.analyzedInstructions[0].steps.map((s, i) => `${i + 1}. ${s.step}`).join('\n')
+        : data.instructions || ''
+
+      const cookTime = data.readyInMinutes ? `${data.readyInMinutes} min` : ''
+
+      setRecipe({
+        title: data.title || '',
         source_url: url,
-        source_name: metaData.data?.publisher || new URL(url).hostname.replace('www.', ''),
-        image_url: metaData.data?.image?.url || null,
-        cook_time: '',
+        source_name: data.sourceName || new URL(url).hostname.replace('www.', ''),
+        image_url: data.image || null,
+        cook_time: cookTime,
         difficulty: '',
-        ingredients: '',
-        instructions: '',
+        ingredients,
+        instructions,
         notes: ''
-      }
-
-      // Step 2: fetch raw HTML via CORS proxy to parse schema.org
-      let schema = null
-      try {
-        const htmlRes = await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`)
-        const html = await htmlRes.text()
-        schema = parseSchemaRecipe(html)
-      } catch {}
-
-      if (schema) {
-        setRecipe({
-          ...base,
-          title: schema.name || base.title,
-          image_url: (typeof schema.image === 'string' ? schema.image : Array.isArray(schema.image) ? schema.image[0] : schema.image?.url) || base.image_url,
-          cook_time: extractCookTime(schema),
-          ingredients: extractIngredients(schema),
-          instructions: extractInstructions(schema),
-        })
-      } else {
-        setRecipe(base)
-      }
+      })
     } catch (e) {
       setError('Could not fetch recipe. Try adding it manually.')
     }
