@@ -5,6 +5,7 @@ import Profile from './Profile'
 import Cookbook from './Cookbook'
 import AddRecipe from './AddRecipe'
 import RecipeDetail from './RecipeDetail'
+import SocialRecipeDetail from './SocialRecipeDetail'
 import Feed from './Feed'
 import Search from './Search'
 import FriendProfile from './FriendProfile'
@@ -15,6 +16,7 @@ export default function App() {
   const [loading, setLoading] = useState(true)
   const [screen, setScreen] = useState('feed')
   const [selectedRecipe, setSelectedRecipe] = useState(null)
+  const [selectedCook, setSelectedCook] = useState(null)
   const [selectedUserId, setSelectedUserId] = useState(null)
   const [prevScreen, setPrevScreen] = useState('feed')
 
@@ -37,15 +39,19 @@ export default function App() {
     setScreen('friendProfile')
   }
 
+  function goToSocialRecipe(cook) {
+    setPrevScreen(screen)
+    setSelectedCook(cook)
+    setScreen('socialRecipe')
+  }
+
   if (loading) return null
   if (!session) return <Auth />
 
-  // Screens that hide the nav
   const hideNav = screen === 'add'
 
   return (
     <>
-      {/* ── Screens ── */}
       {screen === 'add' && (
         <AddRecipe
           session={session}
@@ -78,6 +84,15 @@ export default function App() {
         />
       )}
 
+      {screen === 'socialRecipe' && selectedCook && (
+        <SocialRecipeDetail
+          cook={selectedCook}
+          session={session}
+          onBack={() => setScreen(prevScreen)}
+          onSelectUser={goToFriendProfile}
+        />
+      )}
+
       {screen === 'friendProfile' && selectedUserId && (
         <FriendProfile
           userId={selectedUserId}
@@ -89,10 +104,7 @@ export default function App() {
       {screen === 'feed' && (
         <Feed
           session={session}
-          onSelectRecipe={(recipe) => {
-            setSelectedRecipe(recipe)
-            setScreen('recipe')
-          }}
+          onSelectCook={goToSocialRecipe}
           onSelectUser={goToFriendProfile}
         />
       )}
@@ -115,13 +127,11 @@ export default function App() {
         />
       )}
 
-      {/* ── Bottom Nav ── */}
+      {/* Bottom Nav */}
       {!hideNav && (
         <div style={{
           position: 'fixed',
-          bottom: 0,
-          left: 0,
-          right: 0,
+          bottom: 0, left: 0, right: 0,
           background: 'var(--warm-white)',
           borderTop: '1px solid var(--parchment)',
           display: 'flex',
@@ -130,7 +140,6 @@ export default function App() {
           padding: '12px 0 20px',
           zIndex: 100
         }}>
-          {/* Feed */}
           <button onClick={() => setScreen('feed')} style={{
             background: 'none', border: 'none', cursor: 'pointer',
             display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '4px 16px'
@@ -144,7 +153,6 @@ export default function App() {
             <span style={{ fontSize: '10px', fontWeight: '600', color: screen === 'feed' ? 'var(--clay)' : 'var(--muted)' }}>Feed</span>
           </button>
 
-          {/* Find Cooks */}
           <button onClick={() => setScreen('search')} style={{
             background: 'none', border: 'none', cursor: 'pointer',
             display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '4px 16px'
@@ -156,17 +164,10 @@ export default function App() {
             <span style={{ fontSize: '10px', fontWeight: '600', color: screen === 'search' ? 'var(--clay)' : 'var(--muted)' }}>Find Cooks</span>
           </button>
 
-          {/* + Add button — center */}
           <button onClick={() => setScreen('add')} style={{
-            background: 'var(--clay)',
-            border: 'none',
-            cursor: 'pointer',
-            width: '48px',
-            height: '48px',
-            borderRadius: '50%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
+            background: 'var(--clay)', border: 'none', cursor: 'pointer',
+            width: '48px', height: '48px', borderRadius: '50%',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
             marginBottom: '8px',
             boxShadow: '0 4px 12px rgba(196, 113, 58, 0.4)'
           }}>
@@ -175,7 +176,6 @@ export default function App() {
             </svg>
           </button>
 
-          {/* Cookbook */}
           <button onClick={() => setScreen('cookbook')} style={{
             background: 'none', border: 'none', cursor: 'pointer',
             display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '4px 16px'
@@ -187,7 +187,6 @@ export default function App() {
             <span style={{ fontSize: '10px', fontWeight: '600', color: screen === 'cookbook' ? 'var(--clay)' : 'var(--muted)' }}>Cookbook</span>
           </button>
 
-          {/* Profile */}
           <button onClick={() => setScreen('profile')} style={{
             background: 'none', border: 'none', cursor: 'pointer',
             display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '4px 16px'

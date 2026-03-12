@@ -7,7 +7,7 @@ const verdictStyles = {
   never_again: { bg: '#F4E8E8', border: '#C47070', color: '#9B4040', label: 'Never Again' },
 }
 
-export default function Feed({ session, onSelectRecipe, onSelectUser }) {
+export default function Feed({ session, onSelectCook, onSelectUser }) {
   const [feed, setFeed] = useState([])
   const [loading, setLoading] = useState(true)
   const [requests, setRequests] = useState([])
@@ -83,20 +83,6 @@ export default function Feed({ session, onSelectRecipe, onSelectUser }) {
   async function denyRequest(id) {
     await supabase.from('follows').delete().eq('id', id)
     fetchRequests()
-  }
-
-  async function saveRecipe(recipe) {
-    await supabase.from('recipes').insert({
-      user_id: session.user.id,
-      title: recipe.title,
-      source_url: recipe.source_url,
-      source_name: recipe.source_name,
-      image_url: recipe.image_url,
-      cook_time: recipe.cook_time,
-      difficulty: recipe.difficulty,
-      status: 'want_to_make'
-    })
-    alert('Saved to your Cookbook!')
   }
 
   return (
@@ -228,13 +214,21 @@ export default function Feed({ session, onSelectRecipe, onSelectUser }) {
                   </div>
                 </div>
 
-                {/* Hero image — only if exists, no fallback */}
+                {/* Hero image — tappable to social recipe detail */}
                 {recipe.image_url && (
-                  <img src={recipe.image_url} alt="" style={{ width: '100%', height: '200px', objectFit: 'cover', display: 'block' }} />
+                  <img
+                    src={recipe.image_url}
+                    alt=""
+                    onClick={() => onSelectCook && onSelectCook(cook)}
+                    style={{ width: '100%', height: '200px', objectFit: 'cover', display: 'block', cursor: 'pointer' }}
+                  />
                 )}
 
-                {/* Card body */}
-                <div style={{ padding: '14px 16px' }}>
+                {/* Card body — tappable to social recipe detail */}
+                <div
+                  onClick={() => onSelectCook && onSelectCook(cook)}
+                  style={{ padding: '14px 16px', cursor: 'pointer' }}
+                >
                   {v && (
                     <div style={{
                       display: 'inline-flex',
@@ -264,30 +258,10 @@ export default function Feed({ session, onSelectRecipe, onSelectUser }) {
                       fontSize: '13px',
                       color: 'var(--charcoal)',
                       lineHeight: '1.55',
-                      fontStyle: 'italic',
-                      marginBottom: '12px'
+                      fontStyle: 'italic'
                     }}>"{cook.notes}"</div>
                   )}
 
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'flex-end',
-                    paddingTop: '10px',
-                    borderTop: '1px solid var(--parchment)'
-                  }}>
-                    <button onClick={() => saveRecipe(recipe)} style={{
-                      padding: '8px 16px',
-                      background: 'var(--clay)',
-                      color: 'var(--cream)',
-                      border: 'none',
-                      borderRadius: 'var(--radius-pill)',
-                      fontFamily: 'var(--font-body)',
-                      fontSize: '12px',
-                      fontWeight: '600',
-                      cursor: 'pointer'
-                    }}>+ Save to Cookbook</button>
-                  </div>
                 </div>
 
               </div>
