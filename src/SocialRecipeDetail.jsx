@@ -26,6 +26,9 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
       image_url: recipe.image_url,
       cook_time: recipe.cook_time,
       difficulty: recipe.difficulty,
+      ingredients: recipe.ingredients,
+      instructions: recipe.instructions,
+      notes: recipe.notes,
       status: 'want_to_make'
     })
     setSaving(false)
