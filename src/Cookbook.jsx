@@ -185,19 +185,17 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe }) {
                   transition: 'box-shadow 0.15s'
                 }}
               >
-                {/* Image or placeholder */}
-                <div style={{
-                  width: '52px',
-                  height: '52px',
-                  borderRadius: 'var(--radius-sm)',
-                  background: recipe.image_url ? 'var(--parchment)' : 'linear-gradient(135deg, var(--clay), var(--ember))',
-                  flexShrink: 0,
-                  overflow: 'hidden'
-                }}>
-                  {recipe.image_url && (
+{/* Image — only show if exists */}
+                {recipe.image_url && (
+                  <div style={{
+                    width: '52px', height: '52px',
+                    borderRadius: 'var(--radius-sm)',
+                    background: 'var(--parchment)',
+                    flexShrink: 0, overflow: 'hidden'
+                  }}>
                     <img src={recipe.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  )}
-                </div>
+                  </div>
+                )}
 
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{

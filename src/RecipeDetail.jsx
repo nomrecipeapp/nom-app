@@ -108,52 +108,49 @@ export default function RecipeDetail({ recipe, session, onBack, onUpdate }) {
       paddingBottom: '40px'
     }}>
 
-      {/* Hero image or color block */}
-      <div style={{
-        height: '220px',
-        background: recipe.image_url
-          ? 'var(--parchment)'
-          : 'linear-gradient(135deg, var(--clay) 0%, var(--ember) 60%, var(--tan) 100%)',
-        position: 'relative',
-        overflow: 'hidden'
-      }}>
-        {recipe.image_url && (
-          <img src={recipe.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-        )}
-
-        {/* Back button */}
-        <button onClick={onBack} style={{
-          position: 'absolute',
-          top: '16px',
-          left: '16px',
-          width: '36px',
-          height: '36px',
-          borderRadius: '50%',
-          background: 'rgba(28,26,23,0.5)',
-          border: 'none',
-          color: 'white',
-          fontSize: '18px',
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          backdropFilter: 'blur(4px)'
-        }}>←</button>
-
-        {/* Status badge */}
+      {/* Hero image — only show if exists */}
+      {recipe.image_url ? (
         <div style={{
-          position: 'absolute',
-          bottom: '16px',
-          left: '16px',
-          background: status.bg,
-          border: `1px solid ${status.border}`,
-          color: status.color,
-          borderRadius: 'var(--radius-pill)',
-          padding: '5px 12px',
-          fontSize: '11px',
-          fontWeight: '600'
-        }}>{status.label}</div>
-      </div>
+          height: '220px',
+          background: 'var(--parchment)',
+          position: 'relative',
+          overflow: 'hidden'
+        }}>
+          <img src={recipe.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+
+          {/* Back button */}
+          <button onClick={onBack} style={{
+            position: 'absolute', top: '16px', left: '16px',
+            width: '36px', height: '36px', borderRadius: '50%',
+            background: 'rgba(28,26,23,0.5)', border: 'none',
+            color: 'white', fontSize: '18px', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            backdropFilter: 'blur(4px)'
+          }}>←</button>
+
+          {/* Status badge */}
+          <div style={{
+            position: 'absolute', bottom: '16px', left: '16px',
+            background: status.bg, border: `1px solid ${status.border}`,
+            color: status.color, borderRadius: 'var(--radius-pill)',
+            padding: '5px 12px', fontSize: '11px', fontWeight: '600'
+          }}>{status.label}</div>
+        </div>
+      ) : (
+        <div style={{ padding: '16px 24px 0' }}>
+          <button onClick={onBack} style={{
+            background: 'none', border: 'none', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', gap: '6px',
+            color: 'var(--muted)', fontFamily: 'var(--font-body)',
+            fontSize: '13px', fontWeight: '600', padding: 0
+          }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <path d="M19 12H5M5 12l7-7M5 12l7 7" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            Back
+          </button>
+        </div>
+      )}
 
       <div style={{ maxWidth: '480px', margin: '0 auto', padding: '24px' }}>
 
