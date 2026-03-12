@@ -118,8 +118,12 @@ export default function Onboarding({ onComplete }) {
   }
 
   async function finishOnboarding() {
-    if (userId) {
-      await supabase.from('profiles').update({ onboarding_complete: true }).eq('id', userId)
+    try {
+      if (userId) {
+        await supabase.from('profiles').update({ onboarding_complete: true }).eq('id', userId)
+      }
+    } catch (e) {
+      console.log('Profile update error:', e)
     }
     onComplete()
   }
