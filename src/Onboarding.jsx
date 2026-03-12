@@ -24,6 +24,7 @@ export default function Onboarding({ onComplete }) {
 
   // Step 2 — account
   const [fullName, setFullName] = useState('')
+  const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [authLoading, setAuthLoading] = useState(false)
@@ -55,6 +56,7 @@ export default function Onboarding({ onComplete }) {
     await supabase.from('profiles').upsert({
       id: user.id,
       full_name: fullName,
+      username: username || null,
       onboarding_complete: false
     })
 
@@ -254,6 +256,30 @@ if (step === 2) return (
           />
         </div>
 
+        {/* Username */}
+        <div style={{ marginBottom: '14px' }}>
+          <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--charcoal)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '6px' }}>Username</label>
+          <div style={{ position: 'relative' }}>
+            <span style={{
+              position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)',
+              fontSize: '14px', color: 'var(--muted)', fontFamily: 'var(--font-body)'
+            }}>@</span>
+            <input
+              type="text"
+              value={username}
+              onChange={e => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+              placeholder="alexcooks"
+              style={{
+                width: '100%', padding: '13px 16px 13px 28px',
+                border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-md)',
+                background: 'var(--parchment)', fontFamily: 'var(--font-body)',
+                fontSize: '14px', color: 'var(--ink)', outline: 'none', boxSizing: 'border-box'
+              }}
+            />
+          </div>
+          <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '4px' }}>Letters, numbers, and underscores only</div>
+        </div>
+
         {/* Email */}
         <div style={{ marginBottom: '14px' }}>
           <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--charcoal)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '6px' }}>Email</label>
@@ -301,13 +327,13 @@ if (step === 2) return (
         <ProgressDots step={2} />
         <button
           onClick={handleCreateAccount}
-          disabled={authLoading || !fullName || !email || !password}
+                    disabled={authLoading || !fullName || !username || !email || !password}
           style={{
             width: '100%', padding: '15px',
-            background: (authLoading || !fullName || !email || !password) ? 'var(--tan)' : 'var(--clay)',
+            background: (authLoading || !fullName || !username || !email || !password) ? 'var(--tan)' : 'var(--clay)',
             color: 'var(--cream)', border: 'none', borderRadius: 'var(--radius-pill)',
             fontFamily: 'var(--font-body)', fontSize: '15px', fontWeight: '700',
-            cursor: (authLoading || !fullName || !email || !password) ? 'not-allowed' : 'pointer',
+            cursor: (authLoading || !fullName || !username || !email || !password) ? 'not-allowed' : 'pointer',
             marginBottom: '10px'
           }}
         >{authLoading ? 'Creating account...' : 'Create Account'}</button>
