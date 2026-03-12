@@ -7,6 +7,7 @@ export default function AddRecipe({ session, onSave, onCancel }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [recipe, setRecipe] = useState(null)
+  const [duplicate, setDuplicate] = useState(null)
 
   // Manual form fields
   const [title, setTitle] = useState('')
@@ -21,6 +22,21 @@ export default function AddRecipe({ session, onSave, onCancel }) {
     if (!url) return
     setLoading(true)
     setError(null)
+    setDuplicate(null)
+
+    // Check for duplicate first
+    const { data: existing } = await supabase
+      .from('recipes')
+      .select('id, title')
+      .eq('user_id', session.user.id)
+      .eq('source_url', url)
+      .single()
+
+    if (existing) {
+      setDuplicate(existing)
+      setLoading(false)
+      return
+    }
 
     try {
       const apiKey = import.meta.env.VITE_SPOONACULAR_KEY
@@ -137,7 +153,7 @@ export default function AddRecipe({ session, onSave, onCancel }) {
             borderRadius: 'var(--radius-pill)', padding: '4px', marginBottom: '28px'
           }}>
             {['url', 'manual'].map(m => (
-              <button key={m} onClick={() => { setMode(m); setError(null) }} style={{
+              <button key={m} onClick={() => { setMode(m); setError(null); setDuplicate(null) }} style={{
                 flex: 1, padding: '8px', border: 'none',
                 borderRadius: 'var(--radius-pill)',
                 background: mode === m ? 'var(--clay)' : 'transparent',
@@ -160,10 +176,45 @@ export default function AddRecipe({ session, onSave, onCancel }) {
             <label style={labelStyle}>Recipe URL</label>
             <input
               type="url" value={url}
-              onChange={e => setUrl(e.target.value)}
+              onChange={e => { setUrl(e.target.value); setDuplicate(null) }}
               placeholder="https://www.seriouseats.com/..."
               style={{ ...inputStyle, marginBottom: '16px' }}
             />
+
+            {/* Duplicate warning */}
+            {duplicate && (
+              <div style={{
+                background: '#FBF0E6',
+                border: '1px solid #E8A87C',
+                borderRadius: 'var(--radius-md)',
+                padding: '12px 14px',
+                marginBottom: '16px'
+              }}>
+                <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--clay)', marginBottom: '4px' }}>
+                  Already in your Cookbook
+                </div>
+                <div style={{ fontSize: '12px', color: 'var(--charcoal)', marginBottom: '10px' }}>
+                  "{duplicate.title}" is already saved. You can still add it again if you want a separate copy.
+                </div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button onClick={onCancel} style={{
+                    flex: 1, padding: '8px',
+                    background: 'var(--clay)', color: 'var(--cream)',
+                    border: 'none', borderRadius: 'var(--radius-pill)',
+                    fontFamily: 'var(--font-body)', fontSize: '12px',
+                    fontWeight: '600', cursor: 'pointer'
+                  }}>Go to Cookbook</button>
+                  <button onClick={() => { setDuplicate(null); setLoading(true); importFromUrl() }} style={{
+                    flex: 1, padding: '8px',
+                    background: 'transparent', color: 'var(--muted)',
+                    border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-pill)',
+                    fontFamily: 'var(--font-body)', fontSize: '12px',
+                    fontWeight: '600', cursor: 'pointer'
+                  }}>Add Anyway</button>
+                </div>
+              </div>
+            )}
+
             {error && (
               <div style={{
                 background: '#FDE8E8', border: '1px solid #F5C0C0',
@@ -171,13 +222,16 @@ export default function AddRecipe({ session, onSave, onCancel }) {
                 fontSize: '13px', color: '#B85252', marginBottom: '16px'
               }}>{error}</div>
             )}
-            <button onClick={importFromUrl} disabled={loading || !url} style={{
-              width: '100%', padding: '13px',
-              background: loading || !url ? 'var(--tan)' : 'var(--clay)',
-              color: 'var(--cream)', border: 'none', borderRadius: 'var(--radius-pill)',
-              fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: '600',
-              cursor: loading || !url ? 'not-allowed' : 'pointer'
-            }}>{loading ? 'Fetching recipe...' : 'Import Recipe'}</button>
+
+            {!duplicate && (
+              <button onClick={importFromUrl} disabled={loading || !url} style={{
+                width: '100%', padding: '13px',
+                background: loading || !url ? 'var(--tan)' : 'var(--clay)',
+                color: 'var(--cream)', border: 'none', borderRadius: 'var(--radius-pill)',
+                fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: '600',
+                cursor: loading || !url ? 'not-allowed' : 'pointer'
+              }}>{loading ? 'Fetching recipe...' : 'Import Recipe'}</button>
+            )}
 
             {loading && (
               <div style={{ textAlign: 'center', marginTop: '12px', fontSize: '12px', color: 'var(--muted)' }}>
