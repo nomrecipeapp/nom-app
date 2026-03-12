@@ -76,11 +76,13 @@ async function checkOnboarding(userId) {
     setScreen('socialRecipe')
   }
 
+  // Always allow login screen even while loading
+  if (showLogin) return <Auth />
+
   if (loading) return null
 
   // Not logged in — show onboarding or login
   if (!session) {
-    if (showLogin) return <Auth />
     return <Onboarding onComplete={handleOnboardingComplete} />
   }
 
