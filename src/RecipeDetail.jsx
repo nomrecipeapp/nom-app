@@ -189,6 +189,24 @@ export default function RecipeDetail({ recipe, session, onBack, onUpdate }) {
           </div>
         </div>
 
+        {/* Source link — first, for transparency */}
+        {recipe.source_url && (
+          <a href={recipe.source_url} target="_blank" rel="noopener noreferrer" style={{
+            display: 'flex',
+            background: 'var(--warm-white)',
+            borderRadius: 'var(--radius-lg)',
+            border: '1px solid var(--parchment)',
+            padding: '16px 20px',
+            textDecoration: 'none',
+            marginBottom: '16px',
+            alignItems: 'center',
+            justifyContent: 'space-between'
+          }}>
+            <span style={{ fontSize: '13px', fontWeight: '600', color: 'var(--clay)' }}>View original recipe →</span>
+            <span style={{ fontSize: '11px', color: 'var(--muted)' }}>{recipe.source_name}</span>
+          </a>
+        )}
+
         {/* Log a Cook button */}
         {!logging && (
           <button onClick={() => setLogging(true)} style={{
@@ -395,24 +413,6 @@ export default function RecipeDetail({ recipe, session, onBack, onUpdate }) {
               fontStyle: 'italic'
             }}>"{recipe.notes}"</div>
           </div>
-        )}
-
-        {/* Source link */}
-        {recipe.source_url && (
-          <a href={recipe.source_url} target="_blank" rel="noopener noreferrer" style={{
-            display: 'flex',
-            background: 'var(--warm-white)',
-            borderRadius: 'var(--radius-lg)',
-            border: '1px solid var(--parchment)',
-            padding: '16px 20px',
-            textDecoration: 'none',
-            marginBottom: '16px',
-            alignItems: 'center',
-            justifyContent: 'space-between'
-          }}>
-            <span style={{ fontSize: '13px', fontWeight: '600', color: 'var(--clay)' }}>View original recipe →</span>
-            <span style={{ fontSize: '11px', color: 'var(--muted)' }}>{recipe.source_name}</span>
-          </a>
         )}
 
         {/* Cook history */}
