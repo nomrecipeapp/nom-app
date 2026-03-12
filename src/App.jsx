@@ -45,13 +45,17 @@ const { data: { subscription } } = supabase.auth.onAuthStateChange((event, sessi
     return () => subscription.unsubscribe()
   }, [])
 
-  async function checkOnboarding(userId) {
-    const { data } = await supabase
-      .from('profiles')
-      .select('onboarding_complete')
-      .eq('id', userId)
-      .single()
-    setOnboardingComplete(data?.onboarding_complete === true)
+async function checkOnboarding(userId) {
+    try {
+      const { data } = await supabase
+        .from('profiles')
+        .select('onboarding_complete')
+        .eq('id', userId)
+        .single()
+      setOnboardingComplete(data?.onboarding_complete === true)
+    } catch (e) {
+      setOnboardingComplete(false)
+    }
     setLoading(false)
   }
 
