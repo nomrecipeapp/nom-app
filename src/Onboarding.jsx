@@ -46,8 +46,29 @@ export default function Onboarding({ onComplete }) {
     setAuthLoading(true)
     setAuthError(null)
 
+    // Check username availability first
+    const { data: existingUsername } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('username', username)
+      .single()
+
+    if (existingUsername) {
+      setAuthError('That username is already taken. Try another one.')
+      setAuthLoading(false)
+      return
+    }
+
     const { data, error } = await supabase.auth.signUp({ email, password })
-    if (error) { setAuthError(error.message); setAuthLoading(false); return }
+    if (error) {
+      if (error.message.toLowerCase().includes('already registered')) {
+        setAuthError('An account with this email already exists. Try logging in instead.')
+      } else {
+        setAuthError(error.message)
+      }
+      setAuthLoading(false)
+      return
+    }
 
     const user = data?.user
     if (!user) { setAuthError('Something went wrong. Please try again.'); setAuthLoading(false); return }
