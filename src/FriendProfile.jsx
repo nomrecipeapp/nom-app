@@ -7,7 +7,7 @@ const verdictStyles = {
   never_again: { bg: '#F4E8E8', border: '#C47070', color: '#9B4040', label: 'Never' },
 }
 
-export default function FriendProfile({ userId, session, onBack }) {
+export default function FriendProfile({ userId, session, onBack, onSelectCook }) {
   const [profile, setProfile] = useState(null)
   const [cooks, setCooks] = useState([])
   const [stats, setStats] = useState({ saved: 0, cooked: 0 })
@@ -264,7 +264,7 @@ export default function FriendProfile({ userId, session, onBack }) {
                 const recipe = cook.recipes
                 if (!recipe) return null
                 return (
-                  <div key={cook.id} style={{ flexShrink: 0, width: '88px' }}>
+                  <div key={cook.id} onClick={() => onSelectCook(cook)} style={{ flexShrink: 0, width: '88px', cursor: 'pointer' }}>
                     <div style={{
                       width: '88px', height: '88px',
                       borderRadius: 'var(--radius-md)',
@@ -335,7 +335,7 @@ export default function FriendProfile({ userId, session, onBack }) {
                 const recipe = cook.recipes
                 if (!recipe) return null
                 return (
-                  <div key={cook.id} style={{ flexShrink: 0, width: '88px' }}>
+                  <div key={cook.id} onClick={() => onSelectCook(cook)} style={{ flexShrink: 0, width: '88px', cursor: 'pointer' }}>
                     <div style={{
                       width: '88px', height: '88px',
                       borderRadius: 'var(--radius-md)',

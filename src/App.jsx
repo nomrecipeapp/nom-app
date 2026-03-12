@@ -133,6 +133,7 @@ export default function App() {
           userId={selectedUserId}
           session={session}
           onBack={() => setScreen(prevScreen)}
+          onSelectCook={goToSocialRecipe}
         />
       )}
 
