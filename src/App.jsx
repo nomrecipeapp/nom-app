@@ -11,6 +11,7 @@ import Feed from './Feed'
 import Search from './Search'
 import FriendProfile from './FriendProfile'
 import './index.css'
+import ResetPassword from './ResetPassword'
 
 export default function App() {
   const [session, setSession] = useState(null)
@@ -30,10 +31,16 @@ export default function App() {
       else setLoading(false)
     })
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session)
-      if (session) checkOnboarding(session.user.id)
-    })
+const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+  if (event === 'PASSWORD_RECOVERY') {
+    setScreen('resetPassword')
+    setSession(session)
+    setLoading(false)
+    return
+  }
+  setSession(session)
+  if (session) checkOnboarding(session.user.id)
+})
 
     return () => subscription.unsubscribe()
   }, [])
@@ -159,6 +166,14 @@ export default function App() {
           onSelectRecipe={(recipe) => {
             setSelectedRecipe(recipe)
             setScreen('recipe')
+          }}
+        />
+      )}
+
+      {screen === 'resetPassword' && (
+      <ResetPassword
+         onComplete={() => {
+           setScreen('feed')
           }}
         />
       )}
