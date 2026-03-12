@@ -206,7 +206,7 @@ export default function Onboarding({ onComplete }) {
   )
 
   // ── STEP 2: CREATE ACCOUNT ──
-  if (step === 2) return (
+if (step === 2) return (
     <div style={{
       minHeight: '100vh',
       background: 'var(--cream)',
@@ -216,6 +216,17 @@ export default function Onboarding({ onComplete }) {
       margin: '0 auto',
       padding: '48px 28px 40px'
     }}>
+      <button onClick={() => setStep(1)} style={{
+        background: 'none', border: 'none', cursor: 'pointer',
+        display: 'flex', alignItems: 'center', gap: '6px',
+        color: 'var(--muted)', fontFamily: 'var(--font-body)',
+        fontSize: '13px', fontWeight: '600', padding: '0 0 24px',
+      }}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+          <path d="M19 12H5M5 12l7-7M5 12l7 7" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+        Back
+      </button>
       <div style={{ flex: 1 }}>
         <div style={{
           fontFamily: 'var(--font-display)',
@@ -308,7 +319,7 @@ export default function Onboarding({ onComplete }) {
   )
 
   // ── STEP 3: FIND FELLOW COOKS ──
-  if (step === 3) return (
+if (step === 3) return (
     <div style={{
       minHeight: '100vh',
       background: 'var(--cream)',
@@ -318,6 +329,17 @@ export default function Onboarding({ onComplete }) {
       margin: '0 auto',
       padding: '48px 28px 40px'
     }}>
+      <button onClick={() => setStep(2)} style={{
+        background: 'none', border: 'none', cursor: 'pointer',
+        display: 'flex', alignItems: 'center', gap: '6px',
+        color: 'var(--muted)', fontFamily: 'var(--font-body)',
+        fontSize: '13px', fontWeight: '600', padding: '0 0 24px',
+      }}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+          <path d="M19 12H5M5 12l7-7M5 12l7 7" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+        Back
+      </button>
       <div style={{ flex: 1 }}>
         <div style={{
           fontFamily: 'var(--font-display)',
@@ -419,12 +441,24 @@ export default function Onboarding({ onComplete }) {
       margin: '0 auto',
       padding: '48px 28px 40px'
     }}>
+      <button onClick={() => setStep(3)} style={{
+        background: 'none', border: 'none', cursor: 'pointer',
+        display: 'flex', alignItems: 'center', gap: '6px',
+        color: 'var(--muted)', fontFamily: 'var(--font-body)',
+        fontSize: '13px', fontWeight: '600', padding: '0 0 24px',
+      }}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+          <path d="M19 12H5M5 12l7-7M5 12l7 7" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+        Back
+      </button>
       <div style={{ flex: 1 }}>
         <div style={{
           fontFamily: 'var(--font-display)',
           fontSize: '24px', fontWeight: '700',
           color: 'var(--ink)', lineHeight: '1.2', marginBottom: '4px'
         }}>Ready to chef<br />it up?</div>
+
         <div style={{ fontSize: '13px', color: 'var(--muted)', marginBottom: '24px' }}>
           Save your first recipe to your Cookbook.
         </div>
