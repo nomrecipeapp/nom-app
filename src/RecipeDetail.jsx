@@ -389,6 +389,64 @@ export default function RecipeDetail({ recipe, session, onBack, onUpdate }) {
           </div>
         )}
 
+        {/* Ingredients */}
+        {recipe.ingredients && (
+          <div style={{
+            background: 'var(--warm-white)',
+            borderRadius: 'var(--radius-lg)',
+            border: '1px solid var(--parchment)',
+            padding: '20px',
+            marginBottom: '16px'
+          }}>
+            <div style={{
+              fontSize: '11px', fontWeight: '600', letterSpacing: '0.12em',
+              textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '14px'
+            }}>Ingredients</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {recipe.ingredients.split('\n').filter(Boolean).map((line, i) => (
+                <div key={i} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                  <div style={{
+                    width: '6px', height: '6px', borderRadius: '50%',
+                    background: 'var(--clay)', flexShrink: 0, marginTop: '6px'
+                  }} />
+                  <span style={{ fontSize: '14px', color: 'var(--charcoal)', lineHeight: '1.5' }}>{line}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Instructions */}
+        {recipe.instructions && (
+          <div style={{
+            background: 'var(--warm-white)',
+            borderRadius: 'var(--radius-lg)',
+            border: '1px solid var(--parchment)',
+            padding: '20px',
+            marginBottom: '16px'
+          }}>
+            <div style={{
+              fontSize: '11px', fontWeight: '600', letterSpacing: '0.12em',
+              textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '14px'
+            }}>Instructions</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              {recipe.instructions.split('\n').filter(Boolean).map((line, i) => (
+                <div key={i} style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                  <div style={{
+                    width: '22px', height: '22px', borderRadius: '50%',
+                    background: 'var(--clay)', color: 'var(--cream)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '11px', fontWeight: '700', flexShrink: 0, marginTop: '1px'
+                  }}>{i + 1}</div>
+                  <span style={{ fontSize: '14px', color: 'var(--charcoal)', lineHeight: '1.6', flex: 1 }}>
+                    {line.replace(/^\d+\.\s*/, '')}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Notes */}
         {recipe.notes && (
           <div style={{
