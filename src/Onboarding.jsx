@@ -220,7 +220,7 @@ export default function Onboarding({ onComplete }) {
             fontFamily: 'var(--font-body)', fontSize: '15px', fontWeight: '700',
             cursor: 'pointer', marginBottom: '10px'
           }}>Let's go</button>
-          <button onClick={() => onComplete('login')} style={{
+          <button onClick={() => { console.log('login clicked'); onComplete('login') }} style={{
             width: '100%', padding: '10px',
             background: 'none', border: 'none',
             fontFamily: 'var(--font-body)', fontSize: '13px',
