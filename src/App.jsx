@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from './supabase'
 import Auth from './Auth'
+import Onboarding from './Onboarding'
 import Profile from './Profile'
 import Cookbook from './Cookbook'
 import AddRecipe from './AddRecipe'
@@ -14,6 +15,8 @@ import './index.css'
 export default function App() {
   const [session, setSession] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [onboardingComplete, setOnboardingComplete] = useState(true)
+  const [showLogin, setShowLogin] = useState(false)
   const [screen, setScreen] = useState('feed')
   const [selectedRecipe, setSelectedRecipe] = useState(null)
   const [selectedCook, setSelectedCook] = useState(null)
@@ -23,15 +26,36 @@ export default function App() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
-      setLoading(false)
+      if (session) checkOnboarding(session.user.id)
+      else setLoading(false)
     })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session)
+      if (session) checkOnboarding(session.user.id)
     })
 
     return () => subscription.unsubscribe()
   }, [])
+
+  async function checkOnboarding(userId) {
+    const { data } = await supabase
+      .from('profiles')
+      .select('onboarding_complete')
+      .eq('id', userId)
+      .single()
+    setOnboardingComplete(data?.onboarding_complete === true)
+    setLoading(false)
+  }
+
+  function handleOnboardingComplete(action) {
+    if (action === 'login') {
+      setShowLogin(true)
+    } else {
+      setOnboardingComplete(true)
+      setScreen('cookbook')
+    }
+  }
 
   function goToFriendProfile(userId) {
     setPrevScreen(screen)
@@ -46,7 +70,17 @@ export default function App() {
   }
 
   if (loading) return null
-  if (!session) return <Auth />
+
+  // Not logged in — show onboarding or login
+  if (!session) {
+    if (showLogin) return <Auth />
+    return <Onboarding onComplete={handleOnboardingComplete} />
+  }
+
+  // Logged in but onboarding not complete
+  if (!onboardingComplete) {
+    return <Onboarding onComplete={handleOnboardingComplete} />
+  }
 
   const hideNav = screen === 'add'
 
