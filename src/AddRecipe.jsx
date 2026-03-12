@@ -77,16 +77,9 @@ export default function AddRecipe({ session, onSave, onCancel }) {
     setError(null)
 
     try {
-      // Step 1: get metadata (title, image, publisher)
+      // Step 1: get metadata (title, image, publisher) from Microlink
       const metaRes = await fetch(`https://api.microlink.io?url=${encodeURIComponent(url)}&meta=false`)
       const metaData = await metaRes.json()
-
-      // Step 2: get raw HTML for schema.org parsing
-      const htmlRes = await fetch(`https://api.microlink.io?url=${encodeURIComponent(url)}&scraper=html`)
-      const htmlData = await htmlRes.json()
-      const html = htmlData?.data?.html || ''
-
-      const schema = parseSchemaRecipe(html)
 
       const base = {
         title: metaData.data?.title || '',
@@ -100,17 +93,24 @@ export default function AddRecipe({ session, onSave, onCancel }) {
         notes: ''
       }
 
+      // Step 2: fetch raw HTML via CORS proxy to parse schema.org
+      let schema = null
+      try {
+        const htmlRes = await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`)
+        const html = await htmlRes.text()
+        schema = parseSchemaRecipe(html)
+      } catch {}
+
       if (schema) {
         setRecipe({
           ...base,
           title: schema.name || base.title,
-          image_url: (typeof schema.image === 'string' ? schema.image : schema.image?.url) || base.image_url,
+          image_url: (typeof schema.image === 'string' ? schema.image : Array.isArray(schema.image) ? schema.image[0] : schema.image?.url) || base.image_url,
           cook_time: extractCookTime(schema),
           ingredients: extractIngredients(schema),
           instructions: extractInstructions(schema),
         })
       } else {
-        // Fallback — show what we got, let user fill in the rest
         setRecipe(base)
       }
     } catch (e) {
