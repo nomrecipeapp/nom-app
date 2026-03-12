@@ -146,7 +146,7 @@ export default function RecipeDetail({ recipe, session, onBack, onUpdate }) {
   const status = statusColors[recipe.status] || statusColors.want_to_make
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--cream)', paddingBottom: '40px' }}>
+<div style={{ minHeight: '100vh', background: 'var(--cream)', paddingBottom: '120px' }}>
 
       {/* Hero image */}
       {recipe.image_url ? (
