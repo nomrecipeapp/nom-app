@@ -39,7 +39,10 @@ const { data: { subscription } } = supabase.auth.onAuthStateChange((event, sessi
     return
   }
   setSession(session)
-  if (session) checkOnboarding(session.user.id)
+  if (session) {
+    setShowLogin(false)
+    checkOnboarding(session.user.id)
+  }
 })
 
     return () => subscription.unsubscribe()
