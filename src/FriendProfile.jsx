@@ -224,7 +224,8 @@ export default function FriendProfile({ userId, session, onBack, onSelectCook })
   const [wantToMake, setWantToMake] = useState([])
   const [activeTab, setActiveTab] = useState('stats')
   const [cookbookFilter, setCookbookFilter] = useState('All')
-  const [selectedRecipe, setSelectedRecipe] = useState(null)
+const [selectedRecipe, setSelectedRecipe] = useState(null)
+  const [cookbookSort, setCookbookSort] = useState('date')
 
   useEffect(() => {
     fetchProfile()
@@ -370,12 +371,17 @@ export default function FriendProfile({ userId, session, onBack, onSelectCook })
     }
   }
 
-  const filteredRecipes = allRecipes.filter(r => {
-    if (cookbookFilter === 'Want to Make') return r.status === 'want_to_make'
-    if (cookbookFilter === 'Cooked') return r.status === 'cooked'
-    if (cookbookFilter === 'Never Again') return r.status === 'never_again'
-    return true
-  })
+  const filteredRecipes = allRecipes
+    .filter(r => {
+      if (cookbookFilter === 'Want to Make') return r.status === 'want_to_make'
+      if (cookbookFilter === 'Cooked') return r.status === 'cooked'
+      if (cookbookFilter === 'Never Again') return r.status === 'never_again'
+      return true
+    })
+    .sort((a, b) => {
+      if (cookbookSort === 'alpha') return a.title.localeCompare(b.title)
+      return 0
+    })
 
   const sectionLabel = {
     fontSize: '11px', fontWeight: '600', letterSpacing: '0.12em',
@@ -609,18 +615,32 @@ export default function FriendProfile({ userId, session, onBack, onSelectCook })
         {/* Cookbook Tab */}
         {followStatus === 'approved' && activeTab === 'cookbook' && (
           <div style={{ padding: '0 20px' }}>
-            {/* Filters */}
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', overflowX: 'auto', paddingBottom: '4px' }}>
-              {FILTERS.map(f => (
-                <button key={f} onClick={() => setCookbookFilter(f)} style={{
-                  padding: '7px 16px', borderRadius: 'var(--radius-pill)',
-                  border: cookbookFilter === f ? 'none' : '1.5px solid var(--tan)',
-                  background: cookbookFilter === f ? 'var(--clay)' : 'transparent',
-                  color: cookbookFilter === f ? 'var(--cream)' : 'var(--muted)',
-                  fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600',
-                  cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.15s'
-                }}>{f}</button>
-              ))}
+            {/* Filters + Sort */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
+                {FILTERS.map(f => (
+                  <button key={f} onClick={() => setCookbookFilter(f)} style={{
+                    padding: '7px 16px', borderRadius: 'var(--radius-pill)',
+                    border: cookbookFilter === f ? 'none' : '1.5px solid var(--tan)',
+                    background: cookbookFilter === f ? 'var(--clay)' : 'transparent',
+                    color: cookbookFilter === f ? 'var(--cream)' : 'var(--muted)',
+                    fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600',
+                    cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.15s'
+                  }}>{f}</button>
+                ))}
+              </div>
+              <button onClick={() => setCookbookSort(s => s === 'date' ? 'alpha' : 'date')} style={{
+                flexShrink: 0, marginLeft: '10px', padding: '7px 12px',
+                borderRadius: 'var(--radius-pill)', border: '1.5px solid var(--tan)',
+                background: 'transparent', color: 'var(--muted)',
+                fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600',
+                cursor: 'pointer', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '5px'
+              }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                  <path d="M3 6h18M6 12h12M9 18h6" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round"/>
+                </svg>
+                {cookbookSort === 'date' ? 'Date' : 'A–Z'}
+              </button>
             </div>
 
             <div style={{ fontSize: '12px', color: 'var(--muted)', marginBottom: '16px' }}>
