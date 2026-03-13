@@ -336,59 +336,55 @@ export default function Feed({ session, onSelectCook, onSelectUser }) {
             // --- SAVE CARD ---
             if (item._type === 'save') {
               return (
-                <div key={`save-${item.id}`} style={{
+                <div key={`save-${item.id}`} onClick={() => setSelectedRecipe(item)} style={{
                   background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)',
-                  border: '1px solid var(--parchment)', overflow: 'hidden'
+                  border: '1px solid var(--parchment)', overflow: 'hidden', cursor: 'pointer'
                 }}>
-                  {/* Header */}
-                  <div
-                    onClick={() => onSelectUser && onSelectUser(item.user_id)}
-                    style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '14px 16px', cursor: 'pointer' }}
-                  >
-                    <div style={{
-                      width: '36px', height: '36px', borderRadius: '50%',
-                      background: 'linear-gradient(135deg, var(--clay), var(--ember))',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: '700',
-                      color: 'var(--cream)', flexShrink: 0
-                    }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 16px' }}>
+                    {/* Avatar — tappable to profile */}
+                    <div
+                      onClick={e => { e.stopPropagation(); onSelectUser && onSelectUser(item.user_id) }}
+                      style={{
+                        width: '36px', height: '36px', borderRadius: '50%',
+                        background: 'linear-gradient(135deg, var(--clay), var(--ember))',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: '700',
+                        color: 'var(--cream)', flexShrink: 0, cursor: 'pointer'
+                      }}>
                       {(profile?.full_name || profile?.username || '?')[0].toUpperCase()}
                     </div>
-                    <div>
-                      <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--ink)' }}>
-                        {profile?.full_name || profile?.username || 'Unknown'}
+
+                    {/* Name + action */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: '13px', color: 'var(--muted)' }}>
+                        <span style={{ fontWeight: '600', color: 'var(--ink)' }}>
+                          {profile?.full_name || profile?.username || 'Unknown'}
+                        </span>
+                        {' '}saved a recipe
                       </div>
-                      <div style={{ fontSize: '11px', color: 'var(--muted)' }}>
+                      <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '1px' }}>
                         {new Date(item.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                       </div>
                     </div>
+
+                    {/* Thumbnail or initial */}
+                    <div style={{
+                      width: '52px', height: '52px', borderRadius: 'var(--radius-md)',
+                      overflow: 'hidden', flexShrink: 0,
+                      background: item.image_url ? 'var(--parchment)' : 'linear-gradient(135deg, var(--clay), var(--ember))',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center'
+                    }}>
+                      {item.image_url
+                        ? <img src={item.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        : <span style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: '700', color: 'var(--cream)' }}>{(item.title || '?')[0].toUpperCase()}</span>
+                      }
+                    </div>
                   </div>
 
-                  {/* Image */}
-                  {item.image_url && (
-                    <img
-                      src={item.image_url}
-                      alt=""
-                      onClick={() => setSelectedRecipe(item)}
-                      style={{ width: '100%', height: '200px', objectFit: 'cover', display: 'block', cursor: 'pointer' }}
-                    />
-                  )}
-
-                  {/* Body */}
-                  <div onClick={() => setSelectedRecipe(item)} style={{ padding: '14px 16px', cursor: 'pointer' }}>
-                    <div style={{
-                      display: 'inline-flex', alignItems: 'center', gap: '6px',
-                      background: 'var(--parchment)', border: '1px solid var(--tan)',
-                      borderRadius: 'var(--radius-pill)', padding: '5px 12px',
-                      fontSize: '12px', fontWeight: '600', color: 'var(--charcoal)',
-                      marginBottom: '8px'
-                    }}>Saved</div>
-                    <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: '500', color: 'var(--ink)' }}>
-                      {item.title}
-                    </div>
-                    {item.source_name && (
-                      <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '4px' }}>{item.source_name}</div>
-                    )}
+                  {/* Recipe title + source */}
+                  <div style={{ padding: '0 16px 14px', paddingLeft: '64px' }}>
+                    <div style={{ fontFamily: 'var(--font-display)', fontSize: '15px', fontWeight: '500', color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.title}</div>
+                    {item.source_name && <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '2px' }}>{item.source_name}</div>}
                   </div>
                 </div>
               )
