@@ -24,6 +24,7 @@ export default function App() {
   const [selectedCook, setSelectedCook] = useState(null)
   const [selectedUserId, setSelectedUserId] = useState(null)
   const [prevScreen, setPrevScreen] = useState('feed')
+  const [scrollToComments, setScrollToComments] = useState(false)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -76,9 +77,10 @@ async function checkOnboarding(userId) {
 
 const [selectedPost, setSelectedPost] = useState(null)
 
-  function goToSocialRecipe(cook) {
+  function goToSocialRecipe(cook, toComments = false) {
     setPrevScreen(screen)
     setSelectedCook(cook)
+    setScrollToComments(toComments)
     setScreen('socialRecipe')
   }
 
@@ -144,8 +146,9 @@ const [selectedPost, setSelectedPost] = useState(null)
         <SocialRecipeDetail
           cook={selectedCook}
           session={session}
-          onBack={() => setScreen(prevScreen)}
+          onBack={() => { setScreen(prevScreen); setScrollToComments(false) }}
           onSelectUser={goToFriendProfile}
+          scrollToComments={scrollToComments}
         />
       )}
 

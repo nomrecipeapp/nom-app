@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from './supabase'
 
 const verdictStyles = {
@@ -7,10 +7,109 @@ const verdictStyles = {
   never_again: { bg: '#F4E8E8', border: '#C47070', color: '#9B4040', label: 'Never Again' },
 }
 
-function FriendRecipeDetail({ recipe, session, onBack }) {
+function FriendRecipeDetail({ recipe, session, onBack, scrollToComments }) {
   const [saved, setSaved] = useState(false)
   const [saving, setSaving] = useState(false)
   const [duplicate, setDuplicate] = useState(null)
+  const [likeCount, setLikeCount] = useState(0)
+  const [liked, setLiked] = useState(false)
+  const [comments, setComments] = useState([])
+  const [commentBody, setCommentBody] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [loadingComments, setLoadingComments] = useState(true)
+  const commentsRef = useRef(null)
+
+  const targetType = 'save'
+  const targetId = recipe.id
+
+  useEffect(() => {
+    fetchLikes()
+    fetchComments()
+  }, [recipe.id])
+
+  useEffect(() => {
+    if (scrollToComments && commentsRef.current) {
+      setTimeout(() => {
+        commentsRef.current.scrollIntoView({ behavior: 'smooth' })
+      }, 300)
+    }
+  }, [scrollToComments])
+
+  async function fetchLikes() {
+    const { count } = await supabase
+      .from('likes')
+      .select('*', { count: 'exact', head: true })
+      .eq('target_type', targetType)
+      .eq('target_id', targetId)
+
+    const { data: myLike } = await supabase
+      .from('likes')
+      .select('id')
+      .eq('target_type', targetType)
+      .eq('target_id', targetId)
+      .eq('user_id', session.user.id)
+      .maybeSingle()
+
+    setLikeCount(count || 0)
+    setLiked(!!myLike)
+  }
+
+  async function fetchComments() {
+    setLoadingComments(true)
+    const { data } = await supabase
+      .from('comments')
+      .select('*')
+      .eq('target_type', targetType)
+      .eq('target_id', targetId)
+      .order('created_at', { ascending: true })
+
+    if (!data || data.length === 0) { setComments([]); setLoadingComments(false); return }
+
+    const userIds = [...new Set(data.map(c => c.user_id))]
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, full_name, username')
+      .in('id', userIds)
+
+    setComments(data.map(c => ({
+      ...c,
+      profiles: profiles?.find(p => p.id === c.user_id) || null
+    })))
+    setLoadingComments(false)
+  }
+
+  async function toggleLike() {
+    if (liked) {
+      await supabase.from('likes').delete()
+        .eq('target_type', targetType)
+        .eq('target_id', targetId)
+        .eq('user_id', session.user.id)
+      setLiked(false)
+      setLikeCount(c => c - 1)
+    } else {
+      await supabase.from('likes').insert({
+        user_id: session.user.id,
+        target_type: targetType,
+        target_id: targetId
+      })
+      setLiked(true)
+      setLikeCount(c => c + 1)
+    }
+  }
+
+  async function submitComment() {
+    if (!commentBody.trim()) return
+    setSubmitting(true)
+    await supabase.from('comments').insert({
+      user_id: session.user.id,
+      target_type: targetType,
+      target_id: targetId,
+      body: commentBody.trim()
+    })
+    setCommentBody('')
+    await fetchComments()
+    setSubmitting(false)
+  }
 
   async function saveRecipe() {
     if (saved || saving) return
@@ -22,11 +121,7 @@ function FriendRecipeDetail({ recipe, session, onBack }) {
       .eq('source_url', recipe.source_url)
       .maybeSingle()
 
-    if (existing) {
-      setDuplicate(existing)
-      setSaving(false)
-      return
-    }
+    if (existing) { setDuplicate(existing); setSaving(false); return }
 
     await supabase.from('recipes').insert({
       user_id: session.user.id,
@@ -161,21 +256,113 @@ function FriendRecipeDetail({ recipe, session, onBack }) {
             background: saved ? 'var(--sage)' : 'var(--clay)', color: 'var(--cream)',
             border: 'none', borderRadius: 'var(--radius-pill)',
             fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: '600',
-            cursor: saved ? 'default' : 'pointer', transition: 'background 0.2s'
+            cursor: saved ? 'default' : 'pointer', transition: 'background 0.2s',
+            marginBottom: '32px'
           }}>
             {saved ? '✓ Saved to Cookbook' : saving ? 'Saving...' : '+ Save to My Cookbook'}
           </button>
         )}
+
+        {/* Like bar */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
+          <button onClick={toggleLike} style={{
+            display: 'flex', alignItems: 'center', gap: '6px',
+            background: 'none', border: 'none', cursor: 'pointer', padding: 0
+          }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill={liked ? 'var(--clay)' : 'none'}>
+              <path d="M12 21C12 21 3 14.5 3 8.5C3 5.42 5.42 3 8.5 3C10.24 3 11.91 3.81 13 5.08C14.09 3.81 15.76 3 17.5 3C20.58 3 23 5.42 23 8.5C23 14.5 12 21 12 21Z"
+                stroke={liked ? 'var(--clay)' : 'var(--muted)'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            <span style={{ fontSize: '13px', fontWeight: '600', color: liked ? 'var(--clay)' : 'var(--muted)' }}>
+              {likeCount > 0 ? `${likeCount} ` : ''}{liked ? 'Liked' : 'Like'}
+            </span>
+          </button>
+        </div>
+
+        {/* Comments */}
+        <div ref={commentsRef}>
+          <div style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '16px' }}>
+            Comments{comments.length > 0 ? ` · ${comments.length}` : ''}
+          </div>
+
+          {loadingComments ? (
+            <div style={{ fontSize: '13px', color: 'var(--muted)', textAlign: 'center', padding: '20px 0' }}>Loading...</div>
+          ) : comments.length === 0 ? (
+            <div style={{ fontSize: '13px', color: 'var(--muted)', textAlign: 'center', padding: '20px 0' }}>No comments yet. Be the first!</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '24px' }}>
+              {comments.map(comment => {
+                const name = comment.profiles?.full_name || comment.profiles?.username || 'Someone'
+                return (
+                  <div key={comment.id} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                    <div style={{
+                      width: '30px', height: '30px', borderRadius: '50%', flexShrink: 0,
+                      background: 'linear-gradient(135deg, var(--clay), var(--ember))',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: '700', color: 'var(--cream)'
+                    }}>{name[0].toUpperCase()}</div>
+                    <div style={{ flex: 1, background: 'var(--warm-white)', borderRadius: 'var(--radius-md)', border: '1px solid var(--parchment)', padding: '10px 14px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                        <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--ink)' }}>{name}</span>
+                        <span style={{ fontSize: '11px', color: 'var(--muted)' }}>
+                          {new Date(comment.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: '13px', color: 'var(--charcoal)', lineHeight: '1.5' }}>{comment.body}</div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
+            <div style={{
+              width: '30px', height: '30px', borderRadius: '50%', flexShrink: 0,
+              background: 'linear-gradient(135deg, var(--clay), var(--ember))',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: '700', color: 'var(--cream)'
+            }}>{(session.user.email || '?')[0].toUpperCase()}</div>
+            <div style={{ flex: 1, display: 'flex', gap: '8px', alignItems: 'flex-end' }}>
+              <textarea
+                value={commentBody}
+                onChange={e => setCommentBody(e.target.value)}
+                placeholder="Add a comment..."
+                rows={1}
+                style={{
+                  flex: 1, padding: '10px 14px',
+                  border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-md)',
+                  background: 'var(--cream)', fontFamily: 'var(--font-body)',
+                  fontSize: '14px', color: 'var(--ink)', outline: 'none',
+                  resize: 'none', lineHeight: '1.5'
+                }}
+                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitComment() } }}
+              />
+              <button onClick={submitComment} disabled={submitting || !commentBody.trim()} style={{
+                padding: '10px 16px',
+                background: commentBody.trim() ? 'var(--clay)' : 'var(--tan)',
+                color: 'var(--cream)', border: 'none', borderRadius: 'var(--radius-pill)',
+                fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '600',
+                cursor: commentBody.trim() ? 'pointer' : 'not-allowed',
+                transition: 'background 0.15s', whiteSpace: 'nowrap'
+              }}>Post</button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   )
 }
 
-export default function Feed({ session, onSelectCook, onSelectUser, onSelectPost }) {
+export default function Feed({ session, onSelectCook, onSelectUser }) {
   const [feed, setFeed] = useState([])
   const [loading, setLoading] = useState(true)
   const [requests, setRequests] = useState([])
   const [selectedRecipe, setSelectedRecipe] = useState(null)
+  const [scrollToComments, setScrollToComments] = useState(false)
+  const [feedLikes, setFeedLikes] = useState({})
+  const [feedLikeCounts, setFeedLikeCounts] = useState({})
+  const [feedCommentCounts, setFeedCommentCounts] = useState({})
 
   useEffect(() => {
     fetchFeed()
@@ -239,6 +426,62 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectPost
 
     setFeed(merged)
     setLoading(false)
+    fetchFeedEngagement(merged)
+  }
+
+  async function fetchFeedEngagement(items) {
+    if (!items || items.length === 0) return
+
+    const cookIds = items.filter(i => i._type === 'cook').map(i => i.id)
+    const saveIds = items.filter(i => i._type === 'save').map(i => i.id)
+
+    const likesMap = {}
+    const likeCountsMap = {}
+    const commentCountsMap = {}
+
+    // Fetch all likes by current user for these items
+    if (cookIds.length > 0) {
+      const { data: cookLikes } = await supabase.from('likes').select('target_id').eq('target_type', 'cook').eq('user_id', session.user.id).in('target_id', cookIds)
+      cookLikes?.forEach(l => { likesMap[`cook-${l.target_id}`] = true })
+
+      for (const id of cookIds) {
+        const { count } = await supabase.from('likes').select('*', { count: 'exact', head: true }).eq('target_type', 'cook').eq('target_id', id)
+        likeCountsMap[`cook-${id}`] = count || 0
+        const { count: cc } = await supabase.from('comments').select('*', { count: 'exact', head: true }).eq('target_type', 'cook').eq('target_id', id)
+        commentCountsMap[`cook-${id}`] = cc || 0
+      }
+    }
+
+    if (saveIds.length > 0) {
+      const { data: saveLikes } = await supabase.from('likes').select('target_id').eq('target_type', 'save').eq('user_id', session.user.id).in('target_id', saveIds)
+      saveLikes?.forEach(l => { likesMap[`save-${l.target_id}`] = true })
+
+      for (const id of saveIds) {
+        const { count } = await supabase.from('likes').select('*', { count: 'exact', head: true }).eq('target_type', 'save').eq('target_id', id)
+        likeCountsMap[`save-${id}`] = count || 0
+        const { count: cc } = await supabase.from('comments').select('*', { count: 'exact', head: true }).eq('target_type', 'save').eq('target_id', id)
+        commentCountsMap[`save-${id}`] = cc || 0
+      }
+    }
+
+    setFeedLikes(likesMap)
+    setFeedLikeCounts(likeCountsMap)
+    setFeedCommentCounts(commentCountsMap)
+  }
+
+  async function toggleFeedLike(e, item) {
+    e.stopPropagation()
+    const key = `${item._type}-${item.id}`
+    const isLiked = feedLikes[key]
+    if (isLiked) {
+      await supabase.from('likes').delete().eq('target_type', item._type).eq('target_id', item.id).eq('user_id', session.user.id)
+      setFeedLikes(prev => ({ ...prev, [key]: false }))
+      setFeedLikeCounts(prev => ({ ...prev, [key]: (prev[key] || 1) - 1 }))
+    } else {
+      await supabase.from('likes').insert({ user_id: session.user.id, target_type: item._type, target_id: item.id })
+      setFeedLikes(prev => ({ ...prev, [key]: true }))
+      setFeedLikeCounts(prev => ({ ...prev, [key]: (prev[key] || 0) + 1 }))
+    }
   }
 
   async function fetchRequests() {
@@ -278,7 +521,8 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectPost
     <FriendRecipeDetail
       recipe={selectedRecipe}
       session={session}
-      onBack={() => setSelectedRecipe(null)}
+      onBack={() => { setSelectedRecipe(null); setScrollToComments(false) }}
+      scrollToComments={scrollToComments}
     />
   )
 
@@ -387,6 +631,35 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectPost
                       {item.source_name && <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '2px' }}>{item.source_name}</div>}
                     </div>
                   </div>
+
+                  {/* Like + comment bar */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '10px 16px 12px', borderTop: '1px solid var(--parchment)' }}
+                    onClick={e => e.stopPropagation()}>
+                    <button onClick={e => toggleFeedLike(e, item)} style={{
+                      display: 'flex', alignItems: 'center', gap: '5px',
+                      background: 'none', border: 'none', cursor: 'pointer', padding: 0
+                    }}>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill={feedLikes[`save-${item.id}`] ? 'var(--clay)' : 'none'}>
+                        <path d="M12 21C12 21 3 14.5 3 8.5C3 5.42 5.42 3 8.5 3C10.24 3 11.91 3.81 13 5.08C14.09 3.81 15.76 3 17.5 3C20.58 3 23 5.42 23 8.5C23 14.5 12 21 12 21Z"
+                          stroke={feedLikes[`save-${item.id}`] ? 'var(--clay)' : 'var(--muted)'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                      <span style={{ fontSize: '12px', fontWeight: '600', color: feedLikes[`save-${item.id}`] ? 'var(--clay)' : 'var(--muted)' }}>
+                        {feedLikeCounts[`save-${item.id}`] > 0 ? feedLikeCounts[`save-${item.id}`] : ''} {feedLikes[`save-${item.id}`] ? 'Liked' : 'Like'}
+                      </span>
+                    </button>
+                    <button onClick={e => { e.stopPropagation(); setScrollToComments(true); setSelectedRecipe(item) }} style={{
+                      display: 'flex', alignItems: 'center', gap: '5px',
+                      background: 'none', border: 'none', cursor: 'pointer', padding: 0
+                    }}>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                        <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"
+                          stroke="var(--muted)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                      <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--muted)' }}>
+                        {feedCommentCounts[`save-${item.id}`] > 0 ? feedCommentCounts[`save-${item.id}`] : ''} Comment
+                      </span>
+                    </button>
+                  </div>
                 </div>
               )
             }
@@ -449,6 +722,35 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectPost
                   {item.notes && (
                     <div style={{ fontSize: '13px', color: 'var(--charcoal)', lineHeight: '1.55', fontStyle: 'italic' }}>"{item.notes}"</div>
                   )}
+                </div>
+
+                {/* Like + comment bar */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '10px 16px 12px', borderTop: '1px solid var(--parchment)' }}
+                  onClick={e => e.stopPropagation()}>
+                  <button onClick={e => toggleFeedLike(e, item)} style={{
+                    display: 'flex', alignItems: 'center', gap: '5px',
+                    background: 'none', border: 'none', cursor: 'pointer', padding: 0
+                  }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill={feedLikes[`cook-${item.id}`] ? 'var(--clay)' : 'none'}>
+                      <path d="M12 21C12 21 3 14.5 3 8.5C3 5.42 5.42 3 8.5 3C10.24 3 11.91 3.81 13 5.08C14.09 3.81 15.76 3 17.5 3C20.58 3 23 5.42 23 8.5C23 14.5 12 21 12 21Z"
+                        stroke={feedLikes[`cook-${item.id}`] ? 'var(--clay)' : 'var(--muted)'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    <span style={{ fontSize: '12px', fontWeight: '600', color: feedLikes[`cook-${item.id}`] ? 'var(--clay)' : 'var(--muted)' }}>
+                      {feedLikeCounts[`cook-${item.id}`] > 0 ? feedLikeCounts[`cook-${item.id}`] : ''} {feedLikes[`cook-${item.id}`] ? 'Liked' : 'Like'}
+                    </span>
+                  </button>
+                  <button onClick={e => { e.stopPropagation(); onSelectCook(item, true) }} style={{
+                    display: 'flex', alignItems: 'center', gap: '5px',
+                    background: 'none', border: 'none', cursor: 'pointer', padding: 0
+                  }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                      <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"
+                        stroke="var(--muted)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--muted)' }}>
+                      {feedCommentCounts[`cook-${item.id}`] > 0 ? feedCommentCounts[`cook-${item.id}`] : ''} Comment
+                    </span>
+                  </button>
                 </div>
               </div>
             )
