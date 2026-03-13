@@ -117,7 +117,14 @@ const [selectedPost, setSelectedPost] = useState(null)
       {screen === 'add' && (
         <AddRecipe
           session={session}
-          onSave={() => setScreen('cookbook')}
+          onSave={(recipe, logCookNow) => {
+            if (logCookNow && recipe) {
+              setSelectedRecipe(recipe)
+              setScreen('recipe')
+            } else {
+              setScreen('cookbook')
+            }
+          }}
           onCancel={() => setScreen('cookbook')}
         />
       )}

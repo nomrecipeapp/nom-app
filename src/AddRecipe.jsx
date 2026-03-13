@@ -67,7 +67,9 @@ export default function AddRecipe({ session, onSave, onCancel }) {
         difficulty: '',
         ingredients,
         instructions,
-        notes: ''
+        notes: '',
+        tags: [],
+        logCookNow: false
       })
     } catch (e) {
       setError('Could not fetch recipe. Try adding it manually.')
@@ -78,16 +80,25 @@ export default function AddRecipe({ session, onSave, onCancel }) {
 
   async function saveRecipe(recipeData) {
     setLoading(true)
-    const { error } = await supabase
+    const { logCookNow, ...cleanRecipe } = recipeData
+    const { data: saved, error } = await supabase
       .from('recipes')
       .insert({
         user_id: session.user.id,
-        ...recipeData,
-        status: 'want_to_make'
+        ...cleanRecipe,
+        tags: cleanRecipe.tags || [],
+        status: logCookNow ? 'cooked' : 'want_to_make'
       })
+      .select()
+      .single()
 
-    if (error) setError(error.message)
-    else onSave()
+    if (error) { setError(error.message); setLoading(false); return }
+
+    if (logCookNow && saved) {
+      onSave(saved, true)
+    } else {
+      onSave()
+    }
     setLoading(false)
   }
 
@@ -237,6 +248,7 @@ export default function AddRecipe({ session, onSave, onCancel }) {
         )}
 
         {/* Review imported recipe */}
+       {/* Review imported recipe */}
         {recipe && (
           <div style={{
             background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)',
@@ -284,6 +296,50 @@ export default function AddRecipe({ session, onSave, onCancel }) {
                 <label style={labelStyle}>Image URL (optional)</label>
                 <input value={recipe.image_url || ''} onChange={e => setRecipe({...recipe, image_url: e.target.value})} placeholder="https://..." style={inputStyle} />
               </div>
+
+              {/* Tags */}
+              <div>
+                <label style={labelStyle}>Tags</label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
+                  {['Breakfast','Lunch','Dinner','Appetizer','Dessert','Baking','Cocktail'].map(tag => {
+                    const selected = (recipe.tags || []).includes(tag)
+                    return (
+                      <button key={tag} onClick={() => {
+                        const current = recipe.tags || []
+                        setRecipe({ ...recipe, tags: selected ? current.filter(t => t !== tag) : [...current, tag] })
+                      }} style={{
+                        padding: '5px 12px', border: '1.5px solid',
+                        borderColor: selected ? 'var(--clay)' : 'var(--tan)',
+                        borderRadius: 'var(--radius-pill)',
+                        background: selected ? 'var(--clay)' : 'transparent',
+                        color: selected ? 'var(--cream)' : 'var(--muted)',
+                        fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600',
+                        cursor: 'pointer', transition: 'all 0.15s'
+                      }}>{tag}</button>
+                    )
+                  })}
+                </div>
+                <input
+                  placeholder="+ Add custom tag"
+                  style={{ ...inputStyle, fontSize: '13px' }}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' && e.target.value.trim()) {
+                      const newTag = e.target.value.trim()
+                      if (!(recipe.tags || []).includes(newTag)) {
+                        setRecipe({ ...recipe, tags: [...(recipe.tags || []), newTag] })
+                      }
+                      e.target.value = ''
+                    }
+                  }}
+                />
+                {(recipe.tags || []).filter(t => !['Breakfast','Lunch','Dinner','Appetizer','Dessert','Baking','Cocktail'].includes(t)).map(tag => (
+                  <div key={tag} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', marginTop: '6px', marginRight: '6px', padding: '4px 10px', background: 'var(--parchment)', borderRadius: 'var(--radius-pill)', fontSize: '12px', color: 'var(--charcoal)' }}>
+                    {tag}
+                    <button onClick={() => setRecipe({ ...recipe, tags: (recipe.tags || []).filter(t => t !== tag) })} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', fontSize: '14px', lineHeight: 1, padding: 0 }}>×</button>
+                  </div>
+                ))}
+              </div>
+
               <div>
                 <label style={labelStyle}>
                   Ingredients
@@ -310,6 +366,29 @@ export default function AddRecipe({ session, onSave, onCancel }) {
                 <label style={labelStyle}>Notes (optional)</label>
                 <textarea value={recipe.notes} onChange={e => setRecipe({...recipe, notes: e.target.value})} placeholder="Anything you want to remember..." rows={3} style={{ ...inputStyle, resize: 'vertical' }} />
               </div>
+
+              {/* Log a Cook option */}
+              <div style={{
+                background: 'var(--parchment)', borderRadius: 'var(--radius-md)',
+                padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+              }}>
+                <div>
+                  <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--ink)', marginBottom: '2px' }}>Already made this?</div>
+                  <div style={{ fontSize: '12px', color: 'var(--muted)' }}>Log a cook right away</div>
+                </div>
+                <button onClick={() => setRecipe({ ...recipe, logCookNow: !recipe.logCookNow })} style={{
+                  width: '44px', height: '26px', borderRadius: '13px', border: 'none',
+                  background: recipe.logCookNow ? 'var(--clay)' : 'var(--tan)',
+                  cursor: 'pointer', position: 'relative', transition: 'background 0.2s', flexShrink: 0
+                }}>
+                  <div style={{
+                    position: 'absolute', top: '3px',
+                    left: recipe.logCookNow ? '21px' : '3px',
+                    width: '20px', height: '20px', borderRadius: '50%',
+                    background: 'white', transition: 'left 0.2s'
+                  }} />
+                </button>
+              </div>
             </div>
 
             {error && (
@@ -332,7 +411,7 @@ export default function AddRecipe({ session, onSave, onCancel }) {
                 color: 'var(--cream)', border: 'none', borderRadius: 'var(--radius-pill)',
                 fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: '600',
                 cursor: loading ? 'not-allowed' : 'pointer'
-              }}>{loading ? 'Saving...' : 'Save to My Cookbook'}</button>
+              }}>{loading ? 'Saving...' : recipe.logCookNow ? 'Save & Log Cook' : 'Save to My Cookbook'}</button>
             </div>
           </div>
         )}

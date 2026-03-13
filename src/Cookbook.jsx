@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from './supabase'
 
 const FILTERS = ['All', 'Want to Make', 'Cooked', 'Never Again']
+const TAG_FILTERS = ['Breakfast', 'Lunch', 'Dinner', 'Appetizer', 'Dessert', 'Baking', 'Cocktail']
 
 const statusLabel = {
   want_to_make: 'Want to Make',
@@ -19,6 +20,7 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe }) {
   const [recipes, setRecipes] = useState([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('All')
+  const [tagFilter, setTagFilter] = useState(null)
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState('date')
 
@@ -37,12 +39,16 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe }) {
     setLoading(false)
   }
 
-  const filtered = recipes
+const filtered = recipes
     .filter(r => {
       if (filter === 'Want to Make') return r.status === 'want_to_make'
       if (filter === 'Cooked') return r.status === 'cooked'
       if (filter === 'Never Again') return r.status === 'never_again'
       return true
+    })
+    .filter(r => {
+      if (!tagFilter) return true
+      return (r.tags || []).includes(tagFilter)
     })
     .filter(r => {
       if (!search.trim()) return true
@@ -54,7 +60,7 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe }) {
     })
     .sort((a, b) => {
       if (sort === 'alpha') return a.title.localeCompare(b.title)
-      return 0 // default: already sorted by created_at from DB
+      return 0
     })
 
   return (
@@ -138,6 +144,20 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe }) {
           </button>
         </div>
 
+        {/* Tag filters */}
+        <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px', marginBottom: '16px' }}>
+          {TAG_FILTERS.map(tag => (
+            <button key={tag} onClick={() => setTagFilter(tagFilter === tag ? null : tag)} style={{
+              padding: '5px 12px', borderRadius: 'var(--radius-pill)',
+              border: tagFilter === tag ? 'none' : '1.5px solid var(--tan)',
+              background: tagFilter === tag ? 'var(--ink)' : 'transparent',
+              color: tagFilter === tag ? 'var(--cream)' : 'var(--muted)',
+              fontFamily: 'var(--font-body)', fontSize: '11px', fontWeight: '600',
+              cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.15s', flexShrink: 0
+            }}>{tag}</button>
+          ))}
+        </div>
+
         {/* Recipe count */}
         <div style={{ fontSize: '12px', color: 'var(--muted)', marginBottom: '16px' }}>
           {filtered.length} {filtered.length === 1 ? 'recipe' : 'recipes'}
@@ -191,6 +211,17 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe }) {
                     {recipe.source_name && <span style={{ fontSize: '11px', color: 'var(--muted)' }}>{recipe.source_name}</span>}
                     {recipe.cook_time && <span style={{ fontSize: '11px', color: 'var(--muted)' }}>· {recipe.cook_time}</span>}
                   </div>
+                  {(recipe.tags || []).length > 0 && (
+                    <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '5px' }}>
+                      {(recipe.tags || []).map(tag => (
+                        <span key={tag} style={{
+                          padding: '2px 8px', borderRadius: 'var(--radius-pill)',
+                          background: 'var(--parchment)', fontSize: '10px',
+                          fontWeight: '600', color: 'var(--charcoal)'
+                        }}>{tag}</span>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <div style={{
                   ...verdictStyle[recipe.status],
