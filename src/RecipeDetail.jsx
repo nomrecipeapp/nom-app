@@ -47,6 +47,7 @@ export default function RecipeDetail({ recipe: initialRecipe, session, onBack, o
     ingredients: recipe.ingredients || '',
     instructions: recipe.instructions || '',
     notes: recipe.notes || '',
+    tags: recipe.tags || [],
   })
 
   useEffect(() => {
@@ -168,6 +169,7 @@ export default function RecipeDetail({ recipe: initialRecipe, session, onBack, o
         ingredients: editForm.ingredients.trim() || null,
         instructions: editForm.instructions.trim() || null,
         notes: editForm.notes.trim() || null,
+        tags: editForm.tags || [],
         updated_at: new Date().toISOString()
       })
       .eq('id', recipe.id)
@@ -317,6 +319,49 @@ export default function RecipeDetail({ recipe: initialRecipe, session, onBack, o
               />
             </div>
 
+            {/* Tags */}
+            <div>
+              <label style={fieldLabel}>Tags</label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
+                {['Breakfast','Lunch','Dinner','Appetizer','Dessert','Baking','Cocktail'].map(tag => {
+                  const selected = (editForm.tags || []).includes(tag)
+                  return (
+                    <button key={tag} onClick={() => {
+                      const current = editForm.tags || []
+                      setEditForm(f => ({ ...f, tags: selected ? current.filter(t => t !== tag) : [...current, tag] }))
+                    }} style={{
+                      padding: '5px 12px', border: '1.5px solid',
+                      borderColor: selected ? 'var(--clay)' : 'var(--tan)',
+                      borderRadius: 'var(--radius-pill)',
+                      background: selected ? 'var(--clay)' : 'transparent',
+                      color: selected ? 'var(--cream)' : 'var(--muted)',
+                      fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600',
+                      cursor: 'pointer', transition: 'all 0.15s'
+                    }}>{tag}</button>
+                  )
+                })}
+              </div>
+              <input
+                placeholder="+ Add custom tag"
+                style={{ ...inputStyle, fontSize: '13px' }}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && e.target.value.trim()) {
+                    const newTag = e.target.value.trim()
+                    if (!(editForm.tags || []).includes(newTag)) {
+                      setEditForm(f => ({ ...f, tags: [...(f.tags || []), newTag] }))
+                    }
+                    e.target.value = ''
+                  }
+                }}
+              />
+              {(editForm.tags || []).filter(t => !['Breakfast','Lunch','Dinner','Appetizer','Dessert','Baking','Cocktail'].includes(t)).map(tag => (
+                <div key={tag} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', marginTop: '6px', marginRight: '6px', padding: '4px 10px', background: 'var(--parchment)', borderRadius: 'var(--radius-pill)', fontSize: '12px', color: 'var(--charcoal)' }}>
+                  {tag}
+                  <button onClick={() => setEditForm(f => ({ ...f, tags: (f.tags || []).filter(t => t !== tag) }))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', fontSize: '14px', lineHeight: 1, padding: 0 }}>×</button>
+                </div>
+              ))}
+            </div>
+
             {/* Notes */}
             <div>
               <label style={fieldLabel}>Notes</label>
@@ -362,7 +407,7 @@ export default function RecipeDetail({ recipe: initialRecipe, session, onBack, o
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             backdropFilter: 'blur(4px)'
           }}>←</button>
-          <button onClick={() => { setEditForm({ title: recipe.title || '', source_name: recipe.source_name || '', source_url: recipe.source_url || '', image_url: recipe.image_url || '', cook_time: recipe.cook_time || '', difficulty: recipe.difficulty || '', ingredients: recipe.ingredients || '', instructions: recipe.instructions || '', notes: recipe.notes || '' }); setEditing(true) }} style={{
+          <button onClick={() => { setEditForm({ title: recipe.title || '', source_name: recipe.source_name || '', source_url: recipe.source_url || '', image_url: recipe.image_url || '', cook_time: recipe.cook_time || '', difficulty: recipe.difficulty || '', ingredients: recipe.ingredients || '', instructions: recipe.instructions || '', notes: recipe.notes || '', tags: recipe.tags || [] }); setEditing(true) }} style={{
             position: 'absolute', top: '16px', right: '16px',
             background: 'rgba(28,26,23,0.5)', border: 'none', borderRadius: 'var(--radius-pill)',
             padding: '6px 14px', color: 'white', fontFamily: 'var(--font-body)',
@@ -388,7 +433,7 @@ export default function RecipeDetail({ recipe: initialRecipe, session, onBack, o
             </svg>
             Back
           </button>
-          <button onClick={() => { setEditForm({ title: recipe.title || '', source_name: recipe.source_name || '', source_url: recipe.source_url || '', image_url: recipe.image_url || '', cook_time: recipe.cook_time || '', difficulty: recipe.difficulty || '', ingredients: recipe.ingredients || '', instructions: recipe.instructions || '', notes: recipe.notes || '' }); setEditing(true) }} style={{
+          <button onClick={() => { setEditForm({ title: recipe.title || '', source_name: recipe.source_name || '', source_url: recipe.source_url || '', image_url: recipe.image_url || '', cook_time: recipe.cook_time || '', difficulty: recipe.difficulty || '', ingredients: recipe.ingredients || '', instructions: recipe.instructions || '', notes: recipe.notes || '', tags: recipe.tags || [] }); setEditing(true) }} style={{
             background: 'var(--parchment)', border: 'none', borderRadius: 'var(--radius-pill)',
             padding: '6px 14px', fontFamily: 'var(--font-body)',
             fontSize: '12px', fontWeight: '600', color: 'var(--charcoal)', cursor: 'pointer'
