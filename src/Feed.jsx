@@ -426,7 +426,7 @@ export default function Feed({ session, onSelectCook, onSelectUser }) {
 
     setFeed(merged)
     setLoading(false)
-    fetchFeedEngagement(merged)
+    await fetchFeedEngagement(merged)
   }
 
   async function fetchFeedEngagement(items) {
