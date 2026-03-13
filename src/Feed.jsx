@@ -367,24 +367,25 @@ export default function Feed({ session, onSelectCook, onSelectUser }) {
                       </div>
                     </div>
 
-                    {/* Thumbnail or initial */}
+                  </div>
+
+                  {/* Recipe row */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '0 16px 14px' }}>
                     <div style={{
-                      width: '52px', height: '52px', borderRadius: 'var(--radius-md)',
+                      width: '48px', height: '48px', borderRadius: 'var(--radius-md)',
                       overflow: 'hidden', flexShrink: 0,
                       background: item.image_url ? 'var(--parchment)' : 'linear-gradient(135deg, var(--clay), var(--ember))',
                       display: 'flex', alignItems: 'center', justifyContent: 'center'
                     }}>
                       {item.image_url
                         ? <img src={item.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                        : <span style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: '700', color: 'var(--cream)' }}>{(item.title || '?')[0].toUpperCase()}</span>
+                        : <span style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: '700', color: 'var(--cream)' }}>{(item.title || '?')[0].toUpperCase()}</span>
                       }
                     </div>
-                  </div>
-
-                  {/* Recipe title + source */}
-                  <div style={{ padding: '0 16px 14px', paddingLeft: '64px' }}>
-                    <div style={{ fontFamily: 'var(--font-display)', fontSize: '15px', fontWeight: '500', color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.title}</div>
-                    {item.source_name && <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '2px' }}>{item.source_name}</div>}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontFamily: 'var(--font-display)', fontSize: '15px', fontWeight: '500', color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.title}</div>
+                      {item.source_name && <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '2px' }}>{item.source_name}</div>}
+                    </div>
                   </div>
                 </div>
               )
