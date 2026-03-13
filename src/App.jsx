@@ -12,6 +12,7 @@ import Search from './Search'
 import FriendProfile from './FriendProfile'
 import './index.css'
 import ResetPassword from './ResetPassword'
+import PostDetail from './PostDetail'
 
 export default function App() {
   const [session, setSession] = useState(null)
@@ -73,10 +74,18 @@ async function checkOnboarding(userId) {
     setScreen('friendProfile')
   }
 
+const [selectedPost, setSelectedPost] = useState(null)
+
   function goToSocialRecipe(cook) {
     setPrevScreen(screen)
     setSelectedCook(cook)
     setScreen('socialRecipe')
+  }
+
+  function goToPost(item) {
+    setPrevScreen(screen)
+    setSelectedPost(item)
+    setScreen('postDetail')
   }
 
   // Always allow login screen even while loading
@@ -149,11 +158,25 @@ async function checkOnboarding(userId) {
         />
       )}
 
+      {screen === 'postDetail' && selectedPost && (
+        <PostDetail
+          item={selectedPost}
+          session={session}
+          onBack={() => setScreen(prevScreen)}
+          onSelectUser={goToFriendProfile}
+          onSelectRecipe={(item) => {
+            if (item._type === 'cook') goToSocialRecipe(item)
+            else { setSelectedPost(null); setScreen(prevScreen) }
+          }}
+        />
+      )}
+
       {screen === 'feed' && (
         <Feed
           session={session}
           onSelectCook={goToSocialRecipe}
           onSelectUser={goToFriendProfile}
+          onSelectPost={goToPost}
         />
       )}
 

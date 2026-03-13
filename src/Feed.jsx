@@ -171,7 +171,7 @@ function FriendRecipeDetail({ recipe, session, onBack }) {
   )
 }
 
-export default function Feed({ session, onSelectCook, onSelectUser }) {
+export default function Feed({ session, onSelectCook, onSelectUser, onSelectPost }) {
   const [feed, setFeed] = useState([])
   const [loading, setLoading] = useState(true)
   const [requests, setRequests] = useState([])
@@ -336,7 +336,7 @@ export default function Feed({ session, onSelectCook, onSelectUser }) {
             // --- SAVE CARD ---
             if (item._type === 'save') {
               return (
-                <div key={`save-${item.id}`} onClick={() => setSelectedRecipe(item)} style={{
+                <div key={`save-${item.id}`} onClick={() => onSelectPost(item)} style={{
                   background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)',
                   border: '1px solid var(--parchment)', overflow: 'hidden', cursor: 'pointer'
                 }}>
@@ -397,7 +397,8 @@ export default function Feed({ session, onSelectCook, onSelectUser }) {
             if (!recipe) return null
 
             return (
-              <div key={`cook-${item.id}`} style={{
+              <div key={`cook-${item.id}`} onClick={() => onSelectPost(item)} style={{
+                cursor: 'pointer',
                 background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)',
                 border: '1px solid var(--parchment)', overflow: 'hidden'
               }}>
@@ -430,13 +431,12 @@ export default function Feed({ session, onSelectCook, onSelectUser }) {
                   <img
                     src={recipe.image_url}
                     alt=""
-                    onClick={() => onSelectCook && onSelectCook(item)}
-                    style={{ width: '100%', height: '200px', objectFit: 'cover', display: 'block', cursor: 'pointer' }}
+                    style={{ width: '100%', height: '200px', objectFit: 'cover', display: 'block' }}
                   />
                 )}
 
                 {/* Body */}
-                <div onClick={() => onSelectCook && onSelectCook(item)} style={{ padding: '14px 16px', cursor: 'pointer' }}>
+                <div style={{ padding: '14px 16px' }}>
                   {v && (
                     <div style={{
                       display: 'inline-flex', alignItems: 'center', gap: '6px',
