@@ -108,8 +108,20 @@ export default function Profile({ session, onBack, onSelectRecipe }) {
       .select('*, recipes(*)')
       .eq('user_id', session.user.id)
       .order('cooked_at', { ascending: false })
-      .limit(6)
-    if (data) setRecentCooks(data)
+      .limit(50)
+
+    if (!data) return
+
+    // Deduplicate by recipe_id — keep most recent cook per recipe
+    const seen = new Set()
+    const deduped = data.filter(c => {
+      if (!c.recipes) return false
+      if (seen.has(c.recipe_id)) return false
+      seen.add(c.recipe_id)
+      return true
+    })
+
+    setRecentCooks(deduped.slice(0, 5))
   }
 
   async function fetchTopRated() {
@@ -118,9 +130,38 @@ export default function Profile({ session, onBack, onSelectRecipe }) {
       .select('*, recipes(*)')
       .eq('user_id', session.user.id)
       .not('flavor', 'is', null)
-      .order('flavor', { ascending: false })
-      .limit(6)
-    if (data) setTopRated(data)
+      .order('cooked_at', { ascending: false })
+      .limit(100)
+
+    if (!data) return
+
+    // Group by recipe_id and average all scores
+    const recipeMap = {}
+    data.forEach(cook => {
+      if (!cook.recipes) return
+      const id = cook.recipe_id
+      if (!recipeMap[id]) {
+        recipeMap[id] = { cook, scores: [], recipe: cook.recipes }
+      }
+      const scores = [cook.flavor, cook.effort, cook.would_share, cook.true_to_recipe].filter(Boolean)
+      if (scores.length > 0) {
+        recipeMap[id].scores.push(...scores)
+      }
+    })
+
+    const ranked = Object.values(recipeMap)
+      .map(entry => ({
+        ...entry.cook,
+        recipes: entry.recipe,
+        avgScore: entry.scores.length > 0
+          ? entry.scores.reduce((a, b) => a + b, 0) / entry.scores.length
+          : 0
+      }))
+      .filter(e => e.avgScore > 0)
+      .sort((a, b) => b.avgScore - a.avgScore)
+      .slice(0, 5)
+
+    setTopRated(ranked)
   }
 
   async function fetchWantToMake() {
@@ -130,7 +171,7 @@ export default function Profile({ session, onBack, onSelectRecipe }) {
       .eq('user_id', session.user.id)
       .eq('status', 'want_to_make')
       .order('created_at', { ascending: false })
-      .limit(6)
+      .limit(5)
     if (data) setWantToMake(data)
   }
 
@@ -151,31 +192,19 @@ export default function Profile({ session, onBack, onSelectRecipe }) {
   }
 
   const inputStyle = {
-    width: '100%',
-    padding: '10px 14px',
-    border: '1.5px solid var(--tan)',
-    borderRadius: 'var(--radius-md)',
-    background: 'var(--cream)',
-    fontFamily: 'var(--font-body)',
-    fontSize: '14px',
-    color: 'var(--ink)',
-    outline: 'none'
+    width: '100%', padding: '10px 14px',
+    border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-md)',
+    background: 'var(--cream)', fontFamily: 'var(--font-body)',
+    fontSize: '14px', color: 'var(--ink)', outline: 'none'
   }
 
   const sectionLabel = {
-    fontSize: '11px',
-    fontWeight: '600',
-    letterSpacing: '0.12em',
-    textTransform: 'uppercase',
-    color: 'var(--muted)',
-    marginBottom: '12px'
+    fontSize: '11px', fontWeight: '600', letterSpacing: '0.12em',
+    textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '12px'
   }
 
   const listRow = {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-    padding: '6px 0'
+    display: 'flex', alignItems: 'center', gap: '12px', padding: '6px 0'
   }
 
   return (
@@ -184,42 +213,27 @@ export default function Profile({ session, onBack, onSelectRecipe }) {
 
         {/* Header */}
         <div style={{
-          padding: '16px 20px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between'
+          padding: '16px 20px', display: 'flex',
+          alignItems: 'center', justifyContent: 'space-between'
         }}>
           <button onClick={onBack} style={{
             background: 'none', border: 'none', cursor: 'pointer',
             fontFamily: 'var(--font-body)', fontSize: '13px',
             fontWeight: '600', color: 'var(--muted)', padding: 0
           }}>← Back</button>
-          <div style={{
-            fontFamily: 'var(--font-display)',
-            fontSize: '18px', fontWeight: '700',
-            color: 'var(--ink)'
-          }}>My Profile</div>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: '700', color: 'var(--ink)' }}>My Profile</div>
           <button onClick={() => setEditing(!editing)} style={{
-            background: 'var(--parchment)',
-            border: 'none',
-            borderRadius: 'var(--radius-md)',
-            padding: '6px 12px',
-            fontFamily: 'var(--font-body)',
-            fontSize: '12px',
-            fontWeight: '600',
-            color: 'var(--charcoal)',
-            cursor: 'pointer'
+            background: 'var(--parchment)', border: 'none', borderRadius: 'var(--radius-md)',
+            padding: '6px 12px', fontFamily: 'var(--font-body)', fontSize: '12px',
+            fontWeight: '600', color: 'var(--charcoal)', cursor: 'pointer'
           }}>{editing ? 'Cancel' : 'Edit'}</button>
         </div>
 
         {/* Edit form */}
         {editing && (
           <div style={{
-            margin: '0 20px 20px',
-            background: 'var(--warm-white)',
-            borderRadius: 'var(--radius-lg)',
-            border: '1px solid var(--parchment)',
-            padding: '20px'
+            margin: '0 20px 20px', background: 'var(--warm-white)',
+            borderRadius: 'var(--radius-lg)', border: '1px solid var(--parchment)', padding: '20px'
           }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div>
@@ -235,29 +249,23 @@ export default function Profile({ session, onBack, onSelectRecipe }) {
               <div style={{ background: '#FDE8E8', border: '1px solid #F5C0C0', borderRadius: 'var(--radius-md)', padding: '10px 14px', fontSize: '13px', color: '#B85252', marginTop: '12px' }}>{error}</div>
             )}
             <button onClick={saveProfile} disabled={saving} style={{
-              width: '100%', marginTop: '16px',
-              padding: '12px',
-              background: saving ? 'var(--tan)' : 'var(--clay)',
-              color: 'var(--cream)', border: 'none',
-              borderRadius: 'var(--radius-pill)',
+              width: '100%', marginTop: '16px', padding: '12px',
+              background: saving ? 'var(--tan)' : 'var(--clay)', color: 'var(--cream)',
+              border: 'none', borderRadius: 'var(--radius-pill)',
               fontFamily: 'var(--font-body)', fontSize: '13px',
               fontWeight: '600', cursor: saving ? 'not-allowed' : 'pointer'
             }}>{saving ? 'Saving...' : 'Save Changes'}</button>
           </div>
         )}
 
-        {/* Avatar + name — centered */}
-        <div style={{
-          display: 'flex', flexDirection: 'column',
-          alignItems: 'center', padding: '8px 20px 20px'
-        }}>
+        {/* Avatar + name */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '8px 20px 20px' }}>
           <div style={{
             width: '72px', height: '72px', borderRadius: '50%',
             background: 'linear-gradient(135deg, var(--clay), var(--ember))',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontFamily: 'var(--font-display)', fontSize: '28px',
-            fontWeight: '700', color: 'var(--cream)',
-            marginBottom: '12px',
+            fontFamily: 'var(--font-display)', fontSize: '28px', fontWeight: '700',
+            color: 'var(--cream)', marginBottom: '12px',
             boxShadow: '0 0 0 3px var(--cream), 0 0 0 5px var(--tan)'
           }}>
             {(profile.full_name || profile.username || session.user.email || '?')[0].toUpperCase()}
@@ -280,12 +288,10 @@ export default function Profile({ session, onBack, onSelectRecipe }) {
           </div>
         </div>
 
-        {/* Stats strip — borderless inline */}
+        {/* Stats strip */}
         <div style={{
-          display: 'flex',
-          borderTop: '1px solid var(--parchment)',
-          borderBottom: '1px solid var(--parchment)',
-          margin: '0 0 20px'
+          display: 'flex', borderTop: '1px solid var(--parchment)',
+          borderBottom: '1px solid var(--parchment)', margin: '0 0 20px'
         }}>
           <div style={{ flex: 1, padding: '12px 0', textAlign: 'center', borderRight: '1px solid var(--parchment)' }}>
             <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: '700', color: 'var(--ink)' }}>{stats.saved}</div>
@@ -301,7 +307,7 @@ export default function Profile({ session, onBack, onSelectRecipe }) {
           </div>
         </div>
 
-        {/* Recently Cooked — horizontal thumbnails */}
+        {/* Recently Cooked */}
         {recentCooks.length > 0 && (
           <div style={{ marginBottom: '20px' }}>
             <div style={{ padding: '0 20px', marginBottom: '12px' }}>
@@ -315,8 +321,7 @@ export default function Profile({ session, onBack, onSelectRecipe }) {
                 return (
                   <div key={cook.id} onClick={() => onSelectRecipe(recipe)} style={{ flexShrink: 0, width: '88px', cursor: 'pointer' }}>
                     <div style={{
-                      width: '88px', height: '88px',
-                      borderRadius: 'var(--radius-md)',
+                      width: '88px', height: '88px', borderRadius: 'var(--radius-md)',
                       background: recipe.image_url ? 'var(--parchment)' : 'linear-gradient(135deg, var(--clay), var(--ember))',
                       marginBottom: '6px', position: 'relative', overflow: 'hidden',
                       display: 'flex', alignItems: 'center', justifyContent: 'center'
@@ -344,7 +349,7 @@ export default function Profile({ session, onBack, onSelectRecipe }) {
 
         <div style={{ height: '1px', background: 'var(--parchment)', margin: '0 20px 20px' }} />
 
-        {/* Top Rated — list rows */}
+        {/* Top Rated */}
         {topRated.length > 0 && (
           <div style={{ padding: '0 20px', marginBottom: '20px' }}>
             <div style={sectionLabel}>Top Rated</div>
@@ -362,9 +367,8 @@ export default function Profile({ session, onBack, onSelectRecipe }) {
                     <div style={{
                       background: 'var(--ink)', borderRadius: '100px',
                       padding: '3px 8px', fontSize: '10px',
-                      fontWeight: '700', color: 'var(--cream)',
-                      flexShrink: 0
-                    }}>{cook.flavor}/5</div>
+                      fontWeight: '700', color: 'var(--cream)', flexShrink: 0
+                    }}>{cook.avgScore.toFixed(1)}</div>
                   </div>
                 )
               })}
@@ -374,7 +378,7 @@ export default function Profile({ session, onBack, onSelectRecipe }) {
 
         <div style={{ height: '1px', background: 'var(--parchment)', margin: '0 20px 20px' }} />
 
-        {/* Want to Make — list rows */}
+        {/* Want to Make */}
         {wantToMake.length > 0 && (
           <div style={{ padding: '0 20px', marginBottom: '20px' }}>
             <div style={sectionLabel}>Want to Make</div>
@@ -397,8 +401,7 @@ export default function Profile({ session, onBack, onSelectRecipe }) {
           <button onClick={() => supabase.auth.signOut()} style={{
             width: '100%', padding: '12px',
             background: 'transparent', color: 'var(--muted)',
-            border: '1.5px solid var(--parchment)',
-            borderRadius: 'var(--radius-pill)',
+            border: '1.5px solid var(--parchment)', borderRadius: 'var(--radius-pill)',
             fontFamily: 'var(--font-body)', fontSize: '13px',
             fontWeight: '600', cursor: 'pointer'
           }}>Sign Out</button>

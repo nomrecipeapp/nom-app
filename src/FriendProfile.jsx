@@ -15,10 +15,8 @@ function RecipeInitial({ title }) {
       borderRadius: 'var(--radius-md)',
       background: 'linear-gradient(135deg, var(--clay), var(--ember))',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      flexShrink: 0,
-      fontFamily: 'var(--font-display)',
-      fontSize: '14px', fontWeight: '700',
-      color: 'var(--cream)'
+      flexShrink: 0, fontFamily: 'var(--font-display)',
+      fontSize: '14px', fontWeight: '700', color: 'var(--cream)'
     }}>{letter}</div>
   )
 }
@@ -27,8 +25,7 @@ function RecipeThumbnailSmall({ recipe }) {
   if (recipe.image_url) {
     return (
       <div style={{
-        width: '36px', height: '36px',
-        borderRadius: 'var(--radius-md)',
+        width: '36px', height: '36px', borderRadius: 'var(--radius-md)',
         overflow: 'hidden', flexShrink: 0
       }}>
         <img src={recipe.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -44,6 +41,8 @@ export default function FriendProfile({ userId, session, onBack, onSelectCook })
   const [stats, setStats] = useState({ saved: 0, cooked: 0 })
   const [followStatus, setFollowStatus] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [recentCooks, setRecentCooks] = useState([])
+  const [topRated, setTopRated] = useState([])
 
   useEffect(() => {
     fetchProfile()
@@ -88,8 +87,46 @@ export default function FriendProfile({ userId, session, onBack, onSelectCook })
       .select('*, recipes(*)')
       .eq('user_id', userId)
       .order('cooked_at', { ascending: false })
-      .limit(20)
-    if (data) setCooks(data)
+      .limit(100)
+
+    if (!data) return
+    setCooks(data)
+
+    // Recently Cooked — dedupe by recipe_id, keep most recent, cap at 5
+    const seenRecent = new Set()
+    const recent = data.filter(c => {
+      if (!c.recipes) return false
+      if (seenRecent.has(c.recipe_id)) return false
+      seenRecent.add(c.recipe_id)
+      return true
+    }).slice(0, 5)
+    setRecentCooks(recent)
+
+    // Top Rated — average all scores per recipe, cap at 5
+    const recipeMap = {}
+    data.forEach(cook => {
+      if (!cook.recipes) return
+      const id = cook.recipe_id
+      if (!recipeMap[id]) {
+        recipeMap[id] = { cook, scores: [], recipe: cook.recipes }
+      }
+      const scores = [cook.flavor, cook.effort, cook.would_share, cook.true_to_recipe].filter(Boolean)
+      if (scores.length > 0) recipeMap[id].scores.push(...scores)
+    })
+
+    const ranked = Object.values(recipeMap)
+      .map(entry => ({
+        ...entry.cook,
+        recipes: entry.recipe,
+        avgScore: entry.scores.length > 0
+          ? entry.scores.reduce((a, b) => a + b, 0) / entry.scores.length
+          : 0
+      }))
+      .filter(e => e.avgScore > 0)
+      .sort((a, b) => b.avgScore - a.avgScore)
+      .slice(0, 5)
+
+    setTopRated(ranked)
   }
 
   async function fetchFollowStatus() {
@@ -120,29 +157,18 @@ export default function FriendProfile({ userId, session, onBack, onSelectCook })
       .eq('following_id', userId)
     setFollowStatus(null)
     setCooks([])
+    setRecentCooks([])
+    setTopRated([])
     setStats({ saved: 0, cooked: 0 })
   }
 
-  const recentCooks = cooks.slice(0, 6)
-  const topRated = cooks
-    .filter(c => c.flavor)
-    .sort((a, b) => b.flavor - a.flavor)
-    .slice(0, 6)
-
   const sectionLabel = {
-    fontSize: '11px',
-    fontWeight: '600',
-    letterSpacing: '0.12em',
-    textTransform: 'uppercase',
-    color: 'var(--muted)',
-    marginBottom: '12px'
+    fontSize: '11px', fontWeight: '600', letterSpacing: '0.12em',
+    textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '12px'
   }
 
   const listRow = {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-    padding: '6px 0'
+    display: 'flex', alignItems: 'center', gap: '12px', padding: '6px 0'
   }
 
   if (loading) return (
@@ -158,91 +184,61 @@ export default function FriendProfile({ userId, session, onBack, onSelectCook })
         {/* Back nav */}
         <div style={{ padding: '16px 20px 0', display: 'flex', alignItems: 'center', gap: '12px' }}>
           <button onClick={onBack} style={{
-            width: '32px', height: '32px',
-            borderRadius: '50%',
-            background: 'var(--parchment)',
-            border: 'none',
-            cursor: 'pointer',
+            width: '32px', height: '32px', borderRadius: '50%',
+            background: 'var(--parchment)', border: 'none', cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: '16px',
-            color: 'var(--ink)'
+            fontSize: '16px', color: 'var(--ink)'
           }}>←</button>
-          <div style={{
-            fontFamily: 'var(--font-display)',
-            fontSize: '16px',
-            fontWeight: '600',
-            color: 'var(--ink)'
-          }}>{profile?.full_name || profile?.username || ''}</div>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: '16px', fontWeight: '600', color: 'var(--ink)' }}>
+            {profile?.full_name || profile?.username || ''}
+          </div>
         </div>
 
-        {/* Avatar + name + follow — centered */}
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          padding: '24px 20px 20px'
-        }}>
+        {/* Avatar + name + follow */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '24px 20px 20px' }}>
           <div style={{
-            width: '72px', height: '72px',
-            borderRadius: '50%',
+            width: '72px', height: '72px', borderRadius: '50%',
             background: 'linear-gradient(135deg, var(--clay), var(--ember))',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontFamily: 'var(--font-display)',
-            fontSize: '28px', fontWeight: '700',
-            color: 'var(--cream)',
-            marginBottom: '12px',
+            fontFamily: 'var(--font-display)', fontSize: '28px', fontWeight: '700',
+            color: 'var(--cream)', marginBottom: '12px',
             boxShadow: '0 0 0 3px var(--cream), 0 0 0 5px var(--tan)'
           }}>
             {(profile?.full_name || profile?.username || '?')[0].toUpperCase()}
           </div>
 
-          <div style={{
-            fontFamily: 'var(--font-display)',
-            fontSize: '20px', fontWeight: '700',
-            color: 'var(--ink)', marginBottom: '2px'
-          }}>{profile?.full_name || profile?.username}</div>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: '700', color: 'var(--ink)', marginBottom: '2px' }}>
+            {profile?.full_name || profile?.username}
+          </div>
 
           {profile?.username && profile?.full_name && (
             <div style={{ fontSize: '12px', color: 'var(--muted)', marginBottom: '16px' }}>@{profile.username}</div>
           )}
 
-          {/* Follow button */}
           <div style={{ marginBottom: '20px' }}>
             {followStatus === 'approved' ? (
               <button onClick={unfollow} style={{
-                padding: '10px 32px',
-                background: 'var(--ink)', color: 'var(--cream)',
+                padding: '10px 32px', background: 'var(--ink)', color: 'var(--cream)',
                 border: 'none', borderRadius: 'var(--radius-pill)',
-                fontFamily: 'var(--font-body)', fontSize: '13px',
-                fontWeight: '600', cursor: 'pointer'
+                fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '600', cursor: 'pointer'
               }}>Following</button>
             ) : followStatus === 'pending' ? (
               <button disabled style={{
-                padding: '10px 32px',
-                background: 'var(--parchment)', color: 'var(--muted)',
+                padding: '10px 32px', background: 'var(--parchment)', color: 'var(--muted)',
                 border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-pill)',
-                fontFamily: 'var(--font-body)', fontSize: '13px',
-                fontWeight: '600', cursor: 'not-allowed'
+                fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '600', cursor: 'not-allowed'
               }}>Requested</button>
             ) : (
               <button onClick={sendFollowRequest} style={{
-                padding: '10px 32px',
-                background: 'transparent', color: 'var(--clay)',
+                padding: '10px 32px', background: 'transparent', color: 'var(--clay)',
                 border: '2px solid var(--clay)', borderRadius: 'var(--radius-pill)',
-                fontFamily: 'var(--font-body)', fontSize: '13px',
-                fontWeight: '600', cursor: 'pointer'
+                fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '600', cursor: 'pointer'
               }}>Request to Follow</button>
             )}
           </div>
 
-          {/* Stats strip */}
           {followStatus === 'approved' && (
-            <div style={{
-              display: 'flex',
-              width: '100%',
-              borderTop: '1px solid var(--parchment)',
-              borderBottom: '1px solid var(--parchment)'
-            }}>
+            <div style={{ display: 'flex', width: '100%', borderTop: '1px solid var(--parchment)', borderBottom: '1px solid var(--parchment)' }}>
               <div style={{ flex: 1, padding: '12px 0', textAlign: 'center', borderRight: '1px solid var(--parchment)' }}>
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: '700', color: 'var(--ink)' }}>{stats.saved}</div>
                 <div style={{ fontSize: '10px', color: 'var(--muted)', marginTop: '2px' }}>Saved</div>
@@ -259,18 +255,14 @@ export default function FriendProfile({ userId, session, onBack, onSelectCook })
         {followStatus !== 'approved' && (
           <div style={{ textAlign: 'center', padding: '32px 20px', color: 'var(--muted)' }}>
             <div style={{ fontSize: '28px', marginBottom: '12px' }}>🔒</div>
-            <div style={{
-              fontFamily: 'var(--font-display)',
-              fontSize: '18px', fontWeight: '500',
-              color: 'var(--ink)', marginBottom: '8px'
-            }}>Private Cookbook</div>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: '500', color: 'var(--ink)', marginBottom: '8px' }}>Private Cookbook</div>
             <div style={{ fontSize: '13px', lineHeight: '1.6' }}>
               Follow {profile?.full_name || 'this cook'} to see what they're making.
             </div>
           </div>
         )}
 
-        {/* Recently Cooked — horizontal thumbnails */}
+        {/* Recently Cooked */}
         {followStatus === 'approved' && recentCooks.length > 0 && (
           <div style={{ marginBottom: '24px' }}>
             <div style={{ padding: '0 20px', marginBottom: '12px' }}>
@@ -284,8 +276,7 @@ export default function FriendProfile({ userId, session, onBack, onSelectCook })
                 return (
                   <div key={cook.id} onClick={() => onSelectCook(cook)} style={{ flexShrink: 0, width: '88px', cursor: 'pointer' }}>
                     <div style={{
-                      width: '88px', height: '88px',
-                      borderRadius: 'var(--radius-md)',
+                      width: '88px', height: '88px', borderRadius: 'var(--radius-md)',
                       background: recipe.image_url ? 'var(--parchment)' : 'linear-gradient(135deg, var(--clay), var(--ember))',
                       marginBottom: '6px', position: 'relative', overflow: 'hidden',
                       display: 'flex', alignItems: 'center', justifyContent: 'center'
@@ -315,7 +306,7 @@ export default function FriendProfile({ userId, session, onBack, onSelectCook })
           <div style={{ height: '1px', background: 'var(--parchment)', margin: '0 20px 20px' }} />
         )}
 
-        {/* Top Rated — list rows */}
+        {/* Top Rated */}
         {followStatus === 'approved' && topRated.length > 0 && (
           <div style={{ padding: '0 20px', marginBottom: '24px' }}>
             <div style={sectionLabel}>Top Rated</div>
@@ -333,9 +324,8 @@ export default function FriendProfile({ userId, session, onBack, onSelectCook })
                     <div style={{
                       background: 'var(--ink)', borderRadius: '100px',
                       padding: '3px 8px', fontSize: '10px',
-                      fontWeight: '700', color: 'var(--cream)',
-                      flexShrink: 0
-                    }}>{cook.flavor}/5</div>
+                      fontWeight: '700', color: 'var(--cream)', flexShrink: 0
+                    }}>{cook.avgScore.toFixed(1)}</div>
                   </div>
                 )
               })}
@@ -346,14 +336,10 @@ export default function FriendProfile({ userId, session, onBack, onSelectCook })
         {/* Want to Make private notice */}
         {followStatus === 'approved' && (
           <div style={{
-            margin: '0 20px',
-            background: 'var(--warm-white)',
-            borderRadius: 'var(--radius-md)',
-            border: '1px solid var(--parchment)',
-            padding: '12px 16px',
-            textAlign: 'center',
-            fontSize: '12px',
-            color: 'var(--muted)'
+            margin: '0 20px', background: 'var(--warm-white)',
+            borderRadius: 'var(--radius-md)', border: '1px solid var(--parchment)',
+            padding: '12px 16px', textAlign: 'center',
+            fontSize: '12px', color: 'var(--muted)'
           }}>Want to Make list is private</div>
         )}
 
