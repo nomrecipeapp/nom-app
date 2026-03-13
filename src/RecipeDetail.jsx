@@ -32,6 +32,72 @@ export default function RecipeDetail({ recipe, session, onBack, onUpdate }) {
   const [loadingCooks, setLoadingCooks] = useState(true)
   const [circleCooks, setCircleCooks] = useState([])
 
+  useEffect(() => {
+    fetchCooks()
+    if (recipe.source_url) fetchCircleCooks()
+  }, [recipe.id])
+
+  async function fetchCooks() {
+    setLoadingCooks(true)
+    const { data } = await supabase
+      .from('cooks')
+      .select('*')
+      .eq('recipe_id', recipe.id)
+      .order('cooked_at', { ascending: false })
+    if (data) setCooks(data)
+    setLoadingCooks(false)
+  }
+
+  async function fetchCircleCooks() {
+    const { data: following } = await supabase
+      .from('follows')
+      .select('following_id')
+      .eq('follower_id', session.user.id)
+      .eq('status', 'approved')
+
+    if (!following || following.length === 0) return
+
+    const followingIds = following.map(f => f.following_id)
+
+    const { data: matchingRecipes } = await supabase
+      .from('recipes')
+      .select('id, user_id')
+      .eq('source_url', recipe.source_url)
+      .in('user_id', followingIds)
+
+    if (!matchingRecipes || matchingRecipes.length === 0) return
+
+    const recipeIds = matchingRecipes.map(r => r.id)
+
+    const { data: cooksData } = await supabase
+      .from('cooks')
+      .select('*')
+      .in('recipe_id', recipeIds)
+      .order('cooked_at', { ascending: false })
+
+    if (!cooksData || cooksData.length === 0) return
+
+    const userIds = [...new Set(cooksData.map(c => c.user_id))]
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, full_name, username')
+      .in('id', userIds)
+
+    const cooksWithProfiles = cooksData.map(c => ({
+      ...c,
+      profiles: profiles?.find(p => p.id === c.user_id) || null
+    }))
+
+    const seen = new Set()
+    const deduped = cooksWithProfiles.filter(c => {
+      if (seen.has(c.user_id)) return false
+      seen.add(c.user_id)
+      return true
+    })
+
+    setCircleCooks(deduped)
+  }
+
   async function logCook() {
     if (!verdict) { setError('Please select a verdict.'); return }
     setSaving(true)
@@ -80,66 +146,6 @@ export default function RecipeDetail({ recipe, session, onBack, onUpdate }) {
     onBack()
   }
 
-  useEffect(() => {
-    fetchCooks()
-    if (recipe.source_url) fetchCircleCooks()
-  }, [recipe.id])
-
-  async function fetchCooks() {
-    setLoadingCooks(true)
-    const { data } = await supabase
-      .from('cooks')
-      .select('*')
-      .eq('recipe_id', recipe.id)
-      .order('cooked_at', { ascending: false })
-    if (data) setCooks(data)
-    setLoadingCooks(false)
-  }
-
-  async function fetchCircleCooks() {
-    // Get people I follow
-    const { data: following } = await supabase
-      .from('follows')
-      .select('following_id')
-      .eq('follower_id', session.user.id)
-      .eq('status', 'approved')
-
-    console.log('following:', following)
-    if (!following || following.length === 0) { console.log('no approved follows'); return }
-
-    const followingIds = following.map(f => f.following_id)
-
-    // Find their recipes with the same source_url
-    const { data: matchingRecipes } = await supabase
-      .from('recipes')
-      .select('id, user_id')
-      .eq('source_url', recipe.source_url)
-      .in('user_id', followingIds)
-
-    console.log('matchingRecipes:', matchingRecipes)
-    if (!matchingRecipes || matchingRecipes.length === 0) { console.log('no matching recipes'); return }
-
-    const recipeIds = matchingRecipes.map(r => r.id)
-
-    // Get their most recent cook for each recipe
-const { data: cooks } = await supabase
-      .from('cooks')
-      .select('*, recipes(title), profiles!cooks_user_id_fkey(full_name, username)')
-      .in('recipe_id', recipeIds)
-      .order('cooked_at', { ascending: false })
-
-    // Deduplicate — only show the most recent cook per user
-    const seen = new Set()
-    const deduped = (cooks || []).filter(c => {
-      if (seen.has(c.user_id)) return false
-      seen.add(c.user_id)
-      return true
-    })
-
-    console.log('circleCooks:', deduped)
-    setCircleCooks(deduped)
-  }
-
   const statusColors = {
     cooked: { bg: '#EEF4E5', color: '#4A5E42', border: '#7A8C6E', label: 'Cooked' },
     want_to_make: { bg: 'var(--parchment)', color: 'var(--charcoal)', border: 'var(--tan)', label: 'Want to Make' },
@@ -149,9 +155,8 @@ const { data: cooks } = await supabase
   const status = statusColors[recipe.status] || statusColors.want_to_make
 
   return (
-<div style={{ minHeight: '100vh', background: 'var(--cream)', paddingBottom: '120px' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--cream)', paddingBottom: '120px' }}>
 
-      {/* Hero image */}
       {recipe.image_url ? (
         <div style={{ height: '220px', background: 'var(--parchment)', position: 'relative', overflow: 'hidden' }}>
           <img src={recipe.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -188,7 +193,6 @@ const { data: cooks } = await supabase
 
       <div style={{ maxWidth: '480px', margin: '0 auto', padding: '24px' }}>
 
-        {/* Title & meta */}
         <div style={{ marginBottom: '24px' }}>
           <div style={{
             fontFamily: 'var(--font-display)', fontSize: '28px', fontWeight: '700',
@@ -203,7 +207,6 @@ const { data: cooks } = await supabase
           </div>
         </div>
 
-        {/* Source link */}
         {recipe.source_url && (
           <a href={recipe.source_url} target="_blank" rel="noopener noreferrer" style={{
             display: 'flex', background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)',
@@ -215,7 +218,6 @@ const { data: cooks } = await supabase
           </a>
         )}
 
-        {/* Log a Cook button */}
         {!logging && (
           <button onClick={() => setLogging(true)} style={{
             width: '100%', padding: '14px', background: 'var(--clay)', color: 'var(--cream)',
@@ -224,7 +226,6 @@ const { data: cooks } = await supabase
           }}>Log a Cook</button>
         )}
 
-        {/* Log a Cook form */}
         {logging && (
           <div style={{
             background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)',
@@ -302,7 +303,6 @@ const { data: cooks } = await supabase
           </div>
         )}
 
-        {/* Ingredients */}
         {recipe.ingredients && (
           <div style={{ background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--parchment)', padding: '20px', marginBottom: '16px' }}>
             <div style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '14px' }}>Ingredients</div>
@@ -317,7 +317,6 @@ const { data: cooks } = await supabase
           </div>
         )}
 
-        {/* Instructions */}
         {recipe.instructions && (
           <div style={{ background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--parchment)', padding: '20px', marginBottom: '16px' }}>
             <div style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '14px' }}>Instructions</div>
@@ -332,7 +331,6 @@ const { data: cooks } = await supabase
           </div>
         )}
 
-        {/* From Your Circle */}
         {circleCooks.length > 0 && (
           <div style={{ background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--parchment)', padding: '20px', marginBottom: '16px' }}>
             <div style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '14px' }}>From Your Circle</div>
@@ -375,7 +373,6 @@ const { data: cooks } = await supabase
           </div>
         )}
 
-        {/* Notes */}
         {recipe.notes && (
           <div style={{ background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--parchment)', padding: '20px', marginBottom: '16px' }}>
             <div style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '10px' }}>Notes</div>
@@ -383,7 +380,6 @@ const { data: cooks } = await supabase
           </div>
         )}
 
-        {/* Cook history */}
         {cooks.length > 0 && (
           <div style={{ background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--parchment)', padding: '20px', marginBottom: '16px' }}>
             <div style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '16px' }}>Cook History</div>
@@ -411,7 +407,6 @@ const { data: cooks } = await supabase
           </div>
         )}
 
-        {/* Delete */}
         <button onClick={deleteRecipe} disabled={deleting} style={{
           width: '100%', padding: '12px', background: 'transparent', color: 'var(--muted)',
           border: '1.5px solid var(--parchment)', borderRadius: 'var(--radius-pill)',

@@ -28,7 +28,6 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
   }, [cook.id])
 
   async function fetchCircleCooks() {
-    // Get people I follow
     const { data: following } = await supabase
       .from('follows')
       .select('following_id')
@@ -39,7 +38,6 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
 
     const followingIds = following.map(f => f.following_id)
 
-    // Find their recipes with the same source_url
     const { data: matchingRecipes } = await supabase
       .from('recipes')
       .select('id, user_id')
@@ -50,16 +48,27 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
 
     const recipeIds = matchingRecipes.map(r => r.id)
 
-    // Get their cooks
-    const { data: cooks } = await supabase
+    const { data: cooksData } = await supabase
       .from('cooks')
-      .select('*, recipes(title), profiles!cooks_user_id_fkey(full_name, username)')
+      .select('*')
       .in('recipe_id', recipeIds)
       .order('cooked_at', { ascending: false })
 
-    // Deduplicate — most recent cook per user, exclude the cook we're already viewing
+    if (!cooksData || cooksData.length === 0) return
+
+    const userIds = [...new Set(cooksData.map(c => c.user_id))]
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, full_name, username')
+      .in('id', userIds)
+
+    const cooksWithProfiles = cooksData.map(c => ({
+      ...c,
+      profiles: profiles?.find(p => p.id === c.user_id) || null
+    }))
+
     const seen = new Set()
-    const deduped = (cooks || []).filter(c => {
+    const deduped = cooksWithProfiles.filter(c => {
       if (c.user_id === cook.user_id) return false
       if (seen.has(c.user_id)) return false
       seen.add(c.user_id)
@@ -73,7 +82,6 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
     if (saved || saving) return
     setSaving(true)
 
-    // Check for duplicate
     const { data: existing } = await supabase
       .from('recipes')
       .select('id, title')
@@ -100,12 +108,11 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
       notes: recipe.notes,
       status: 'want_to_make'
     })
-
     setSaving(false)
     setSaved(true)
   }
 
-    async function addAnyway() {
+  async function addAnyway() {
     setDuplicate(null)
     setSaving(true)
     await supabase.from('recipes').insert({
@@ -130,7 +137,6 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
   return (
     <div style={{ maxWidth: '480px', margin: '0 auto', paddingBottom: '100px' }}>
 
-      {/* Hero image */}
       {recipe.image_url ? (
         <div style={{ position: 'relative' }}>
           <img src={recipe.image_url} alt="" style={{ width: '100%', height: '260px', objectFit: 'cover', display: 'block' }} />
@@ -161,7 +167,6 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
 
       <div style={{ padding: '20px 20px 0' }}>
 
-        {/* Title + meta */}
         <div style={{ marginBottom: '14px' }}>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: '24px', fontWeight: '700', color: 'var(--ink)', lineHeight: '1.2', marginBottom: '10px' }}>{recipe.title}</div>
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
@@ -173,7 +178,6 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
           </div>
         </div>
 
-        {/* Source link */}
         {recipe.source_url && (
           <a href={recipe.source_url} target="_blank" rel="noopener noreferrer" style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -187,7 +191,6 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
 
         <div style={{ height: '1px', background: 'var(--parchment)', marginBottom: '16px' }} />
 
-        {/* Cooked by */}
         <div onClick={() => onSelectUser && onSelectUser(cook.user_id)} style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px', cursor: 'pointer' }}>
           <div style={{
             width: '36px', height: '36px', borderRadius: '50%',
@@ -202,14 +205,12 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
           </div>
         </div>
 
-        {/* Verdict badge */}
         {v && (
           <div style={{ marginBottom: '14px' }}>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: v.bg, border: '1px solid ' + v.border, borderRadius: 'var(--radius-pill)', padding: '6px 14px', fontSize: '12px', fontWeight: '600', color: v.color }}>{v.label}</div>
           </div>
         )}
 
-        {/* Notes */}
         {cook.notes && (
           <div style={{ background: 'var(--warm-white)', border: '1px solid var(--parchment)', borderRadius: 'var(--radius-md)', padding: '12px 14px', marginBottom: '12px' }}>
             <div style={{ fontSize: '10px', fontWeight: '600', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '6px' }}>Notes</div>
@@ -217,7 +218,6 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
           </div>
         )}
 
-        {/* Nuance scores */}
         {(cook.flavor || cook.effort || cook.would_share || cook.true_to_recipe) && (
           <div style={{ background: 'var(--warm-white)', border: '1px solid var(--parchment)', borderRadius: 'var(--radius-md)', padding: '12px 14px', marginBottom: '24px' }}>
             <div style={{ fontSize: '10px', fontWeight: '600', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '10px' }}>Scores</div>
@@ -230,7 +230,6 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
           </div>
         )}
 
-        {/* From Your Circle */}
         {circleCooks.length > 0 && (
           <div style={{ background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--parchment)', padding: '20px', marginBottom: '24px' }}>
             <div style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '14px' }}>From Your Circle</div>
@@ -270,7 +269,6 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
           </div>
         )}
 
-        {/* Duplicate warning */}
         {duplicate && (
           <div style={{
             background: '#FEF3E2', border: '1px solid #F5C47A',
@@ -280,7 +278,7 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
               Already in your Cookbook: "{duplicate.title}"
             </div>
             <div style={{ display: 'flex', gap: '8px' }}>
-               <button onClick={addAnyway} style={{
+              <button onClick={addAnyway} style={{
                 flex: 1, padding: '8px', background: 'transparent',
                 border: '1px solid #F5C47A', borderRadius: 'var(--radius-pill)',
                 fontSize: '12px', fontWeight: '600', color: '#9A6B1A', cursor: 'pointer'
@@ -289,7 +287,6 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
           </div>
         )}
 
-        {/* Save to Cookbook */}
         {!duplicate && (
           <button onClick={saveRecipe} disabled={saved || saving} style={{
             width: '100%', padding: '15px',
