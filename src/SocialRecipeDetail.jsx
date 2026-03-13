@@ -87,12 +87,6 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
       return
     }
 
-    // Combine recipe notes with friend's cook notes
-    const friendName = profile?.full_name || profile?.username || 'A friend'
-    const friendNotes = cook.notes
-      ? `${friendName}'s notes: "${cook.notes}"\n\n${recipe.notes || ''}`.trim()
-      : recipe.notes
-
     await supabase.from('recipes').insert({
       user_id: session.user.id,
       title: recipe.title,
@@ -103,9 +97,10 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
       difficulty: recipe.difficulty,
       ingredients: recipe.ingredients,
       instructions: recipe.instructions,
-      notes: friendNotes,
+      notes: recipe.notes,
       status: 'want_to_make'
     })
+
     setSaving(false)
     setSaved(true)
   }
@@ -113,10 +108,6 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
     async function addAnyway() {
     setDuplicate(null)
     setSaving(true)
-    const friendName = profile?.full_name || profile?.username || 'A friend'
-    const friendNotes = cook.notes
-      ? `${friendName}'s notes: "${cook.notes}"\n\n${recipe.notes || ''}`.trim()
-      : recipe.notes
     await supabase.from('recipes').insert({
       user_id: session.user.id,
       title: recipe.title,
@@ -127,7 +118,7 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
       difficulty: recipe.difficulty,
       ingredients: recipe.ingredients,
       instructions: recipe.instructions,
-      notes: friendNotes,
+      notes: recipe.notes,
       status: 'want_to_make'
     })
     setSaving(false)
