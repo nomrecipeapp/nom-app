@@ -98,11 +98,11 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
       setLiked(false)
       setLikeCount(c => c - 1)
     } else {
-      await supabase.from('likes').insert({
+      await supabase.from('likes').upsert({
         user_id: session.user.id,
         target_type: targetType,
         target_id: targetId
-      })
+      }, { onConflict: 'user_id,target_type,target_id', ignoreDuplicates: true })
       setLiked(true)
       setLikeCount(c => c + 1)
     }

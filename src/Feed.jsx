@@ -87,11 +87,11 @@ function FriendRecipeDetail({ recipe, session, onBack, scrollToComments }) {
       setLiked(false)
       setLikeCount(c => c - 1)
     } else {
-      await supabase.from('likes').insert({
+      await supabase.from('likes').upsert({
         user_id: session.user.id,
         target_type: targetType,
         target_id: targetId
-      })
+      }, { onConflict: 'user_id,target_type,target_id', ignoreDuplicates: true })
       setLiked(true)
       setLikeCount(c => c + 1)
     }
@@ -478,7 +478,7 @@ export default function Feed({ session, onSelectCook, onSelectUser }) {
       setFeedLikes(prev => ({ ...prev, [key]: false }))
       setFeedLikeCounts(prev => ({ ...prev, [key]: (prev[key] || 1) - 1 }))
     } else {
-      await supabase.from('likes').insert({ user_id: session.user.id, target_type: item._type, target_id: item.id })
+      await supabase.from('likes').upsert({ user_id: session.user.id, target_type: item._type, target_id: item.id }, { onConflict: 'user_id,target_type,target_id', ignoreDuplicates: true })
       setFeedLikes(prev => ({ ...prev, [key]: true }))
       setFeedLikeCounts(prev => ({ ...prev, [key]: (prev[key] || 0) + 1 }))
     }
