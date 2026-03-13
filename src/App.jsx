@@ -12,7 +12,6 @@ import Search from './Search'
 import FriendProfile from './FriendProfile'
 import './index.css'
 import ResetPassword from './ResetPassword'
-import PostDetail from './PostDetail'
 
 export default function App() {
   const [session, setSession] = useState(null)
