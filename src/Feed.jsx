@@ -364,10 +364,10 @@ export default function Feed({ session, onSelectCook, onSelectUser }) {
   const [feedLikeCounts, setFeedLikeCounts] = useState({})
   const [feedCommentCounts, setFeedCommentCounts] = useState({})
 
-  useEffect(() => {
+    useEffect(() => {
     fetchFeed()
     fetchRequests()
-  }, [])
+  }, [session.user.id])
 
   async function fetchFeed() {
     setLoading(true)
