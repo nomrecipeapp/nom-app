@@ -39,6 +39,10 @@ const { data: { subscription } } = supabase.auth.onAuthStateChange((event, sessi
     setLoading(false)
     return
   }
+  if (event === 'SIGNED_IN' && !session?.user?.user_metadata?.onboarding_complete) {
+    // New sign up — don't interrupt onboarding flow
+    return
+  }
   setSession(session)
   if (session) {
     setShowLogin(false)
