@@ -17,6 +17,7 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
   const [saved, setSaved] = useState(false)
   const [saving, setSaving] = useState(false)
   const [circleCooks, setCircleCooks] = useState([])
+  const [duplicate, setDuplicate] = useState(null)
 
   const recipe = cook.recipes
   const profile = cook.profiles
@@ -71,6 +72,27 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
   async function saveRecipe() {
     if (saved || saving) return
     setSaving(true)
+
+    // Check for duplicate
+    const { data: existing } = await supabase
+      .from('recipes')
+      .select('id, title')
+      .eq('user_id', session.user.id)
+      .eq('source_url', recipe.source_url)
+      .maybeSingle()
+
+    if (existing) {
+      setDuplicate(existing)
+      setSaving(false)
+      return
+    }
+
+    // Combine recipe notes with friend's cook notes
+    const friendName = profile?.full_name || profile?.username || 'A friend'
+    const friendNotes = cook.notes
+      ? `${friendName}'s notes: "${cook.notes}"\n\n${recipe.notes || ''}`.trim()
+      : recipe.notes
+
     await supabase.from('recipes').insert({
       user_id: session.user.id,
       title: recipe.title,
@@ -81,7 +103,31 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
       difficulty: recipe.difficulty,
       ingredients: recipe.ingredients,
       instructions: recipe.instructions,
-      notes: recipe.notes,
+      notes: friendNotes,
+      status: 'want_to_make'
+    })
+    setSaving(false)
+    setSaved(true)
+  }
+
+    async function addAnyway() {
+    setDuplicate(null)
+    setSaving(true)
+    const friendName = profile?.full_name || profile?.username || 'A friend'
+    const friendNotes = cook.notes
+      ? `${friendName}'s notes: "${cook.notes}"\n\n${recipe.notes || ''}`.trim()
+      : recipe.notes
+    await supabase.from('recipes').insert({
+      user_id: session.user.id,
+      title: recipe.title,
+      source_url: recipe.source_url,
+      source_name: recipe.source_name,
+      image_url: recipe.image_url,
+      cook_time: recipe.cook_time,
+      difficulty: recipe.difficulty,
+      ingredients: recipe.ingredients,
+      instructions: recipe.instructions,
+      notes: friendNotes,
       status: 'want_to_make'
     })
     setSaving(false)
@@ -233,16 +279,37 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
           </div>
         )}
 
+        {/* Duplicate warning */}
+        {duplicate && (
+          <div style={{
+            background: '#FEF3E2', border: '1px solid #F5C47A',
+            borderRadius: 'var(--radius-md)', padding: '12px 16px', marginBottom: '12px'
+          }}>
+            <div style={{ fontSize: '13px', fontWeight: '600', color: '#9A6B1A', marginBottom: '8px' }}>
+              Already in your Cookbook: "{duplicate.title}"
+            </div>
+            <div style={{ display: 'flex', gap: '8px' }}>
+               <button onClick={addAnyway} style={{
+                flex: 1, padding: '8px', background: 'transparent',
+                border: '1px solid #F5C47A', borderRadius: 'var(--radius-pill)',
+                fontSize: '12px', fontWeight: '600', color: '#9A6B1A', cursor: 'pointer'
+              }}>Add Anyway</button>
+            </div>
+          </div>
+        )}
+
         {/* Save to Cookbook */}
-        <button onClick={saveRecipe} disabled={saved || saving} style={{
-          width: '100%', padding: '15px',
-          background: saved ? 'var(--sage)' : 'var(--clay)', color: 'var(--cream)',
-          border: 'none', borderRadius: 'var(--radius-pill)',
-          fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: '600',
-          cursor: saved ? 'default' : 'pointer', transition: 'background 0.2s'
-        }}>
-          {saved ? '✓ Saved to Cookbook' : saving ? 'Saving...' : '+ Save to My Cookbook'}
-        </button>
+        {!duplicate && (
+          <button onClick={saveRecipe} disabled={saved || saving} style={{
+            width: '100%', padding: '15px',
+            background: saved ? 'var(--sage)' : 'var(--clay)', color: 'var(--cream)',
+            border: 'none', borderRadius: 'var(--radius-pill)',
+            fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: '600',
+            cursor: saved ? 'default' : 'pointer', transition: 'background 0.2s'
+          }}>
+            {saved ? '✓ Saved to Cookbook' : saving ? 'Saving...' : '+ Save to My Cookbook'}
+          </button>
+        )}
 
       </div>
     </div>
