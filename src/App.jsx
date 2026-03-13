@@ -63,12 +63,14 @@ async function checkOnboarding(userId) {
     setLoading(false)
   }
 
-  function handleOnboardingComplete(action) {
+  async function handleOnboardingComplete(action) {
     if (action === 'login') {
       setShowLogin(true)
     } else {
+      const { data: { session } } = await supabase.auth.getSession()
+      setSession(session)
       setOnboardingComplete(true)
-      setScreen('cookbook')
+      setScreen('feed')
     }
   }
 
