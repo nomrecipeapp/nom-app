@@ -104,7 +104,8 @@ export default function RecipeDetail({ recipe, session, onBack, onUpdate }) {
       .eq('follower_id', session.user.id)
       .eq('status', 'approved')
 
-    if (!following || following.length === 0) return
+    console.log('following:', following)
+    if (!following || following.length === 0) { console.log('no approved follows'); return }
 
     const followingIds = following.map(f => f.following_id)
 
@@ -115,7 +116,8 @@ export default function RecipeDetail({ recipe, session, onBack, onUpdate }) {
       .eq('source_url', recipe.source_url)
       .in('user_id', followingIds)
 
-    if (!matchingRecipes || matchingRecipes.length === 0) return
+    console.log('matchingRecipes:', matchingRecipes)
+    if (!matchingRecipes || matchingRecipes.length === 0) { console.log('no matching recipes'); return }
 
     const recipeIds = matchingRecipes.map(r => r.id)
 
@@ -134,6 +136,7 @@ export default function RecipeDetail({ recipe, session, onBack, onUpdate }) {
       return true
     })
 
+    console.log('circleCooks:', deduped)
     setCircleCooks(deduped)
   }
 
