@@ -53,7 +53,7 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
     // Get their cooks
     const { data: cooks } = await supabase
       .from('cooks')
-      .select('*, recipes(title), profiles(full_name, username)')
+      .select('*, recipes(title), profiles!cooks_user_id_fkey(full_name, username)')
       .in('recipe_id', recipeIds)
       .order('cooked_at', { ascending: false })
 

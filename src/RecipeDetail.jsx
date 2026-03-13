@@ -122,9 +122,9 @@ export default function RecipeDetail({ recipe, session, onBack, onUpdate }) {
     const recipeIds = matchingRecipes.map(r => r.id)
 
     // Get their most recent cook for each recipe
-    const { data: cooks } = await supabase
+const { data: cooks } = await supabase
       .from('cooks')
-      .select('*, recipes(title), profiles(full_name, username)')
+      .select('*, recipes(title), profiles!cooks_user_id_fkey(full_name, username)')
       .in('recipe_id', recipeIds)
       .order('cooked_at', { ascending: false })
 
