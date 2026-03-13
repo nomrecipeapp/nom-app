@@ -43,16 +43,18 @@ export default function FriendProfile({ userId, session, onBack, onSelectCook })
   const [loading, setLoading] = useState(true)
   const [recentCooks, setRecentCooks] = useState([])
   const [topRated, setTopRated] = useState([])
+  const [wantToMake, setWantToMake] = useState([])
 
   useEffect(() => {
     fetchProfile()
     fetchFollowStatus()
   }, [userId])
 
-  useEffect(() => {
+useEffect(() => {
     if (followStatus === 'approved') {
       fetchCooks()
       fetchStats()
+      fetchWantToMake()
     }
   }, [followStatus])
 
@@ -127,6 +129,17 @@ export default function FriendProfile({ userId, session, onBack, onSelectCook })
       .slice(0, 5)
 
     setTopRated(ranked)
+  }
+
+async function fetchWantToMake() {
+    const { data } = await supabase
+      .from('recipes')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('status', 'want_to_make')
+      .order('created_at', { ascending: false })
+      .limit(5)
+    if (data) setWantToMake(data)
   }
 
   async function fetchFollowStatus() {
@@ -333,16 +346,25 @@ export default function FriendProfile({ userId, session, onBack, onSelectCook })
           </div>
         )}
 
-        {/* Want to Make private notice */}
-        {followStatus === 'approved' && (
-          <div style={{
-            margin: '0 20px', background: 'var(--warm-white)',
-            borderRadius: 'var(--radius-md)', border: '1px solid var(--parchment)',
-            padding: '12px 16px', textAlign: 'center',
-            fontSize: '12px', color: 'var(--muted)'
-          }}>Want to Make list is private</div>
+{/* Want to Make */}
+        {followStatus === 'approved' && wantToMake.length > 0 && (
+          <div style={{ padding: '0 20px', marginBottom: '24px' }}>
+            <div style={{ height: '1px', background: 'var(--parchment)', marginBottom: '20px' }} />
+            <div style={sectionLabel}>Want to Make</div>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              {wantToMake.map(recipe => (
+                <div key={recipe.id} style={{ ...listRow }}>
+                  <RecipeThumbnailSmall recipe={recipe} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '13px', color: 'var(--ink)', fontWeight: '500', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{recipe.title}</div>
+                    {recipe.source_name && <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '1px' }}>{recipe.source_name}</div>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         )}
-
+        
       </div>
     </div>
   )
