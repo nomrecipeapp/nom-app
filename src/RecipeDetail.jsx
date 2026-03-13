@@ -20,17 +20,34 @@ const verdictStyles = {
   never_again: { bg: '#F4E8E8', border: '#C47070', color: '#9B4040', label: 'Never' },
 }
 
-export default function RecipeDetail({ recipe, session, onBack, onUpdate }) {
+export default function RecipeDetail({ recipe: initialRecipe, session, onBack, onUpdate }) {
+  const [recipe, setRecipe] = useState(initialRecipe)
   const [logging, setLogging] = useState(false)
+  const [editing, setEditing] = useState(false)
   const [verdict, setVerdict] = useState(null)
   const [scores, setScores] = useState({ flavor: 0, effort: 0, would_share: 0, true_to_recipe: 0 })
   const [cookNotes, setCookNotes] = useState('')
   const [saving, setSaving] = useState(false)
+  const [savingEdit, setSavingEdit] = useState(false)
   const [error, setError] = useState(null)
+  const [editError, setEditError] = useState(null)
   const [deleting, setDeleting] = useState(false)
   const [cooks, setCooks] = useState([])
   const [loadingCooks, setLoadingCooks] = useState(true)
   const [circleCooks, setCircleCooks] = useState([])
+
+  // Edit form state
+  const [editForm, setEditForm] = useState({
+    title: recipe.title || '',
+    source_name: recipe.source_name || '',
+    source_url: recipe.source_url || '',
+    image_url: recipe.image_url || '',
+    cook_time: recipe.cook_time || '',
+    difficulty: recipe.difficulty || '',
+    ingredients: recipe.ingredients || '',
+    instructions: recipe.instructions || '',
+    notes: recipe.notes || '',
+  })
 
   useEffect(() => {
     fetchCooks()
@@ -103,9 +120,7 @@ export default function RecipeDetail({ recipe, session, onBack, onUpdate }) {
     setSaving(true)
     setError(null)
 
-    const newStatus = verdict === 'would_make_again' ? 'cooked'
-      : verdict === 'never_again' ? 'never_again'
-      : 'cooked'
+    const newStatus = verdict === 'never_again' ? 'never_again' : 'cooked'
 
     const { error: cookError } = await supabase
       .from('cooks')
@@ -122,21 +137,53 @@ export default function RecipeDetail({ recipe, session, onBack, onUpdate }) {
 
     if (cookError) { setError(cookError.message); setSaving(false); return }
 
-    const { error: recipeError } = await supabase
+    await supabase
       .from('recipes')
       .update({ status: newStatus, updated_at: new Date().toISOString() })
       .eq('id', recipe.id)
 
-    if (recipeError) setError(recipeError.message)
-    else {
-      setLogging(false)
-      setVerdict(null)
-      setScores({ flavor: 0, effort: 0, would_share: 0, true_to_recipe: 0 })
-      setCookNotes('')
-      await fetchCooks()
-      onUpdate()
-    }
+    setLogging(false)
+    setVerdict(null)
+    setScores({ flavor: 0, effort: 0, would_share: 0, true_to_recipe: 0 })
+    setCookNotes('')
+    await fetchCooks()
+    onUpdate()
     setSaving(false)
+  }
+
+  async function saveEdit() {
+    if (!editForm.title.trim()) { setEditError('Title is required.'); return }
+    setSavingEdit(true)
+    setEditError(null)
+
+    const { data, error } = await supabase
+      .from('recipes')
+      .update({
+        title: editForm.title.trim(),
+        source_name: editForm.source_name.trim() || null,
+        source_url: editForm.source_url.trim() || null,
+        image_url: editForm.image_url.trim() || null,
+        cook_time: editForm.cook_time.trim() || null,
+        difficulty: editForm.difficulty.trim() || null,
+        ingredients: editForm.ingredients.trim() || null,
+        instructions: editForm.instructions.trim() || null,
+        notes: editForm.notes.trim() || null,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', recipe.id)
+      .select()
+      .single()
+
+    if (error) {
+      setEditError(error.message)
+      setSavingEdit(false)
+      return
+    }
+
+    setRecipe(data)
+    setEditing(false)
+    setSavingEdit(false)
+    onUpdate()
   }
 
   async function deleteRecipe() {
@@ -154,6 +201,154 @@ export default function RecipeDetail({ recipe, session, onBack, onUpdate }) {
 
   const status = statusColors[recipe.status] || statusColors.want_to_make
 
+  const inputStyle = {
+    width: '100%', padding: '10px 14px',
+    border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-md)',
+    background: 'var(--cream)', fontFamily: 'var(--font-body)',
+    fontSize: '14px', color: 'var(--ink)', outline: 'none',
+    boxSizing: 'border-box'
+  }
+
+  const textareaStyle = {
+    ...inputStyle, resize: 'vertical', lineHeight: '1.6'
+  }
+
+  const fieldLabel = {
+    display: 'block', fontSize: '12px', fontWeight: '600',
+    color: 'var(--charcoal)', marginBottom: '6px', letterSpacing: '0.04em'
+  }
+
+  // ---- EDIT MODE ----
+  if (editing) {
+    return (
+      <div style={{ minHeight: '100vh', background: 'var(--cream)', paddingBottom: '40px' }}>
+        <div style={{ maxWidth: '480px', margin: '0 auto' }}>
+
+          {/* Edit header */}
+          <div style={{
+            padding: '16px 20px', display: 'flex',
+            alignItems: 'center', justifyContent: 'space-between',
+            borderBottom: '1px solid var(--parchment)'
+          }}>
+            <button onClick={() => { setEditing(false); setEditError(null) }} style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              fontFamily: 'var(--font-body)', fontSize: '13px',
+              fontWeight: '600', color: 'var(--muted)', padding: 0
+            }}>Cancel</button>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: '17px', fontWeight: '700', color: 'var(--ink)' }}>Edit Recipe</div>
+            <div style={{ width: '48px' }} />
+          </div>
+
+          <div style={{ padding: '24px 20px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+
+            {/* Title */}
+            <div>
+              <label style={fieldLabel}>Title</label>
+              <input value={editForm.title} onChange={e => setEditForm(f => ({ ...f, title: e.target.value }))} style={inputStyle} />
+            </div>
+
+            {/* Image */}
+            <div>
+              <label style={fieldLabel}>Image URL</label>
+              {editForm.image_url && (
+                <div style={{ marginBottom: '10px', position: 'relative', borderRadius: 'var(--radius-md)', overflow: 'hidden', height: '160px' }}>
+                  <img src={editForm.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => e.target.style.display = 'none'} />
+                  <button onClick={() => setEditForm(f => ({ ...f, image_url: '' }))} style={{
+                    position: 'absolute', top: '8px', right: '8px',
+                    width: '28px', height: '28px', borderRadius: '50%',
+                    background: 'rgba(0,0,0,0.5)', border: 'none',
+                    color: 'white', fontSize: '14px', cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                  }}>×</button>
+                </div>
+              )}
+              <input
+                value={editForm.image_url}
+                onChange={e => setEditForm(f => ({ ...f, image_url: e.target.value }))}
+                placeholder="https://..."
+                style={inputStyle}
+              />
+            </div>
+
+            {/* Source */}
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <div style={{ flex: 1 }}>
+                <label style={fieldLabel}>Source name</label>
+                <input value={editForm.source_name} onChange={e => setEditForm(f => ({ ...f, source_name: e.target.value }))} placeholder="e.g. NYT Cooking" style={inputStyle} />
+              </div>
+            </div>
+            <div>
+              <label style={fieldLabel}>Source URL</label>
+              <input value={editForm.source_url} onChange={e => setEditForm(f => ({ ...f, source_url: e.target.value }))} placeholder="https://..." style={inputStyle} />
+            </div>
+
+            {/* Cook time + difficulty */}
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <div style={{ flex: 1 }}>
+                <label style={fieldLabel}>Cook time</label>
+                <input value={editForm.cook_time} onChange={e => setEditForm(f => ({ ...f, cook_time: e.target.value }))} placeholder="e.g. 30 mins" style={inputStyle} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={fieldLabel}>Difficulty</label>
+                <input value={editForm.difficulty} onChange={e => setEditForm(f => ({ ...f, difficulty: e.target.value }))} placeholder="e.g. Easy" style={inputStyle} />
+              </div>
+            </div>
+
+            {/* Ingredients */}
+            <div>
+              <label style={fieldLabel}>Ingredients</label>
+              <textarea
+                value={editForm.ingredients}
+                onChange={e => setEditForm(f => ({ ...f, ingredients: e.target.value }))}
+                rows={8}
+                placeholder="One ingredient per line"
+                style={textareaStyle}
+              />
+            </div>
+
+            {/* Instructions */}
+            <div>
+              <label style={fieldLabel}>Instructions</label>
+              <textarea
+                value={editForm.instructions}
+                onChange={e => setEditForm(f => ({ ...f, instructions: e.target.value }))}
+                rows={10}
+                placeholder="One step per line"
+                style={textareaStyle}
+              />
+            </div>
+
+            {/* Notes */}
+            <div>
+              <label style={fieldLabel}>Notes</label>
+              <textarea
+                value={editForm.notes}
+                onChange={e => setEditForm(f => ({ ...f, notes: e.target.value }))}
+                rows={3}
+                placeholder="Any personal notes about this recipe"
+                style={textareaStyle}
+              />
+            </div>
+
+            {editError && (
+              <div style={{ background: '#FDE8E8', border: '1px solid #F5C0C0', borderRadius: 'var(--radius-md)', padding: '10px 14px', fontSize: '13px', color: '#B85252' }}>{editError}</div>
+            )}
+
+            <button onClick={saveEdit} disabled={savingEdit} style={{
+              width: '100%', padding: '14px',
+              background: savingEdit ? 'var(--tan)' : 'var(--clay)', color: 'var(--cream)',
+              border: 'none', borderRadius: 'var(--radius-pill)',
+              fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: '600',
+              cursor: savingEdit ? 'not-allowed' : 'pointer'
+            }}>{savingEdit ? 'Saving...' : 'Save Changes'}</button>
+
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // ---- NORMAL VIEW ----
   return (
     <div style={{ minHeight: '100vh', background: 'var(--cream)', paddingBottom: '120px' }}>
 
@@ -168,6 +363,12 @@ export default function RecipeDetail({ recipe, session, onBack, onUpdate }) {
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             backdropFilter: 'blur(4px)'
           }}>←</button>
+          <button onClick={() => { setEditForm({ title: recipe.title || '', source_name: recipe.source_name || '', source_url: recipe.source_url || '', image_url: recipe.image_url || '', cook_time: recipe.cook_time || '', difficulty: recipe.difficulty || '', ingredients: recipe.ingredients || '', instructions: recipe.instructions || '', notes: recipe.notes || '' }); setEditing(true) }} style={{
+            position: 'absolute', top: '16px', right: '16px',
+            background: 'rgba(28,26,23,0.5)', border: 'none', borderRadius: 'var(--radius-pill)',
+            padding: '6px 14px', color: 'white', fontFamily: 'var(--font-body)',
+            fontSize: '12px', fontWeight: '600', cursor: 'pointer', backdropFilter: 'blur(4px)'
+          }}>Edit</button>
           <div style={{
             position: 'absolute', bottom: '16px', left: '16px',
             background: status.bg, border: `1px solid ${status.border}`,
@@ -176,7 +377,7 @@ export default function RecipeDetail({ recipe, session, onBack, onUpdate }) {
           }}>{status.label}</div>
         </div>
       ) : (
-        <div style={{ padding: '16px 24px 0' }}>
+        <div style={{ padding: '16px 24px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <button onClick={onBack} style={{
             background: 'none', border: 'none', cursor: 'pointer',
             display: 'flex', alignItems: 'center', gap: '6px',
@@ -188,6 +389,11 @@ export default function RecipeDetail({ recipe, session, onBack, onUpdate }) {
             </svg>
             Back
           </button>
+          <button onClick={() => { setEditForm({ title: recipe.title || '', source_name: recipe.source_name || '', source_url: recipe.source_url || '', image_url: recipe.image_url || '', cook_time: recipe.cook_time || '', difficulty: recipe.difficulty || '', ingredients: recipe.ingredients || '', instructions: recipe.instructions || '', notes: recipe.notes || '' }); setEditing(true) }} style={{
+            background: 'var(--parchment)', border: 'none', borderRadius: 'var(--radius-pill)',
+            padding: '6px 14px', fontFamily: 'var(--font-body)',
+            fontSize: '12px', fontWeight: '600', color: 'var(--charcoal)', cursor: 'pointer'
+          }}>Edit</button>
         </div>
       )}
 
