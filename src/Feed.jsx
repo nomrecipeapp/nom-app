@@ -580,7 +580,7 @@ export default function Feed({ session, onSelectCook, onSelectUser }) {
             // --- SAVE CARD ---
             if (item._type === 'save') {
               return (
-                <div key={`save-${item.id}`} onClick={() => onSelectPost(item)} style={{
+                <div key={`save-${item.id}`} onClick={() => setSelectedRecipe(item)} style={{
                   background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)',
                   border: '1px solid var(--parchment)', overflow: 'hidden', cursor: 'pointer'
                 }}>
@@ -670,7 +670,7 @@ export default function Feed({ session, onSelectCook, onSelectUser }) {
             if (!recipe) return null
 
             return (
-              <div key={`cook-${item.id}`} onClick={() => onSelectPost(item)} style={{
+              <div key={`cook-${item.id}`} onClick={() => onSelectCook(item)} style={{
                 cursor: 'pointer',
                 background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)',
                 border: '1px solid var(--parchment)', overflow: 'hidden'
