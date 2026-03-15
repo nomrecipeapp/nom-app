@@ -189,9 +189,9 @@ export default function App() {
 
           {/* Left */}
           <div style={{ width: '72px' }}>
-            {screen === 'feed' ? (
+                      {screen === 'feed' ? (
               <div style={{ fontFamily: 'var(--font-display)', fontSize: '24px', fontWeight: '700', color: 'var(--clay)', letterSpacing: '-0.5px' }}>Nom</div>
-            ) : (
+            ) : ['recipe', 'socialRecipe', 'friendRecipeDetail', 'friendProfile', 'followList', 'notifications'].includes(screen) ? (
               <button onClick={() => setScreen(prevScreen)} style={{
                 display: 'flex', alignItems: 'center', gap: '5px',
                 background: 'none', border: 'none', cursor: 'pointer', padding: 0
@@ -201,6 +201,8 @@ export default function App() {
                 </svg>
                 <span style={{ fontSize: '13px', fontWeight: '600', color: 'var(--ink)' }}>Back</span>
               </button>
+            ) : (
+              <div style={{ width: '72px' }} />
             )}
           </div>
 
