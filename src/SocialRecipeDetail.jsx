@@ -13,11 +13,12 @@ const verdictStylesShort = {
   never_again: { bg: '#F4E8E8', border: '#C47070', color: '#9B4040', label: 'Never' },
 }
 
-export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser, scrollToComments, isOwner }) {
+export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser, scrollToComments, isOwner, onViewInCookbook }) {
   const [saved, setSaved] = useState(false)
   const [saving, setSaving] = useState(false)
   const [circleCooks, setCircleCooks] = useState([])
   const [duplicate, setDuplicate] = useState(null)
+  const [myRecipeId, setMyRecipeId] = useState(null)
   const [likeCount, setLikeCount] = useState(0)
   const [liked, setLiked] = useState(false)
   const [comments, setComments] = useState([])
@@ -37,7 +38,19 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
     if (recipe?.source_url) fetchCircleCooks()
     fetchLikes()
     fetchComments()
+    checkIfSaved()
   }, [cook.id])
+
+  async function checkIfSaved() {
+    if (!recipe?.source_url) return
+    const { data } = await supabase
+      .from('recipes')
+      .select('id')
+      .eq('user_id', session.user.id)
+      .eq('source_url', recipe.source_url)
+      .maybeSingle()
+    if (data) setMyRecipeId(data.id)
+  }
 
   useEffect(() => {
     if (scrollToComments && commentsRef.current) {
@@ -428,18 +441,39 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
           </div>
         )}
 
-        {/* Save button — hidden for owner */}
-        {!isOwner && !duplicate && (
+        {/* Owner: View in Cookbook */}
+        {isOwner && myRecipeId && (
+          <button onClick={() => onViewInCookbook && onViewInCookbook(myRecipeId)} style={{
+            width: '100%', padding: '15px',
+            background: 'var(--parchment)', color: 'var(--charcoal)',
+            border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-pill)',
+            fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: '600',
+            cursor: 'pointer', marginBottom: '32px'
+          }}>View in Cookbook →</button>
+        )}
+
+        {/* Non-owner: save or already saved */}
+        {!isOwner && !duplicate && !myRecipeId && (
           <button onClick={saveRecipe} disabled={saved || saving} style={{
             width: '100%', padding: '15px',
             background: saved ? 'var(--sage)' : 'var(--clay)', color: 'var(--cream)',
             border: 'none', borderRadius: 'var(--radius-pill)',
             fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: '600',
             cursor: saved ? 'default' : 'pointer', transition: 'background 0.2s',
-            marginBottom: '32px'
+            marginBottom: '16px'
           }}>
             {saved ? '✓ Saved to Cookbook' : saving ? 'Saving...' : '+ Save to My Cookbook'}
           </button>
+        )}
+
+        {!isOwner && myRecipeId && !saved && (
+          <button onClick={() => onViewInCookbook && onViewInCookbook(myRecipeId)} style={{
+            width: '100%', padding: '15px',
+            background: 'var(--parchment)', color: 'var(--charcoal)',
+            border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-pill)',
+            fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: '600',
+            cursor: 'pointer', marginBottom: '32px'
+          }}>You have this — View in Cookbook →</button>
         )}
 
         {!isOwner && duplicate && (

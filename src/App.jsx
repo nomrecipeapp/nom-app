@@ -116,6 +116,19 @@ export default function App() {
   setScreen('friendRecipeDetail')
   }
 
+ async function goToRecipeFromId(recipeId) {
+    const { data } = await supabase
+      .from('recipes')
+      .select('*')
+      .eq('id', recipeId)
+      .single()
+    if (data) {
+      setPrevScreen(screen)
+      setSelectedRecipe(data)
+      setScreen('recipe')
+    }
+  }
+
   function goToPost(item) {
     setPrevScreen(screen)
     setSelectedPost(item)
@@ -227,6 +240,8 @@ export default function App() {
           onBack={() => { setScreen(prevScreen); setScrollToComments(false) }}
           onSelectUser={goToFriendProfile}
           scrollToComments={scrollToComments}
+          isOwner={selectedCook.user_id === session.user.id}
+          onViewInCookbook={goToRecipeFromId}
         />
       )}
 
@@ -236,8 +251,9 @@ export default function App() {
           session={session}
           onBack={() => { setScreen(prevScreen); setSelectedSaveScrollToComments(false) }}
           scrollToComments={selectedSaveScrollToComments}
-         isOwner={selectedSaveRecipe.user_id === session.user.id}
-       />
+          isOwner={selectedSaveRecipe.user_id === session.user.id}
+          onViewInCookbook={goToRecipeFromId}
+        />
       )}
 
       {screen === 'friendProfile' && selectedUserId && (
