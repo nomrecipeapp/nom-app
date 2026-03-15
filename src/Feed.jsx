@@ -364,33 +364,33 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
                   )}
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '10px 16px 12px', borderTop: '1px solid var(--parchment)' }}
-                  onClick={e => e.stopPropagation()}>
-                  <button onClick={e => toggleFeedLike(e, item)} style={{
-                    display: 'flex', alignItems: 'center', gap: '5px',
-                    background: 'none', border: 'none', cursor: 'pointer', padding: 0
-                  }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill={feedLikes[`cook-${item.id}`] ? 'var(--clay)' : 'none'}>
-                      <path d="M12 21C12 21 3 14.5 3 8.5C3 5.42 5.42 3 8.5 3C10.24 3 11.91 3.81 13 5.08C14.09 3.81 15.76 3 17.5 3C20.58 3 23 5.42 23 8.5C23 14.5 12 21 12 21Z"
-                        stroke={feedLikes[`cook-${item.id}`] ? 'var(--clay)' : 'var(--muted)'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                    <span style={{ fontSize: '12px', fontWeight: '600', color: feedLikes[`cook-${item.id}`] ? 'var(--clay)' : 'var(--muted)' }}>
-                      {feedLikeCounts[`cook-${item.id}`] > 0 ? feedLikeCounts[`cook-${item.id}`] : ''} {feedLikes[`cook-${item.id}`] ? 'Liked' : 'Like'}
-                    </span>
-                  </button>
-                  <button onClick={e => { e.stopPropagation(); onSelectCook(item, true) }} style={{
-                    display: 'flex', alignItems: 'center', gap: '5px',
-                    background: 'none', border: 'none', cursor: 'pointer', padding: 0
-                  }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                      <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"
-                        stroke="var(--muted)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                    <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--muted)' }}>
-                      {feedCommentCounts[`cook-${item.id}`] > 0 ? feedCommentCounts[`cook-${item.id}`] : ''} Comment
-                    </span>
-                  </button>
-                </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '10px 16px 12px', borderTop: '1px solid var(--parchment)' }}
+                    onClick={e => e.stopPropagation()}>
+                    <button onClick={e => toggleFeedLike(e, item)} style={{
+                      display: 'flex', alignItems: 'center', gap: '5px',
+                      background: 'none', border: 'none', cursor: 'pointer', padding: 0
+                    }}>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill={feedLikes[`save-${item.id}`] ? 'var(--clay)' : 'none'}>
+                        <path d="M12 21C12 21 3 14.5 3 8.5C3 5.42 5.42 3 8.5 3C10.24 3 11.91 3.81 13 5.08C14.09 3.81 15.76 3 17.5 3C20.58 3 23 5.42 23 8.5C23 14.5 12 21 12 21Z"
+                          stroke={feedLikes[`save-${item.id}`] ? 'var(--clay)' : 'var(--muted)'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                      <span style={{ fontSize: '12px', fontWeight: '600', color: feedLikes[`save-${item.id}`] ? 'var(--clay)' : 'var(--muted)' }}>
+                        {feedLikeCounts[`save-${item.id}`] > 0 ? feedLikeCounts[`save-${item.id}`] : ''} {feedLikes[`save-${item.id}`] ? 'Liked' : 'Like'}
+                      </span>
+                    </button>
+                    <button onClick={e => { e.stopPropagation(); onSelectSave && onSelectSave(item, true) }} style={{
+                      display: 'flex', alignItems: 'center', gap: '5px',
+                      background: 'none', border: 'none', cursor: 'pointer', padding: 0
+                    }}>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                        <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"
+                          stroke="var(--muted)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                      <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--muted)' }}>
+                        {feedCommentCounts[`save-${item.id}`] > 0 ? feedCommentCounts[`save-${item.id}`] : ''} Comment
+                      </span>
+                    </button>
+                  </div>
               </div>
             )
           })}
