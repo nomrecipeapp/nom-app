@@ -83,7 +83,8 @@ export default function Notifications({ session, onSelectUser, onSelectCook, onC
       .eq('read', false)
   }
 
-  async function handleTap(n) {
+async function handleTap(n) {
+  console.log('notification tapped:', JSON.stringify(n))
   if (n.type === 'follow_request' || n.type === 'follow_approved') {
     onClose()
     setTimeout(() => onSelectUser(n.actor_id), 50)
