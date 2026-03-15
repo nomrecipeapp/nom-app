@@ -24,6 +24,7 @@ export default function AddRecipe({ session, onSave, onCancel }) {
 
   // Verdict state
   const [verdict, setVerdict] = useState(null)
+  const [manualLogCook, setManualLogCook] = useState(false)
   const [scores, setScores] = useState({ flavor: 0, effort: 0, would_share: 0, true_to_recipe: 0 })
   const [cookNotes, setCookNotes] = useState('')
 
@@ -455,6 +456,73 @@ export default function AddRecipe({ session, onSave, onCancel }) {
                 <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Anything you want to remember..." rows={2} style={{ ...inputStyle, resize: 'vertical' }} />
               </div>
             </div>
+
+            {/* Log a Cook toggle */}
+              <div style={{ background: 'var(--parchment)', borderRadius: 'var(--radius-md)', padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div>
+                  <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--ink)', marginBottom: '2px' }}>Already made this?</div>
+                  <div style={{ fontSize: '12px', color: 'var(--muted)' }}>Log a cook right away</div>
+                </div>
+                <button onClick={() => { setManualLogCook(v => !v); setVerdict(null); setScores({ flavor: 0, effort: 0, would_share: 0, true_to_recipe: 0 }); setCookNotes('') }} style={{
+                  width: '44px', height: '26px', borderRadius: '13px', border: 'none',
+                  background: manualLogCook ? 'var(--clay)' : 'var(--tan)',
+                  cursor: 'pointer', position: 'relative', transition: 'background 0.2s', flexShrink: 0
+                }}>
+                  <div style={{ position: 'absolute', top: '3px', left: manualLogCook ? '21px' : '3px', width: '20px', height: '20px', borderRadius: '50%', background: 'white', transition: 'left 0.2s' }} />
+                </button>
+              </div>
+
+              {/* Verdict UI for manual entry */}
+              {manualLogCook && (
+                <div style={{ background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--parchment)', padding: '20px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                  <div>
+                    <div style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '12px' }}>The Verdict</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {verdictOptions.map(v => (
+                        <button key={v.value} onClick={() => setVerdict(v.value)} style={{
+                          padding: '12px 16px', borderRadius: 'var(--radius-md)',
+                          border: `2px solid ${verdict === v.value ? v.border : 'var(--parchment)'}`,
+                          background: verdict === v.value ? v.bg : 'var(--cream)',
+                          cursor: 'pointer', textAlign: 'left', transition: 'all 0.15s'
+                        }}>
+                          <div style={{ fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: '500', color: verdict === v.value ? v.color : 'var(--ink)' }}>{v.label}</div>
+                          <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '2px' }}>{v.sub}</div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '12px' }}>Nuance Scores</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      {nuanceCategories.map(cat => (
+                        <div key={cat.key} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <span style={{ fontSize: '12px', fontWeight: '500', color: 'var(--charcoal)', width: '120px', flexShrink: 0 }}>{cat.label}</span>
+                          <div style={{ display: 'flex', gap: '5px', flex: 1 }}>
+                            {[1,2,3,4,5].map(n => (
+                              <button key={n} onClick={() => setScores(s => ({...s, [cat.key]: n}))} style={{
+                                width: '30px', height: '30px', borderRadius: '50%',
+                                border: `2px solid ${scores[cat.key] >= n ? 'var(--clay)' : 'var(--tan)'}`,
+                                background: scores[cat.key] >= n ? 'var(--clay)' : 'transparent',
+                                color: scores[cat.key] >= n ? 'var(--cream)' : 'var(--muted)',
+                                fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: '600',
+                                cursor: 'pointer', transition: 'all 0.15s'
+                              }}>{n}</button>
+                            ))}
+                          </div>
+                          <span style={{ fontFamily: 'var(--font-display)', fontSize: '13px', fontWeight: '700', color: 'var(--clay)', width: '28px', textAlign: 'right' }}>
+                            {scores[cat.key] > 0 ? `${scores[cat.key]}/5` : '—'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Cook Notes</label>
+                    <textarea value={cookNotes} onChange={e => setCookNotes(e.target.value)}
+                      placeholder="What did you tweak?" rows={3} style={{ ...inputStyle, resize: 'vertical' }} />
+                  </div>
+                </div>
+              )}
 
             {error && <div style={{ background: '#FDE8E8', border: '1px solid #F5C0C0', borderRadius: 'var(--radius-md)', padding: '10px 14px', fontSize: '13px', color: '#B85252', margin: '16px 0' }}>{error}</div>}
 
