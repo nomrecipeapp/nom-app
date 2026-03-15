@@ -24,7 +24,7 @@ const typeConfig = {
   },
 }
 
-export default function Notifications({ session, onSelectUser, onSelectCook, onClose }) {
+export default function Notifications({ session, onSelectUser, onSelectCook, onSelectSaveCard, onClose }) {
   const [notifications, setNotifications] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -99,10 +99,17 @@ export default function Notifications({ session, onSelectUser, onSelectCook, onC
         onClose()
         setTimeout(() => onSelectCook({ ...cook, profiles: profile }, n.type === 'comment'), 50)
       }
-    } else if ((n.type === 'like' || n.type === 'comment') && n.target_type === 'save') {
-      // Save cards live inside Feed — just go to feed for now
-      onClose()
-    } else if (n.type === 'save') {
+    } else if ((n.type === 'like' || n.type === 'comment' || n.type === 'save') && n.target_type === 'save') {
+  const { data: recipe } = await supabase
+    .from('recipes')
+    .select('*')
+    .eq('id', n.target_id)
+    .single()
+  if (recipe) {
+    onClose()
+    setTimeout(() => onSelectSaveCard(recipe, n.type === 'comment'), 50)
+  }
+} else if (n.type === 'save') {
       onClose()
     }
   }

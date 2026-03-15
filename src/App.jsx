@@ -13,6 +13,7 @@ import FriendProfile from './FriendProfile'
 import Notifications from './Notifications'
 import './index.css'
 import ResetPassword from './ResetPassword'
+import FriendRecipeDetail from './FriendRecipeDetail'
 
 export default function App() {
   const [session, setSession] = useState(null)
@@ -27,6 +28,8 @@ export default function App() {
   const [scrollToComments, setScrollToComments] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
   const [selectedPost, setSelectedPost] = useState(null)
+  const [selectedSaveRecipe, setSelectedSaveRecipe] = useState(null)
+  const [selectedSaveScrollToComments, setSelectedSaveScrollToComments] = useState(false)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -106,6 +109,13 @@ export default function App() {
     setScreen('socialRecipe')
   }
 
+  function goToFriendRecipeDetail(recipe, toComments = false) {
+  setPrevScreen(screen)
+  setSelectedSaveRecipe(recipe)
+  setSelectedSaveScrollToComments(toComments)
+  setScreen('friendRecipeDetail')
+  }
+
   function goToPost(item) {
     setPrevScreen(screen)
     setSelectedPost(item)
@@ -165,6 +175,7 @@ export default function App() {
           session={session}
           onSelectUser={(userId) => { goToFriendProfile(userId) }}
           onSelectCook={(cook, toComments) => { goToSocialRecipe(cook, toComments) }}
+          onSelectSaveCard={(recipe, toComments) => { goToFriendRecipeDetail(recipe, toComments) }}
           onClose={() => { setScreen(prevScreen); fetchUnreadCount(session.user.id) }}
         />
       )}
@@ -219,6 +230,16 @@ export default function App() {
         />
       )}
 
+      {screen === 'friendRecipeDetail' && selectedSaveRecipe && (
+        <FriendRecipeDetail
+          recipe={selectedSaveRecipe}
+          session={session}
+          onBack={() => { setScreen(prevScreen); setSelectedSaveScrollToComments(false) }}
+          scrollToComments={selectedSaveScrollToComments}
+         isOwner={selectedSaveRecipe.user_id === session.user.id}
+       />
+      )}
+
       {screen === 'friendProfile' && selectedUserId && (
         <FriendProfile
           userId={selectedUserId}
@@ -243,11 +264,12 @@ export default function App() {
 
       {screen === 'feed' && (
         <Feed
-          session={session}
-          onSelectCook={goToSocialRecipe}
-          onSelectUser={goToFriendProfile}
-          onSelectPost={goToPost}
-        />
+           session={session}
+           onSelectCook={goToSocialRecipe}
+           onSelectUser={goToFriendProfile}
+           onSelectPost={goToPost}
+           onSelectSave={goToFriendRecipeDetail}
+       />
       )}
 
       {screen === 'search' && (
