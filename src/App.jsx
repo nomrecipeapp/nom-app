@@ -34,6 +34,7 @@ export default function App() {
   const [selectedSaveScrollToComments, setSelectedSaveScrollToComments] = useState(false)
   const [followListUserId, setFollowListUserId] = useState(null)
   const [followListType, setFollowListType] = useState('following')
+  const [profileEditing, setProfileEditing] = useState(false)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -156,44 +157,95 @@ export default function App() {
   if (!onboardingComplete) return <Onboarding onComplete={handleOnboardingComplete} />
 
   const hideNav = screen === 'add'
+  const hideTopBar = screen === 'add' || screen === 'resetPassword'
+
+  // What the back button does per screen
+  const screensWithBack = ['cookbook', 'search', 'profile', 'notifications', 'recipe', 'socialRecipe', 'friendRecipeDetail', 'friendProfile', 'followList']
+
+  // Center title per screen
+  const screenTitles = {
+    cookbook: 'Cookbook',
+    search: 'Explore',
+    profile: 'My Profile',
+    notifications: 'Notifications',
+    friendProfile: selectedUserId ? '' : '',
+    followList: followListType === 'following' ? 'Following' : 'Followers',
+  }
 
   return (
     <>
-      {!hideNav && (
+      {/* Top bar */}
+      {!hideTopBar && (
         <div style={{
-          position: 'fixed', top: '14px', right: '20px',
-          zIndex: 150,
+          position: 'fixed', top: 0, left: 0, right: 0,
+          maxWidth: '480px', margin: '0 auto',
+          height: '54px',
+          background: 'var(--cream)',
+          borderBottom: '1px solid var(--parchment)',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '0 16px',
+          zIndex: 200,
         }}>
-          <button
-            onClick={() => { setPrevScreen(screen); setScreen('notifications') }}
-            style={{
-              position: 'relative',
-              width: '38px', height: '38px', borderRadius: '50%',
-              background: 'var(--warm-white)',
-              border: '1px solid var(--parchment)',
-              cursor: 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
-            }}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-              <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"
-                stroke="var(--ink)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            {unreadCount > 0 && (
-              <div style={{
-                position: 'absolute', top: '-3px', right: '-3px',
-                minWidth: '18px', height: '18px', borderRadius: '9px',
-                background: 'var(--clay)', color: 'white',
-                fontSize: '10px', fontWeight: '700',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                padding: '0 4px',
-                border: '2px solid var(--cream)',
+
+          {/* Left */}
+          <div style={{ width: '72px' }}>
+            {screen === 'feed' ? (
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: '24px', fontWeight: '700', color: 'var(--clay)', letterSpacing: '-0.5px' }}>Nom</div>
+            ) : (
+              <button onClick={() => setScreen(prevScreen)} style={{
+                display: 'flex', alignItems: 'center', gap: '5px',
+                background: 'none', border: 'none', cursor: 'pointer', padding: 0
               }}>
-                {unreadCount > 99 ? '99+' : unreadCount}
-              </div>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                  <path d="M19 12H5M5 12l7-7M5 12l7 7" stroke="var(--ink)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                <span style={{ fontSize: '13px', fontWeight: '600', color: 'var(--ink)' }}>Back</span>
+              </button>
             )}
-          </button>
+          </div>
+
+          {/* Center */}
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: '17px', fontWeight: '600', color: 'var(--ink)', textAlign: 'center', flex: 1 }}>
+            {screenTitles[screen] || ''}
+          </div>
+
+          {/* Right */}
+          <div style={{ width: '72px', display: 'flex', justifyContent: 'flex-end' }}>
+            {screen === 'profile' ? (
+              <button onClick={() => setProfileEditing(true)} style={{
+                background: 'var(--parchment)', border: 'none', borderRadius: 'var(--radius-md)',
+                padding: '6px 12px', fontFamily: 'var(--font-body)', fontSize: '12px',
+                fontWeight: '600', color: 'var(--charcoal)', cursor: 'pointer'
+              }}>Edit</button>
+            ) : screen === 'notifications' ? null : (
+              <button onClick={() => { setPrevScreen(screen); setScreen('notifications') }} style={{
+                position: 'relative',
+                width: '36px', height: '36px', borderRadius: '50%',
+                background: 'var(--warm-white)',
+                border: '1px solid var(--parchment)',
+                cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
+                  <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"
+                    stroke="var(--ink)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                {unreadCount > 0 && (
+                  <div style={{
+                    position: 'absolute', top: '-3px', right: '-3px',
+                    minWidth: '18px', height: '18px', borderRadius: '9px',
+                    background: 'var(--clay)', color: 'white',
+                    fontSize: '10px', fontWeight: '700',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    padding: '0 4px', border: '2px solid var(--cream)',
+                  }}>
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </div>
+                )}
+              </button>
+            )}
+          </div>
+
         </div>
       )}
 
@@ -227,7 +279,10 @@ export default function App() {
         <Profile
           session={session}
           onBack={() => setScreen(prevScreen)}
-          onSelectRecipe={(recipe) => { setRecipeBackScreen('profile'); setSelectedRecipe(recipe); setScreen('recipe') }}          onViewFollowList={(type) => goToFollowList(session.user.id, type)}
+          onSelectRecipe={(recipe) => { setRecipeBackScreen('profile'); setSelectedRecipe(recipe); setScreen('recipe') }}
+          onViewFollowList={(type) => goToFollowList(session.user.id, type)}
+          externalEditing={profileEditing}
+          onEditingDone={() => setProfileEditing(false)}
         />
       )}
 

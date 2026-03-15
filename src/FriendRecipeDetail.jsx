@@ -210,32 +210,14 @@ export default function FriendRecipeDetail({ recipe, session, onBack, scrollToCo
 
   return (
     <div style={{ maxWidth: '480px', margin: '0 auto', paddingBottom: '100px' }}>
+
+      {/* Image or spacer */}
       {recipe.image_url ? (
-        <div style={{ position: 'relative' }}>
+        <div style={{ marginTop: '54px' }}>
           <img src={recipe.image_url} alt="" style={{ width: '100%', height: '260px', objectFit: 'cover', display: 'block' }} />
-          <button onClick={onBack} style={{
-            position: 'absolute', top: '16px', left: '16px',
-            width: '36px', height: '36px', borderRadius: '50%',
-            background: 'rgba(0,0,0,0.35)', border: 'none', cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center'
-          }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-              <path d="M19 12H5M5 12l7-7M5 12l7 7" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </button>
         </div>
       ) : (
-        <div style={{ padding: '16px 16px 0' }}>
-          <button onClick={onBack} style={{
-            width: '36px', height: '36px', borderRadius: '50%',
-            background: 'var(--parchment)', border: 'none', cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center'
-          }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-              <path d="M19 12H5M5 12l7-7M5 12l7 7" stroke="var(--ink)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </button>
-        </div>
+        <div style={{ height: '54px' }} />
       )}
 
       <div style={{ padding: '20px 20px 0' }}>
@@ -259,7 +241,6 @@ export default function FriendRecipeDetail({ recipe, session, onBack, scrollToCo
           </a>
         )}
 
-        {/* Collapsible ingredients */}
         {recipe.ingredients && (
           <div style={{ background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--parchment)', marginBottom: '16px', overflow: 'hidden' }}>
             <button onClick={() => setIngredientsOpen(o => !o)} style={{
@@ -284,7 +265,6 @@ export default function FriendRecipeDetail({ recipe, session, onBack, scrollToCo
           </div>
         )}
 
-        {/* Owner: View in Cookbook */}
         {isOwner && (
           <button onClick={() => onViewInCookbook && onViewInCookbook(recipe.id)} style={{
             width: '100%', padding: '15px',
@@ -295,7 +275,6 @@ export default function FriendRecipeDetail({ recipe, session, onBack, scrollToCo
           }}>View in Cookbook →</button>
         )}
 
-        {/* Non-owner: save or already saved */}
         {!isOwner && !duplicate && !myRecipeId && (
           <button onClick={saveRecipe} disabled={saved || saving} style={{
             width: '100%', padding: '15px',
@@ -330,7 +309,6 @@ export default function FriendRecipeDetail({ recipe, session, onBack, scrollToCo
           </div>
         )}
 
-        {/* Like bar */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
           <button onClick={toggleLike} style={{
             display: 'flex', alignItems: 'center', gap: '6px',
@@ -346,7 +324,6 @@ export default function FriendRecipeDetail({ recipe, session, onBack, scrollToCo
           </button>
         </div>
 
-        {/* Comments */}
         <div ref={commentsRef}>
           <div style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '16px' }}>
             Comments{comments.length > 0 ? ` · ${comments.length}` : ''}

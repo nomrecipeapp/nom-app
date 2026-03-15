@@ -64,25 +64,8 @@ const filtered = recipes
     })
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--cream)', padding: '24px', paddingBottom: '100px' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--cream)', padding: '24px', paddingTop: '70px', paddingBottom: '100px' }}>
       <div style={{ maxWidth: '480px', margin: '0 auto' }}>
-
-        {/* Header */}
-        <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          marginBottom: '24px', paddingBottom: '20px', borderBottom: '1px solid var(--parchment)'
-        }}>
-          <div>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: '28px', fontWeight: '700', color: 'var(--clay)', letterSpacing: '-1px' }}>Nom</div>
-            <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '2px' }}>My Cookbook</div>
-          </div>
-          <button onClick={onAddRecipe} style={{
-            width: '44px', height: '44px', borderRadius: '50%',
-            background: 'var(--clay)', color: 'var(--cream)', border: 'none',
-            fontSize: '22px', cursor: 'pointer', display: 'flex',
-            alignItems: 'center', justifyContent: 'center', fontWeight: '300'
-          }}>+</button>
-        </div>
 
         {/* Search */}
         <div style={{

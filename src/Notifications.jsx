@@ -100,16 +100,16 @@ export default function Notifications({ session, onSelectUser, onSelectCook, onS
         setTimeout(() => onSelectCook({ ...cook, profiles: profile }, n.type === 'comment'), 50)
       }
     } else if ((n.type === 'like' || n.type === 'comment' || n.type === 'save') && n.target_type === 'save') {
-  const { data: recipe } = await supabase
-    .from('recipes')
-    .select('*')
-    .eq('id', n.target_id)
-    .single()
-  if (recipe) {
-    onClose()
-    setTimeout(() => onSelectSaveCard(recipe, n.type === 'comment'), 50)
-  }
-} else if (n.type === 'save') {
+      const { data: recipe } = await supabase
+        .from('recipes')
+        .select('*')
+        .eq('id', n.target_id)
+        .single()
+      if (recipe) {
+        onClose()
+        setTimeout(() => onSelectSaveCard(recipe, n.type === 'comment'), 50)
+      }
+    } else if (n.type === 'save') {
       onClose()
     }
   }
@@ -128,32 +128,14 @@ export default function Notifications({ session, onSelectUser, onSelectCook, onS
 
   return (
     <div style={{
-      position: 'fixed', inset: 0, zIndex: 90,
+      minHeight: '100vh',
       background: 'var(--cream)',
-      maxWidth: '480px', margin: '0 auto',
-      display: 'flex', flexDirection: 'column',
+      paddingBottom: '100px',
     }}>
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '56px 20px 16px',
-        borderBottom: '1px solid var(--parchment)',
-        background: 'var(--cream)',
-      }}>
-        <div style={{ fontFamily: 'var(--font-display)', fontSize: '24px', fontWeight: '700', color: 'var(--ink)', letterSpacing: '-0.5px' }}>
-          Notifications
-        </div>
-        <button onClick={onClose} style={{
-          width: '36px', height: '36px', borderRadius: '50%',
-          background: 'var(--parchment)', border: 'none', cursor: 'pointer',
-          display: 'flex', alignItems: 'center', justifyContent: 'center'
-        }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-            <path d="M18 6L6 18M6 6l12 12" stroke="var(--ink)" strokeWidth="2" strokeLinecap="round"/>
-          </svg>
-        </button>
-      </div>
+      {/* Spacer for top bar */}
+      <div style={{ height: '54px' }} />
 
-      <div style={{ flex: 1, overflowY: 'auto', padding: '8px 0 100px' }}>
+      <div style={{ padding: '8px 0' }}>
         {loading ? (
           <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--muted)', fontSize: '14px' }}>Loading...</div>
         ) : notifications.length === 0 ? (
@@ -214,3 +196,8 @@ export default function Notifications({ session, onSelectUser, onSelectCook, onS
     </div>
   )
 }
+```
+
+Once you have all files updated, push:
+```
+cd /Users/sydneybernstein/nom-app && git add -A && git commit -m "Add proper top bar across all screens" && git push

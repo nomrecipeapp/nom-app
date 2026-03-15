@@ -180,12 +180,7 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
   }
 
   return (
-    <div style={{ maxWidth: '480px', margin: '0 auto', padding: '24px 16px 100px' }}>
-
-      <div style={{
-        fontFamily: 'var(--font-display)', fontSize: '32px', fontWeight: '700',
-        color: 'var(--clay)', letterSpacing: '-1px', marginBottom: '24px'
-      }}>Nom</div>
+    <div style={{ maxWidth: '480px', margin: '0 auto', padding: '70px 16px 100px' }}>
 
       {requests.length > 0 && (
         <div style={{

@@ -40,7 +40,6 @@ export default function Search({ session, onSelectUser, onSelectSave }) {
     if (!query.trim()) return
     setLoading(true)
 
-    // Get approved follows
     const { data: follows } = await supabase
       .from('follows')
       .select('following_id')
@@ -69,7 +68,6 @@ export default function Search({ session, onSelectUser, onSelectSave }) {
       return
     }
 
-    // Fetch profile for each unique user
     const userIds = [...new Set(recipes.map(r => r.user_id))]
     const { data: profiles } = await supabase
       .from('profiles')
@@ -111,9 +109,10 @@ export default function Search({ session, onSelectUser, onSelectSave }) {
   }
 
   return (
-    <div style={{ maxWidth: '480px', margin: '0 auto', padding: '24px 16px 100px' }}>
+    <div style={{ maxWidth: '480px', margin: '0 auto', padding: '0 16px 100px' }}>
 
-      <div style={{ fontFamily: 'var(--font-display)', fontSize: '28px', fontWeight: '700', color: 'var(--ink)', letterSpacing: '-0.5px', marginBottom: '20px' }}>Explore</div>
+      {/* Spacer for top bar */}
+      <div style={{ height: '70px' }} />
 
       {/* Tabs */}
       <div style={{ display: 'flex', background: 'var(--parchment)', borderRadius: 'var(--radius-pill)', padding: '4px', marginBottom: '20px' }}>

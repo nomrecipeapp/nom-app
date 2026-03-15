@@ -40,7 +40,7 @@ function RecipeThumbnailSmall({ recipe, dashed }) {
   return <RecipeInitial title={recipe.title} dashed={dashed} />
 }
 
-export default function Profile({ session, onBack, onSelectRecipe, onViewFollowList }) {
+export default function Profile({ session, onBack, onSelectRecipe, onViewFollowList, externalEditing, onEditingDone }) {
   const [profile, setProfile] = useState({ full_name: '', username: '' })
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -60,6 +60,16 @@ export default function Profile({ session, onBack, onSelectRecipe, onViewFollowL
     fetchTopRated()
     fetchWantToMake()
   }, [])
+
+  useEffect(() => {
+    if (externalEditing) setEditing(true)
+  }, [externalEditing])
+
+  function handleCancelEdit() {
+    setEditing(false)
+    setError(null)
+    onEditingDone?.()
+  }
 
   async function fetchProfile() {
     const { data } = await supabase
@@ -112,7 +122,6 @@ export default function Profile({ session, onBack, onSelectRecipe, onViewFollowL
 
     if (!data) return
 
-    // Deduplicate by recipe_id — keep most recent cook per recipe
     const seen = new Set()
     const deduped = data.filter(c => {
       if (!c.recipes) return false
@@ -135,18 +144,13 @@ export default function Profile({ session, onBack, onSelectRecipe, onViewFollowL
 
     if (!data) return
 
-    // Group by recipe_id and average all scores
     const recipeMap = {}
     data.forEach(cook => {
       if (!cook.recipes) return
       const id = cook.recipe_id
-      if (!recipeMap[id]) {
-        recipeMap[id] = { cook, scores: [], recipe: cook.recipes }
-      }
+      if (!recipeMap[id]) recipeMap[id] = { cook, scores: [], recipe: cook.recipes }
       const scores = [cook.flavor, cook.effort, cook.would_share, cook.true_to_recipe].filter(Boolean)
-      if (scores.length > 0) {
-        recipeMap[id].scores.push(...scores)
-      }
+      if (scores.length > 0) recipeMap[id].scores.push(...scores)
     })
 
     const ranked = Object.values(recipeMap)
@@ -186,8 +190,12 @@ export default function Profile({ session, onBack, onSelectRecipe, onViewFollowL
         username: profile.username,
         updated_at: new Date().toISOString()
       })
-    if (error) setError(error.message)
-    else setEditing(false)
+    if (error) {
+      setError(error.message)
+    } else {
+      setEditing(false)
+      onEditingDone?.()
+    }
     setSaving(false)
   }
 
@@ -211,23 +219,8 @@ export default function Profile({ session, onBack, onSelectRecipe, onViewFollowL
     <div style={{ minHeight: '100vh', background: 'var(--cream)', paddingBottom: '100px' }}>
       <div style={{ maxWidth: '480px', margin: '0 auto' }}>
 
-        {/* Header */}
-        <div style={{
-          padding: '16px 20px', display: 'flex',
-          alignItems: 'center', justifyContent: 'space-between'
-        }}>
-          <button onClick={onBack} style={{
-            background: 'none', border: 'none', cursor: 'pointer',
-            fontFamily: 'var(--font-body)', fontSize: '13px',
-            fontWeight: '600', color: 'var(--muted)', padding: 0
-          }}>← Back</button>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: '700', color: 'var(--ink)' }}>My Profile</div>
-          <button onClick={() => setEditing(!editing)} style={{
-            background: 'var(--parchment)', border: 'none', borderRadius: 'var(--radius-md)',
-            padding: '6px 12px', fontFamily: 'var(--font-body)', fontSize: '12px',
-            fontWeight: '600', color: 'var(--charcoal)', cursor: 'pointer'
-          }}>{editing ? 'Cancel' : 'Edit'}</button>
-        </div>
+        {/* Spacer for top bar */}
+        <div style={{ height: '54px' }} />
 
         {/* Edit form */}
         {editing && (
@@ -235,6 +228,14 @@ export default function Profile({ session, onBack, onSelectRecipe, onViewFollowL
             margin: '0 20px 20px', background: 'var(--warm-white)',
             borderRadius: 'var(--radius-lg)', border: '1px solid var(--parchment)', padding: '20px'
           }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: '16px', fontWeight: '600', color: 'var(--ink)' }}>Edit Profile</div>
+              <button onClick={handleCancelEdit} style={{
+                background: 'none', border: 'none', cursor: 'pointer',
+                fontFamily: 'var(--font-body)', fontSize: '13px',
+                fontWeight: '600', color: 'var(--muted)', padding: 0
+              }}>Cancel</button>
+            </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--charcoal)', marginBottom: '6px' }}>Full Name</label>

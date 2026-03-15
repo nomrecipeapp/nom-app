@@ -428,18 +428,7 @@ const [selectedRecipe, setSelectedRecipe] = useState(null)
     <div style={{ minHeight: '100vh', background: 'var(--cream)', paddingBottom: '100px' }}>
       <div style={{ maxWidth: '480px', margin: '0 auto' }}>
 
-        {/* Back nav */}
-        <div style={{ padding: '16px 20px 0', display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <button onClick={onBack} style={{
-            width: '32px', height: '32px', borderRadius: '50%',
-            background: 'var(--parchment)', border: 'none', cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: '16px', color: 'var(--ink)'
-          }}>←</button>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: '16px', fontWeight: '600', color: 'var(--ink)' }}>
-            {profile?.full_name || profile?.username || ''}
-          </div>
-        </div>
+        <div style={{ height: '54px' }} />
 
         {/* Avatar + name + follow */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '24px 20px 20px' }}>

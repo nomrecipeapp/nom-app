@@ -230,7 +230,8 @@ export default function RecipeDetail({ recipe: initialRecipe, session, onBack, o
           <div style={{
             padding: '16px 20px', display: 'flex',
             alignItems: 'center', justifyContent: 'space-between',
-            borderBottom: '1px solid var(--parchment)'
+            borderBottom: '1px solid var(--parchment)',
+            marginTop: '54px'
           }}>
             <button onClick={() => { setEditing(false); setEditError(null) }} style={{
               background: 'none', border: 'none', cursor: 'pointer',
@@ -397,16 +398,8 @@ export default function RecipeDetail({ recipe: initialRecipe, session, onBack, o
     <div style={{ minHeight: '100vh', background: 'var(--cream)', paddingBottom: '120px' }}>
 
       {recipe.image_url ? (
-        <div style={{ height: '220px', background: 'var(--parchment)', position: 'relative', overflow: 'hidden' }}>
+        <div style={{ height: '220px', background: 'var(--parchment)', position: 'relative', overflow: 'hidden', marginTop: '54px' }}>
           <img src={recipe.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-          <button onClick={onBack} style={{
-            position: 'absolute', top: '16px', left: '16px',
-            width: '36px', height: '36px', borderRadius: '50%',
-            background: 'rgba(28,26,23,0.5)', border: 'none',
-            color: 'white', fontSize: '18px', cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            backdropFilter: 'blur(4px)'
-          }}>←</button>
           <button onClick={() => { setEditForm({ title: recipe.title || '', source_name: recipe.source_name || '', source_url: recipe.source_url || '', image_url: recipe.image_url || '', cook_time: recipe.cook_time || '', difficulty: recipe.difficulty || '', ingredients: recipe.ingredients || '', instructions: recipe.instructions || '', notes: recipe.notes || '', tags: recipe.tags || [] }); setEditing(true) }} style={{
             position: 'absolute', top: '16px', right: '16px',
             background: 'rgba(28,26,23,0.5)', border: 'none', borderRadius: 'var(--radius-pill)',
@@ -420,19 +413,8 @@ export default function RecipeDetail({ recipe: initialRecipe, session, onBack, o
             padding: '5px 12px', fontSize: '11px', fontWeight: '600'
           }}>{status.label}</div>
         </div>
-      ) : (
-        <div style={{ padding: '16px 24px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <button onClick={onBack} style={{
-            background: 'none', border: 'none', cursor: 'pointer',
-            display: 'flex', alignItems: 'center', gap: '6px',
-            color: 'var(--muted)', fontFamily: 'var(--font-body)',
-            fontSize: '13px', fontWeight: '600', padding: 0
-          }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-              <path d="M19 12H5M5 12l7-7M5 12l7 7" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            Back
-          </button>
+            ) : (
+        <div style={{ padding: '16px 24px 0', paddingTop: '70px', display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
           <button onClick={() => { setEditForm({ title: recipe.title || '', source_name: recipe.source_name || '', source_url: recipe.source_url || '', image_url: recipe.image_url || '', cook_time: recipe.cook_time || '', difficulty: recipe.difficulty || '', ingredients: recipe.ingredients || '', instructions: recipe.instructions || '', notes: recipe.notes || '', tags: recipe.tags || [] }); setEditing(true) }} style={{
             background: 'var(--parchment)', border: 'none', borderRadius: 'var(--radius-pill)',
             padding: '6px 14px', fontFamily: 'var(--font-body)',
