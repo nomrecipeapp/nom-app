@@ -109,12 +109,16 @@ export default function App() {
     setScreen('socialRecipe')
   }
 
-  function goToFriendRecipeDetail(recipe, toComments = false) {
-  setPrevScreen(screen)
-  setSelectedSaveRecipe(recipe)
-  setSelectedSaveScrollToComments(toComments)
-  setScreen('friendRecipeDetail')
+function goToFriendProfile(userId) {
+  if (userId === session.user.id) {
+    setPrevScreen(screen)
+    setScreen('profile')
+    return
   }
+  setPrevScreen(screen)
+  setSelectedUserId(userId)
+  setScreen('friendProfile')
+}
 
  async function goToRecipeFromId(recipeId) {
     const { data } = await supabase
