@@ -10,6 +10,7 @@ import SocialRecipeDetail from './SocialRecipeDetail'
 import Feed from './Feed'
 import Search from './Search'
 import FriendProfile from './FriendProfile'
+import Notifications from './Notifications'
 import './index.css'
 import ResetPassword from './ResetPassword'
 
@@ -24,6 +25,9 @@ export default function App() {
   const [selectedUserId, setSelectedUserId] = useState(null)
   const [prevScreen, setPrevScreen] = useState('feed')
   const [scrollToComments, setScrollToComments] = useState(false)
+  const [showNotifications, setShowNotifications] = useState(false)
+  const [unreadCount, setUnreadCount] = useState(0)
+  const [selectedPost, setSelectedPost] = useState(null)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -32,28 +36,44 @@ export default function App() {
       else setLoading(false)
     })
 
-const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-  if (event === 'PASSWORD_RECOVERY') {
-    setScreen('resetPassword')
-    setSession(session)
-    setLoading(false)
-    return
-  }
-  if (event === 'SIGNED_IN' && !session?.user?.user_metadata?.onboarding_complete) {
-    // New sign up — don't interrupt onboarding flow
-    return
-  }
-  setSession(session)
-  if (session) {
-    setShowLogin(false)
-    checkOnboarding(session.user.id)
-  }
-})
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setScreen('resetPassword')
+        setSession(session)
+        setLoading(false)
+        return
+      }
+      if (event === 'SIGNED_IN' && !session?.user?.user_metadata?.onboarding_complete) {
+        return
+      }
+      setSession(session)
+      if (session) {
+        setShowLogin(false)
+        checkOnboarding(session.user.id)
+      }
+    })
 
     return () => subscription.unsubscribe()
   }, [])
 
-async function checkOnboarding(userId) {
+  // Poll unread count every 30s when logged in
+  useEffect(() => {
+    if (!session) return
+    fetchUnreadCount(session.user.id)
+    const interval = setInterval(() => fetchUnreadCount(session.user.id), 30000)
+    return () => clearInterval(interval)
+  }, [session])
+
+  async function fetchUnreadCount(userId) {
+    const { count } = await supabase
+      .from('notifications')
+      .select('*', { count: 'exact', head: true })
+      .eq('recipient_id', userId)
+      .eq('read', false)
+    setUnreadCount(count || 0)
+  }
+
+  async function checkOnboarding(userId) {
     const { data } = await supabase
       .from('profiles')
       .select('onboarding_complete')
@@ -80,8 +100,6 @@ async function checkOnboarding(userId) {
     setScreen('friendProfile')
   }
 
-const [selectedPost, setSelectedPost] = useState(null)
-
   function goToSocialRecipe(cook, toComments = false) {
     setPrevScreen(screen)
     setSelectedCook(cook)
@@ -95,25 +113,75 @@ const [selectedPost, setSelectedPost] = useState(null)
     setScreen('postDetail')
   }
 
-  // Always allow login screen even while loading
+  function handleNotificationsClose() {
+    setShowNotifications(false)
+    // Refresh unread count after closing (will be 0 since we marked read)
+    if (session) fetchUnreadCount(session.user.id)
+  }
+
   if (showLogin) return <Auth />
-
   if (loading) return null
-
-  // Not logged in — show onboarding or login
-  if (!session) {
-    return <Onboarding onComplete={handleOnboardingComplete} />
-  }
-
-  // Logged in but onboarding not complete
-  if (!onboardingComplete) {
-    return <Onboarding onComplete={handleOnboardingComplete} />
-  }
+  if (!session) return <Onboarding onComplete={handleOnboardingComplete} />
+  if (!onboardingComplete) return <Onboarding onComplete={handleOnboardingComplete} />
 
   const hideNav = screen === 'add'
 
   return (
     <>
+      {/* Floating bell — always visible except on add screen */}
+      {!hideNav && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0,
+          maxWidth: '480px', margin: '0 auto',
+          display: 'flex', justifyContent: 'flex-end',
+          padding: '14px 20px',
+          zIndex: 150,
+          pointerEvents: 'none',
+        }}>
+          <button
+            onClick={() => setShowNotifications(true)}
+            style={{
+              pointerEvents: 'all',
+              position: 'relative',
+              width: '38px', height: '38px', borderRadius: '50%',
+              background: 'var(--warm-white)',
+              border: '1px solid var(--parchment)',
+              cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
+            }}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+              <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"
+                stroke="var(--ink)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            {unreadCount > 0 && (
+              <div style={{
+                position: 'absolute', top: '-3px', right: '-3px',
+                minWidth: '18px', height: '18px', borderRadius: '9px',
+                background: 'var(--clay)', color: 'white',
+                fontSize: '10px', fontWeight: '700',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                padding: '0 4px',
+                border: '2px solid var(--cream)',
+              }}>
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </div>
+            )}
+          </button>
+        </div>
+      )}
+
+      {/* Notifications overlay */}
+      {showNotifications && (
+        <Notifications
+          session={session}
+          onSelectUser={(userId) => { goToFriendProfile(userId) }}
+          onSelectCook={(cook, toComments) => { goToSocialRecipe(cook, toComments) }}
+          onClose={handleNotificationsClose}
+        />
+      )}
+
       {screen === 'add' && (
         <AddRecipe
           session={session}
@@ -129,7 +197,7 @@ const [selectedPost, setSelectedPost] = useState(null)
         />
       )}
 
-{screen === 'profile' && (
+      {screen === 'profile' && (
         <Profile
           session={session}
           onBack={() => setScreen('feed')}
@@ -214,10 +282,8 @@ const [selectedPost, setSelectedPost] = useState(null)
       )}
 
       {screen === 'resetPassword' && (
-      <ResetPassword
-         onComplete={() => {
-           setScreen('feed')
-          }}
+        <ResetPassword
+          onComplete={() => { setScreen('feed') }}
         />
       )}
 

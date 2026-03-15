@@ -94,6 +94,16 @@ function FriendRecipeDetail({ recipe, session, onBack, scrollToComments }) {
       }, { onConflict: 'user_id,target_type,target_id', ignoreDuplicates: true })
       setLiked(true)
       setLikeCount(c => c + 1)
+      if (recipe.user_id && recipe.user_id !== session.user.id) {
+        await supabase.from('notifications').insert({
+          recipient_id: recipe.user_id,
+          actor_id: session.user.id,
+          type: 'like',
+          recipe_id: recipe.id,
+          target_type: targetType,
+          target_id: targetId,
+        })
+      }
     }
   }
 
@@ -106,6 +116,16 @@ function FriendRecipeDetail({ recipe, session, onBack, scrollToComments }) {
       target_id: targetId,
       body: commentBody.trim()
     })
+    if (recipe.user_id && recipe.user_id !== session.user.id) {
+      await supabase.from('notifications').insert({
+        recipient_id: recipe.user_id,
+        actor_id: session.user.id,
+        type: 'comment',
+        recipe_id: recipe.id,
+        target_type: targetType,
+        target_id: targetId,
+      })
+    }
     setCommentBody('')
     await fetchComments()
     setSubmitting(false)
@@ -136,6 +156,16 @@ function FriendRecipeDetail({ recipe, session, onBack, scrollToComments }) {
       notes: recipe.notes,
       status: 'want_to_make'
     })
+    if (recipe.user_id && recipe.user_id !== session.user.id) {
+      await supabase.from('notifications').insert({
+        recipient_id: recipe.user_id,
+        actor_id: session.user.id,
+        type: 'save',
+        recipe_id: recipe.id,
+        target_type: 'save',
+        target_id: recipe.id,
+      })
+    }
     setSaving(false)
     setSaved(true)
   }
@@ -156,6 +186,16 @@ function FriendRecipeDetail({ recipe, session, onBack, scrollToComments }) {
       notes: recipe.notes,
       status: 'want_to_make'
     })
+    if (recipe.user_id && recipe.user_id !== session.user.id) {
+      await supabase.from('notifications').insert({
+        recipient_id: recipe.user_id,
+        actor_id: session.user.id,
+        type: 'save',
+        recipe_id: recipe.id,
+        target_type: 'save',
+        target_id: recipe.id,
+      })
+    }
     setSaving(false)
     setSaved(true)
   }
@@ -364,7 +404,7 @@ export default function Feed({ session, onSelectCook, onSelectUser }) {
   const [feedLikeCounts, setFeedLikeCounts] = useState({})
   const [feedCommentCounts, setFeedCommentCounts] = useState({})
 
-    useEffect(() => {
+  useEffect(() => {
     fetchFeed()
     fetchRequests()
   }, [session.user.id])
@@ -381,7 +421,6 @@ export default function Feed({ session, onSelectCook, onSelectUser }) {
 
     const ids = follows.map(f => f.following_id)
 
-    // Fetch cooks
     const { data: cooks } = await supabase
       .from('cooks')
       .select('*, recipes(*)')
@@ -389,7 +428,6 @@ export default function Feed({ session, onSelectCook, onSelectUser }) {
       .order('cooked_at', { ascending: false })
       .limit(40)
 
-    // Fetch saves (want_to_make recipes saved recently)
     const { data: saves } = await supabase
       .from('recipes')
       .select('*')
@@ -403,7 +441,6 @@ export default function Feed({ session, onSelectCook, onSelectUser }) {
       .select('*')
       .in('id', ids)
 
-    // Build cook feed items
     const cookItems = (cooks || []).map(c => ({
       ...c,
       _type: 'cook',
@@ -411,7 +448,6 @@ export default function Feed({ session, onSelectCook, onSelectUser }) {
       profiles: profiles?.find(p => p.id === c.user_id) || null
     }))
 
-    // Build save feed items
     const saveItems = (saves || []).map(r => ({
       ...r,
       _type: 'save',
@@ -419,7 +455,6 @@ export default function Feed({ session, onSelectCook, onSelectUser }) {
       profiles: profiles?.find(p => p.id === r.user_id) || null
     }))
 
-    // Merge and sort by date
     const merged = [...cookItems, ...saveItems]
       .sort((a, b) => new Date(b._date) - new Date(a._date))
       .slice(0, 60)
@@ -439,11 +474,9 @@ export default function Feed({ session, onSelectCook, onSelectUser }) {
     const likeCountsMap = {}
     const commentCountsMap = {}
 
-    // Fetch all likes by current user for these items
     if (cookIds.length > 0) {
       const { data: cookLikes } = await supabase.from('likes').select('target_id').eq('target_type', 'cook').eq('user_id', session.user.id).in('target_id', cookIds)
       cookLikes?.forEach(l => { likesMap[`cook-${l.target_id}`] = true })
-
       for (const id of cookIds) {
         const { count } = await supabase.from('likes').select('*', { count: 'exact', head: true }).eq('target_type', 'cook').eq('target_id', id)
         likeCountsMap[`cook-${id}`] = count || 0
@@ -455,7 +488,6 @@ export default function Feed({ session, onSelectCook, onSelectUser }) {
     if (saveIds.length > 0) {
       const { data: saveLikes } = await supabase.from('likes').select('target_id').eq('target_type', 'save').eq('user_id', session.user.id).in('target_id', saveIds)
       saveLikes?.forEach(l => { likesMap[`save-${l.target_id}`] = true })
-
       for (const id of saveIds) {
         const { count } = await supabase.from('likes').select('*', { count: 'exact', head: true }).eq('target_type', 'save').eq('target_id', id)
         likeCountsMap[`save-${id}`] = count || 0
@@ -481,6 +513,16 @@ export default function Feed({ session, onSelectCook, onSelectUser }) {
       await supabase.from('likes').upsert({ user_id: session.user.id, target_type: item._type, target_id: item.id }, { onConflict: 'user_id,target_type,target_id', ignoreDuplicates: true })
       setFeedLikes(prev => ({ ...prev, [key]: true }))
       setFeedLikeCounts(prev => ({ ...prev, [key]: (prev[key] || 0) + 1 }))
+      if (item.user_id !== session.user.id) {
+        await supabase.from('notifications').insert({
+          recipient_id: item.user_id,
+          actor_id: session.user.id,
+          type: 'like',
+          recipe_id: item._type === 'cook' ? item.recipe_id : item.id,
+          target_type: item._type,
+          target_id: item.id,
+        })
+      }
     }
   }
 
@@ -496,11 +538,10 @@ export default function Feed({ session, onSelectCook, onSelectUser }) {
         .from('profiles')
         .select('*')
         .in('id', followerIds)
-      const requestsWithProfiles = data.map(r => ({
+      setRequests(data.map(r => ({
         ...r,
         profiles: profiles?.find(p => p.id === r.follower_id) || null
-      }))
-      setRequests(requestsWithProfiles)
+      })))
     } else {
       setRequests([])
     }
@@ -508,6 +549,14 @@ export default function Feed({ session, onSelectCook, onSelectUser }) {
 
   async function approveRequest(id) {
     await supabase.from('follows').update({ status: 'approved' }).eq('id', id)
+    const request = requests.find(r => r.id === id)
+    if (request) {
+      await supabase.from('notifications').insert({
+        recipient_id: request.follower_id,
+        actor_id: session.user.id,
+        type: 'follow_approved',
+      })
+    }
     fetchRequests()
     fetchFeed()
   }
@@ -585,7 +634,6 @@ export default function Feed({ session, onSelectCook, onSelectUser }) {
                   border: '1px solid var(--parchment)', overflow: 'hidden', cursor: 'pointer'
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 16px' }}>
-                    {/* Avatar — tappable to profile */}
                     <div
                       onClick={e => { e.stopPropagation(); onSelectUser && onSelectUser(item.user_id) }}
                       style={{
@@ -597,8 +645,6 @@ export default function Feed({ session, onSelectCook, onSelectUser }) {
                       }}>
                       {(profile?.full_name || profile?.username || '?')[0].toUpperCase()}
                     </div>
-
-                    {/* Name + action */}
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: '13px', color: 'var(--muted)' }}>
                         <span style={{ fontWeight: '600', color: 'var(--ink)' }}>
@@ -610,10 +656,8 @@ export default function Feed({ session, onSelectCook, onSelectUser }) {
                         {new Date(item.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                       </div>
                     </div>
-
                   </div>
 
-                  {/* Recipe row */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '0 16px 14px' }}>
                     <div style={{
                       width: '48px', height: '48px', borderRadius: 'var(--radius-md)',
@@ -632,7 +676,6 @@ export default function Feed({ session, onSelectCook, onSelectUser }) {
                     </div>
                   </div>
 
-                  {/* Like + comment bar */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '10px 16px 12px', borderTop: '1px solid var(--parchment)' }}
                     onClick={e => e.stopPropagation()}>
                     <button onClick={e => toggleFeedLike(e, item)} style={{
@@ -675,9 +718,8 @@ export default function Feed({ session, onSelectCook, onSelectUser }) {
                 background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)',
                 border: '1px solid var(--parchment)', overflow: 'hidden'
               }}>
-                {/* Header */}
                 <div
-                  onClick={() => onSelectUser && onSelectUser(item.user_id)}
+                  onClick={e => { e.stopPropagation(); onSelectUser && onSelectUser(item.user_id) }}
                   style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '14px 16px', cursor: 'pointer' }}
                 >
                   <div style={{
@@ -699,16 +741,10 @@ export default function Feed({ session, onSelectCook, onSelectUser }) {
                   </div>
                 </div>
 
-                {/* Image */}
                 {recipe.image_url && (
-                  <img
-                    src={recipe.image_url}
-                    alt=""
-                    style={{ width: '100%', height: '200px', objectFit: 'cover', display: 'block' }}
-                  />
+                  <img src={recipe.image_url} alt="" style={{ width: '100%', height: '200px', objectFit: 'cover', display: 'block' }} />
                 )}
 
-                {/* Body */}
                 <div style={{ padding: '14px 16px' }}>
                   {v && (
                     <div style={{
@@ -724,7 +760,6 @@ export default function Feed({ session, onSelectCook, onSelectUser }) {
                   )}
                 </div>
 
-                {/* Like + comment bar */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '10px 16px 12px', borderTop: '1px solid var(--parchment)' }}
                   onClick={e => e.stopPropagation()}>
                   <button onClick={e => toggleFeedLike(e, item)} style={{

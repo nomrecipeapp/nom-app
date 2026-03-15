@@ -90,37 +90,59 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
   }
 
   async function toggleLike() {
-    if (liked) {
-      await supabase.from('likes').delete()
-        .eq('target_type', targetType)
-        .eq('target_id', targetId)
-        .eq('user_id', session.user.id)
-      setLiked(false)
-      setLikeCount(c => c - 1)
-    } else {
-      await supabase.from('likes').upsert({
-        user_id: session.user.id,
-        target_type: targetType,
-        target_id: targetId
-      }, { onConflict: 'user_id,target_type,target_id', ignoreDuplicates: true })
-      setLiked(true)
-      setLikeCount(c => c + 1)
-    }
-  }
-
-  async function submitComment() {
-    if (!commentBody.trim()) return
-    setSubmitting(true)
-    await supabase.from('comments').insert({
+  if (liked) {
+    await supabase.from('likes').delete()
+      .eq('target_type', targetType)
+      .eq('target_id', targetId)
+      .eq('user_id', session.user.id)
+    setLiked(false)
+    setLikeCount(c => c - 1)
+  } else {
+    await supabase.from('likes').upsert({
       user_id: session.user.id,
       target_type: targetType,
-      target_id: targetId,
-      body: commentBody.trim()
-    })
-    setCommentBody('')
-    await fetchComments()
-    setSubmitting(false)
+      target_id: targetId
+    }, { onConflict: 'user_id,target_type,target_id', ignoreDuplicates: true })
+    setLiked(true)
+    setLikeCount(c => c + 1)
+    // Notify recipe owner — don't notify yourself
+    if (cook.user_id !== session.user.id) {
+      await supabase.from('notifications').insert({
+        recipient_id: cook.user_id,
+        actor_id: session.user.id,
+        type: 'like',
+        recipe_id: cook.recipe_id,
+        target_type: targetType,
+        target_id: targetId,
+      })
+    }
   }
+}
+
+  async function submitComment() {
+  if (!commentBody.trim()) return
+  setSubmitting(true)
+  await supabase.from('comments').insert({
+    user_id: session.user.id,
+    target_type: targetType,
+    target_id: targetId,
+    body: commentBody.trim()
+  })
+  // Notify recipe owner — don't notify yourself
+  if (cook.user_id !== session.user.id) {
+    await supabase.from('notifications').insert({
+      recipient_id: cook.user_id,
+      actor_id: session.user.id,
+      type: 'comment',
+      recipe_id: cook.recipe_id,
+      target_type: targetType,
+      target_id: targetId,
+    })
+  }
+  setCommentBody('')
+  await fetchComments()
+  setSubmitting(false)
+}
 
   async function fetchCircleCooks() {
     const { data: following } = await supabase
@@ -174,56 +196,79 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
   }
 
   async function saveRecipe() {
-    if (saved || saving) return
-    setSaving(true)
+  if (saved || saving) return
+  setSaving(true)
 
-    const { data: existing } = await supabase
-      .from('recipes')
-      .select('id, title')
-      .eq('user_id', session.user.id)
-      .eq('source_url', recipe.source_url)
-      .maybeSingle()
+  const { data: existing } = await supabase
+    .from('recipes')
+    .select('id, title')
+    .eq('user_id', session.user.id)
+    .eq('source_url', recipe.source_url)
+    .maybeSingle()
 
-    if (existing) {
-      setDuplicate(existing)
-      setSaving(false)
-      return
-    }
-
-    await supabase.from('recipes').insert({
-      user_id: session.user.id,
-      title: recipe.title,
-      source_url: recipe.source_url,
-      source_name: recipe.source_name,
-      image_url: recipe.image_url,
-      cook_time: recipe.cook_time,
-      difficulty: recipe.difficulty,
-      ingredients: recipe.ingredients,
-      instructions: recipe.instructions,
-      status: 'want_to_make'
-    })
+  if (existing) {
+    setDuplicate(existing)
     setSaving(false)
-    setSaved(true)
+    return
   }
+
+  const { data: newRecipe } = await supabase.from('recipes').insert({
+    user_id: session.user.id,
+    title: recipe.title,
+    source_url: recipe.source_url,
+    source_name: recipe.source_name,
+    image_url: recipe.image_url,
+    cook_time: recipe.cook_time,
+    difficulty: recipe.difficulty,
+    ingredients: recipe.ingredients,
+    instructions: recipe.instructions,
+    status: 'want_to_make'
+  }).select().single()
+
+  // Notify the cook's owner
+  if (cook.user_id !== session.user.id) {
+    await supabase.from('notifications').insert({
+      recipient_id: cook.user_id,
+      actor_id: session.user.id,
+      type: 'save',
+      recipe_id: recipe.id,
+      target_type: 'cook',
+      target_id: cook.id,
+    })
+  }
+
+  setSaving(false)
+  setSaved(true)
+}
 
   async function addAnyway() {
-    setDuplicate(null)
-    setSaving(true)
-    await supabase.from('recipes').insert({
-      user_id: session.user.id,
-      title: recipe.title,
-      source_url: recipe.source_url,
-      source_name: recipe.source_name,
-      image_url: recipe.image_url,
-      cook_time: recipe.cook_time,
-      difficulty: recipe.difficulty,
-      ingredients: recipe.ingredients,
-      instructions: recipe.instructions,
-      status: 'want_to_make'
+  setDuplicate(null)
+  setSaving(true)
+  await supabase.from('recipes').insert({
+    user_id: session.user.id,
+    title: recipe.title,
+    source_url: recipe.source_url,
+    source_name: recipe.source_name,
+    image_url: recipe.image_url,
+    cook_time: recipe.cook_time,
+    difficulty: recipe.difficulty,
+    ingredients: recipe.ingredients,
+    instructions: recipe.instructions,
+    status: 'want_to_make'
+  })
+  if (cook.user_id !== session.user.id) {
+    await supabase.from('notifications').insert({
+      recipient_id: cook.user_id,
+      actor_id: session.user.id,
+      type: 'save',
+      recipe_id: recipe.id,
+      target_type: 'cook',
+      target_id: cook.id,
     })
-    setSaving(false)
-    setSaved(true)
   }
+  setSaving(false)
+  setSaved(true)
+}
 
   if (!recipe) return null
 

@@ -339,14 +339,19 @@ const [selectedRecipe, setSelectedRecipe] = useState(null)
   }
 
   async function sendFollowRequest() {
-    await supabase.from('follows').insert({
-      follower_id: session.user.id,
-      following_id: userId,
-      status: 'pending'
-    })
-    setFollowStatus('pending')
-  }
-
+  await supabase.from('follows').insert({
+    follower_id: session.user.id,
+    following_id: userId,
+    status: 'pending'
+  })
+  setFollowStatus('pending')
+  // Notify the person being requested
+  await supabase.from('notifications').insert({
+    recipient_id: userId,
+    actor_id: session.user.id,
+    type: 'follow_request',
+  })
+}
   async function unfollow() {
     if (!confirm('Unfollow this cook?')) return
     await supabase.from('follows')

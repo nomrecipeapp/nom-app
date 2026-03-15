@@ -37,13 +37,19 @@ export default function Search({ session, onSelectUser }) {
   }
 
   async function sendFollowRequest(userId) {
-    await supabase.from('follows').insert({
-      follower_id: session.user.id,
-      following_id: userId,
-      status: 'pending'
-    })
-    setFollowStates(s => ({ ...s, [userId]: 'pending' }))
-  }
+  await supabase.from('follows').insert({
+    follower_id: session.user.id,
+    following_id: userId,
+    status: 'pending'
+  })
+  setFollowStates(s => ({ ...s, [userId]: 'pending' }))
+  // Notify the person being requested
+  await supabase.from('notifications').insert({
+    recipient_id: userId,
+    actor_id: session.user.id,
+    type: 'follow_request',
+  })
+}
 
   async function unfollow(userId) {
     await supabase.from('follows')
