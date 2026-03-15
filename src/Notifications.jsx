@@ -121,7 +121,7 @@ export default function Notifications({ session, onSelectUser, onSelectCook, onC
 
   return (
     <div style={{
-      position: 'fixed', inset: 0, zIndex: 200,
+      position: 'fixed', inset: 0, zIndex: 90,
       background: 'var(--cream)',
       maxWidth: '480px', margin: '0 auto',
       display: 'flex', flexDirection: 'column',
