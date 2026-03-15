@@ -212,7 +212,7 @@ function FriendRecipeDetail({ recipe, session, onBack }) {
   )
 }
 
-export default function FriendProfile({ userId, session, onBack, onSelectCook }) {
+export default function FriendProfile({ userId, session, onBack, onSelectCook, onViewFollowList }) {
   const [profile, setProfile] = useState(null)
   const [cooks, setCooks] = useState([])
   const [allRecipes, setAllRecipes] = useState([])
@@ -226,11 +226,23 @@ export default function FriendProfile({ userId, session, onBack, onSelectCook })
   const [cookbookFilter, setCookbookFilter] = useState('All')
 const [selectedRecipe, setSelectedRecipe] = useState(null)
   const [cookbookSort, setCookbookSort] = useState('date')
+  const [followCounts, setFollowCounts] = useState({ following: 0, followers: 0 })
 
   useEffect(() => {
     fetchProfile()
     fetchFollowStatus()
+    fetchFollowCounts()
   }, [userId])
+
+  async function fetchFollowCounts() {
+    const { count: followingCount } = await supabase
+      .from('follows').select('*', { count: 'exact', head: true })
+      .eq('follower_id', userId).eq('status', 'approved')
+    const { count: followersCount } = await supabase
+      .from('follows').select('*', { count: 'exact', head: true })
+      .eq('following_id', userId).eq('status', 'approved')
+    setFollowCounts({ following: followingCount || 0, followers: followersCount || 0 })
+  }
 
   useEffect(() => {
     if (followStatus === 'approved') {
@@ -478,10 +490,18 @@ const [selectedRecipe, setSelectedRecipe] = useState(null)
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: '700', color: 'var(--ink)' }}>{stats.saved}</div>
                 <div style={{ fontSize: '10px', color: 'var(--muted)', marginTop: '2px' }}>Saved</div>
               </div>
-              <div style={{ flex: 1, padding: '12px 0', textAlign: 'center' }}>
+              <div style={{ flex: 1, padding: '12px 0', textAlign: 'center', borderRight: '1px solid var(--parchment)' }}>
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: '700', color: 'var(--ink)' }}>{stats.cooked}</div>
                 <div style={{ fontSize: '10px', color: 'var(--muted)', marginTop: '2px' }}>Cooked</div>
               </div>
+              <button onClick={() => onViewFollowList && onViewFollowList(userId, 'following')} style={{ flex: 1, padding: '12px 0', textAlign: 'center', background: 'none', border: 'none', borderRight: '1px solid var(--parchment)', cursor: 'pointer' }}>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: '700', color: 'var(--ink)' }}>{followCounts.following}</div>
+                <div style={{ fontSize: '10px', color: 'var(--muted)', marginTop: '2px' }}>Following</div>
+              </button>
+              <button onClick={() => onViewFollowList && onViewFollowList(userId, 'followers')} style={{ flex: 1, padding: '12px 0', textAlign: 'center', background: 'none', border: 'none', cursor: 'pointer' }}>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: '700', color: 'var(--ink)' }}>{followCounts.followers}</div>
+                <div style={{ fontSize: '10px', color: 'var(--muted)', marginTop: '2px' }}>Followers</div>
+              </button>
             </div>
           )}
         </div>

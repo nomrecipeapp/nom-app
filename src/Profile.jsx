@@ -40,7 +40,7 @@ function RecipeThumbnailSmall({ recipe, dashed }) {
   return <RecipeInitial title={recipe.title} dashed={dashed} />
 }
 
-export default function Profile({ session, onBack, onSelectRecipe }) {
+export default function Profile({ session, onBack, onSelectRecipe, onViewFollowList }) {
   const [profile, setProfile] = useState({ full_name: '', username: '' })
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -277,14 +277,14 @@ export default function Profile({ session, onBack, onSelectRecipe }) {
             <div style={{ fontSize: '12px', color: 'var(--muted)', marginBottom: '16px' }}>@{profile.username}</div>
           )}
           <div style={{ display: 'flex', gap: '32px', textAlign: 'center' }}>
-            <div>
+            <button onClick={() => onViewFollowList('following')} style={{ background: 'none', border: 'none', cursor: 'pointer', textAlign: 'center', padding: 0 }}>
               <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: '700', color: 'var(--ink)' }}>{following}</div>
               <div style={{ fontSize: '11px', color: 'var(--muted)' }}>Following</div>
-            </div>
-            <div>
+            </button>
+            <button onClick={() => onViewFollowList('followers')} style={{ background: 'none', border: 'none', cursor: 'pointer', textAlign: 'center', padding: 0 }}>
               <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: '700', color: 'var(--ink)' }}>{followers}</div>
               <div style={{ fontSize: '11px', color: 'var(--muted)' }}>Followers</div>
-            </div>
+            </button>
           </div>
         </div>
 

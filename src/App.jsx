@@ -14,6 +14,7 @@ import Notifications from './Notifications'
 import FriendRecipeDetail from './FriendRecipeDetail'
 import './index.css'
 import ResetPassword from './ResetPassword'
+import FollowList from './FollowList'
 
 export default function App() {
   const [session, setSession] = useState(null)
@@ -30,6 +31,8 @@ export default function App() {
   const [selectedPost, setSelectedPost] = useState(null)
   const [selectedSaveRecipe, setSelectedSaveRecipe] = useState(null)
   const [selectedSaveScrollToComments, setSelectedSaveScrollToComments] = useState(false)
+  const [followListUserId, setFollowListUserId] = useState(null)
+  const [followListType, setFollowListType] = useState('following')
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -133,6 +136,13 @@ export default function App() {
     }
   }
 
+  function goToFollowList(userId, type) {
+  setPrevScreen(screen)
+  setFollowListUserId(userId)
+  setFollowListType(type)
+  setScreen('followList')
+  }
+
   function goToPost(item) {
     setPrevScreen(screen)
     setSelectedPost(item)
@@ -216,6 +226,7 @@ export default function App() {
           session={session}
           onBack={() => setScreen(prevScreen)}
           onSelectRecipe={(recipe) => { setSelectedRecipe(recipe); setScreen('recipe') }}
+          onViewFollowList={(type) => goToFollowList(session.user.id, type)}
         />
       )}
 
@@ -265,6 +276,17 @@ export default function App() {
           session={session}
           onBack={() => setScreen(prevScreen)}
           onSelectCook={goToSocialRecipe}
+          onViewFollowList={(userId, type) => goToFollowList(userId, type)}
+        />
+      )}
+
+      {screen === 'followList' && followListUserId && (
+        <FollowList
+            userId={followListUserId}
+            type={followListType}
+            session={session}
+            onBack={() => setScreen(prevScreen)}
+            onSelectUser={goToFriendProfile}
         />
       )}
 
@@ -282,6 +304,7 @@ export default function App() {
         <Search
           session={session}
           onSelectUser={goToFriendProfile}
+          onSelectSave={goToFriendRecipeDetail}
         />
       )}
 
@@ -335,7 +358,7 @@ export default function App() {
               <circle cx="11" cy="11" r="7" stroke={screen === 'search' ? 'var(--clay)' : 'var(--muted)'} strokeWidth="1.8"/>
               <path d="M16.5 16.5L21 21" stroke={screen === 'search' ? 'var(--clay)' : 'var(--muted)'} strokeWidth="1.8" strokeLinecap="round"/>
             </svg>
-            <span style={{ fontSize: '10px', fontWeight: '600', color: screen === 'search' ? 'var(--clay)' : 'var(--muted)' }}>Find Cooks</span>
+            <span style={{ fontSize: '10px', fontWeight: '600', color: screen === 'search' ? 'var(--clay)' : 'var(--muted)' }}>Explore</span>
           </button>
 
           <button onClick={() => setScreen('add')} style={{

@@ -1,6 +1,19 @@
 import { useState } from 'react'
 import { supabase } from './supabase'
 
+const verdictOptions = [
+  { value: 'would_make_again', label: 'Would Make Again', sub: 'A keeper', bg: '#EEF4E5', border: '#7A8C6E', color: '#4A5E42' },
+  { value: 'it_was_fine', label: 'It Was Fine', sub: 'No regrets, no encore', bg: '#FBF0E6', border: '#E8A87C', color: '#C4713A' },
+  { value: 'never_again', label: 'Never Again', sub: 'Duly noted', bg: '#F4E8E8', border: '#C47070', color: '#9B4040' },
+]
+
+const nuanceCategories = [
+  { key: 'flavor', label: 'Flavor' },
+  { key: 'effort', label: 'Effort vs. Reward' },
+  { key: 'would_share', label: 'Would Share' },
+  { key: 'true_to_recipe', label: 'True to Recipe' },
+]
+
 export default function AddRecipe({ session, onSave, onCancel }) {
   const [mode, setMode] = useState('url')
   const [url, setUrl] = useState('')
@@ -8,6 +21,11 @@ export default function AddRecipe({ session, onSave, onCancel }) {
   const [error, setError] = useState(null)
   const [recipe, setRecipe] = useState(null)
   const [duplicate, setDuplicate] = useState(null)
+
+  // Verdict state
+  const [verdict, setVerdict] = useState(null)
+  const [scores, setScores] = useState({ flavor: 0, effort: 0, would_share: 0, true_to_recipe: 0 })
+  const [cookNotes, setCookNotes] = useState('')
 
   // Manual form fields
   const [title, setTitle] = useState('')
@@ -79,22 +97,36 @@ export default function AddRecipe({ session, onSave, onCancel }) {
   }
 
   async function saveRecipe(recipeData) {
+    if (recipeData.logCookNow && !verdict) {
+      setError('Please select a verdict before saving.')
+      return
+    }
     setLoading(true)
     const { logCookNow, ...cleanRecipe } = recipeData
-    const { data: saved, error } = await supabase
+    const { data: saved, error: saveError } = await supabase
       .from('recipes')
       .insert({
         user_id: session.user.id,
         ...cleanRecipe,
         tags: cleanRecipe.tags || [],
-        status: logCookNow ? 'cooked' : 'want_to_make'
+        status: logCookNow ? (verdict === 'never_again' ? 'never_again' : 'cooked') : 'want_to_make'
       })
       .select()
       .single()
 
-    if (error) { setError(error.message); setLoading(false); return }
+    if (saveError) { setError(saveError.message); setLoading(false); return }
 
     if (logCookNow && saved) {
+      await supabase.from('cooks').insert({
+        user_id: session.user.id,
+        recipe_id: saved.id,
+        verdict,
+        flavor: scores.flavor || null,
+        effort: scores.effort || null,
+        would_share: scores.would_share || null,
+        true_to_recipe: scores.true_to_recipe || null,
+        notes: cookNotes || null
+      })
       onSave(saved, true)
     } else {
       onSave()
@@ -113,41 +145,28 @@ export default function AddRecipe({ session, onSave, onCancel }) {
       difficulty,
       ingredients,
       instructions,
-      notes
+      notes,
+      logCookNow: false
     })
   }
 
   const inputStyle = {
-    width: '100%',
-    padding: '10px 14px',
-    border: '1.5px solid var(--tan)',
-    borderRadius: 'var(--radius-md)',
-    background: 'var(--cream)',
-    fontFamily: 'var(--font-body)',
-    fontSize: '14px',
-    color: 'var(--ink)',
-    outline: 'none',
-    boxSizing: 'border-box'
+    width: '100%', padding: '10px 14px',
+    border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-md)',
+    background: 'var(--cream)', fontFamily: 'var(--font-body)',
+    fontSize: '14px', color: 'var(--ink)', outline: 'none', boxSizing: 'border-box'
   }
 
   const labelStyle = {
-    display: 'block',
-    fontSize: '12px',
-    fontWeight: '600',
-    color: 'var(--charcoal)',
-    marginBottom: '6px',
-    letterSpacing: '0.04em'
+    display: 'block', fontSize: '12px', fontWeight: '600',
+    color: 'var(--charcoal)', marginBottom: '6px', letterSpacing: '0.04em'
   }
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--cream)', padding: '24px', paddingBottom: '60px' }}>
       <div style={{ maxWidth: '480px', margin: '0 auto' }}>
 
-        {/* Header */}
-        <div style={{
-          display: 'flex', alignItems: 'center',
-          justifyContent: 'space-between', marginBottom: '32px'
-        }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '32px' }}>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: '24px', fontWeight: '500', color: 'var(--ink)' }}>Add Recipe</div>
           <button onClick={onCancel} style={{
             padding: '8px 16px', background: 'transparent', color: 'var(--muted)',
@@ -156,16 +175,11 @@ export default function AddRecipe({ session, onSave, onCancel }) {
           }}>Cancel</button>
         </div>
 
-        {/* Mode toggle */}
         {!recipe && (
-          <div style={{
-            display: 'flex', background: 'var(--parchment)',
-            borderRadius: 'var(--radius-pill)', padding: '4px', marginBottom: '28px'
-          }}>
+          <div style={{ display: 'flex', background: 'var(--parchment)', borderRadius: 'var(--radius-pill)', padding: '4px', marginBottom: '28px' }}>
             {['url', 'manual'].map(m => (
               <button key={m} onClick={() => { setMode(m); setError(null); setDuplicate(null) }} style={{
-                flex: 1, padding: '8px', border: 'none',
-                borderRadius: 'var(--radius-pill)',
+                flex: 1, padding: '8px', border: 'none', borderRadius: 'var(--radius-pill)',
                 background: mode === m ? 'var(--clay)' : 'transparent',
                 color: mode === m ? 'var(--cream)' : 'var(--muted)',
                 fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '600',
@@ -179,55 +193,23 @@ export default function AddRecipe({ session, onSave, onCancel }) {
 
         {/* URL Import */}
         {mode === 'url' && !recipe && (
-          <div style={{
-            background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)',
-            border: '1px solid var(--parchment)', padding: '28px'
-          }}>
+          <div style={{ background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--parchment)', padding: '28px' }}>
             <label style={labelStyle}>Recipe URL</label>
-            <input
-              type="url" value={url}
-              onChange={e => { setUrl(e.target.value); setDuplicate(null) }}
-              placeholder="https://www.seriouseats.com/..."
-              style={{ ...inputStyle, marginBottom: '16px' }}
-            />
+            <input type="url" value={url} onChange={e => { setUrl(e.target.value); setDuplicate(null) }}
+              placeholder="https://www.seriouseats.com/..." style={{ ...inputStyle, marginBottom: '16px' }} />
 
             {duplicate && (
-              <div style={{
-                background: '#FBF0E6', border: '1px solid #E8A87C',
-                borderRadius: 'var(--radius-md)', padding: '12px 14px', marginBottom: '16px'
-              }}>
-                <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--clay)', marginBottom: '4px' }}>
-                  Already in your Cookbook
-                </div>
-                <div style={{ fontSize: '12px', color: 'var(--charcoal)', marginBottom: '10px' }}>
-                  "{duplicate.title}" is already saved. You can still add it again if you want a separate copy.
-                </div>
+              <div style={{ background: '#FBF0E6', border: '1px solid #E8A87C', borderRadius: 'var(--radius-md)', padding: '12px 14px', marginBottom: '16px' }}>
+                <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--clay)', marginBottom: '4px' }}>Already in your Cookbook</div>
+                <div style={{ fontSize: '12px', color: 'var(--charcoal)', marginBottom: '10px' }}>"{duplicate.title}" is already saved.</div>
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <button onClick={onCancel} style={{
-                    flex: 1, padding: '8px',
-                    background: 'var(--clay)', color: 'var(--cream)',
-                    border: 'none', borderRadius: 'var(--radius-pill)',
-                    fontFamily: 'var(--font-body)', fontSize: '12px',
-                    fontWeight: '600', cursor: 'pointer'
-                  }}>Go to Cookbook</button>
-                  <button onClick={() => { setDuplicate(null); importFromUrl() }} style={{
-                    flex: 1, padding: '8px',
-                    background: 'transparent', color: 'var(--muted)',
-                    border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-pill)',
-                    fontFamily: 'var(--font-body)', fontSize: '12px',
-                    fontWeight: '600', cursor: 'pointer'
-                  }}>Add Anyway</button>
+                  <button onClick={onCancel} style={{ flex: 1, padding: '8px', background: 'var(--clay)', color: 'var(--cream)', border: 'none', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}>Go to Cookbook</button>
+                  <button onClick={() => { setDuplicate(null); importFromUrl() }} style={{ flex: 1, padding: '8px', background: 'transparent', color: 'var(--muted)', border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}>Add Anyway</button>
                 </div>
               </div>
             )}
 
-            {error && (
-              <div style={{
-                background: '#FDE8E8', border: '1px solid #F5C0C0',
-                borderRadius: 'var(--radius-md)', padding: '10px 14px',
-                fontSize: '13px', color: '#B85252', marginBottom: '16px'
-              }}>{error}</div>
-            )}
+            {error && <div style={{ background: '#FDE8E8', border: '1px solid #F5C0C0', borderRadius: 'var(--radius-md)', padding: '10px 14px', fontSize: '13px', color: '#B85252', marginBottom: '16px' }}>{error}</div>}
 
             {!duplicate && (
               <button onClick={importFromUrl} disabled={loading || !url} style={{
@@ -238,32 +220,16 @@ export default function AddRecipe({ session, onSave, onCancel }) {
                 cursor: loading || !url ? 'not-allowed' : 'pointer'
               }}>{loading ? 'Fetching recipe...' : 'Import Recipe'}</button>
             )}
-
-            {loading && (
-              <div style={{ textAlign: 'center', marginTop: '12px', fontSize: '12px', color: 'var(--muted)' }}>
-                Parsing ingredients & instructions...
-              </div>
-            )}
           </div>
         )}
 
         {/* Review imported recipe */}
-       {/* Review imported recipe */}
         {recipe && (
-          <div style={{
-            background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)',
-            border: '1px solid var(--parchment)', padding: '28px'
-          }}>
-            <div style={{
-              fontSize: '11px', fontWeight: '600', letterSpacing: '0.12em',
-              textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '20px'
-            }}>Review & Save</div>
+          <div style={{ background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--parchment)', padding: '28px' }}>
+            <div style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '20px' }}>Review & Save</div>
 
             {recipe.image_url && (
-              <div style={{
-                height: '160px', borderRadius: 'var(--radius-md)',
-                overflow: 'hidden', marginBottom: '16px', background: 'var(--parchment)'
-              }}>
+              <div style={{ height: '160px', borderRadius: 'var(--radius-md)', overflow: 'hidden', marginBottom: '16px', background: 'var(--parchment)' }}>
                 <img src={recipe.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               </div>
             )}
@@ -319,15 +285,11 @@ export default function AddRecipe({ session, onSave, onCancel }) {
                     )
                   })}
                 </div>
-                <input
-                  placeholder="+ Add custom tag"
-                  style={{ ...inputStyle, fontSize: '13px' }}
+                <input placeholder="+ Add custom tag" style={{ ...inputStyle, fontSize: '13px' }}
                   onKeyDown={e => {
                     if (e.key === 'Enter' && e.target.value.trim()) {
                       const newTag = e.target.value.trim()
-                      if (!(recipe.tags || []).includes(newTag)) {
-                        setRecipe({ ...recipe, tags: [...(recipe.tags || []), newTag] })
-                      }
+                      if (!(recipe.tags || []).includes(newTag)) setRecipe({ ...recipe, tags: [...(recipe.tags || []), newTag] })
                       e.target.value = ''
                     }
                   }}
@@ -343,22 +305,14 @@ export default function AddRecipe({ session, onSave, onCancel }) {
               <div>
                 <label style={labelStyle}>
                   Ingredients
-                  {recipe.ingredients ? (
-                    <span style={{ marginLeft: '8px', fontSize: '10px', color: 'var(--forest)', fontWeight: '700', letterSpacing: '0.06em' }}>✓ IMPORTED</span>
-                  ) : (
-                    <span style={{ marginLeft: '8px', fontSize: '10px', color: 'var(--muted)', fontWeight: '500' }}>not found — add manually</span>
-                  )}
+                  {recipe.ingredients ? <span style={{ marginLeft: '8px', fontSize: '10px', color: 'var(--forest)', fontWeight: '700', letterSpacing: '0.06em' }}>✓ IMPORTED</span> : <span style={{ marginLeft: '8px', fontSize: '10px', color: 'var(--muted)', fontWeight: '500' }}>not found — add manually</span>}
                 </label>
                 <textarea value={recipe.ingredients || ''} onChange={e => setRecipe({...recipe, ingredients: e.target.value})} placeholder="One ingredient per line..." rows={5} style={{ ...inputStyle, resize: 'vertical' }} />
               </div>
               <div>
                 <label style={labelStyle}>
                   Instructions
-                  {recipe.instructions ? (
-                    <span style={{ marginLeft: '8px', fontSize: '10px', color: 'var(--forest)', fontWeight: '700', letterSpacing: '0.06em' }}>✓ IMPORTED</span>
-                  ) : (
-                    <span style={{ marginLeft: '8px', fontSize: '10px', color: 'var(--muted)', fontWeight: '500' }}>not found — add manually</span>
-                  )}
+                  {recipe.instructions ? <span style={{ marginLeft: '8px', fontSize: '10px', color: 'var(--forest)', fontWeight: '700', letterSpacing: '0.06em' }}>✓ IMPORTED</span> : <span style={{ marginLeft: '8px', fontSize: '10px', color: 'var(--muted)', fontWeight: '500' }}>not found — add manually</span>}
                 </label>
                 <textarea value={recipe.instructions || ''} onChange={e => setRecipe({...recipe, instructions: e.target.value})} placeholder="Steps..." rows={5} style={{ ...inputStyle, resize: 'vertical' }} />
               </div>
@@ -367,37 +321,78 @@ export default function AddRecipe({ session, onSave, onCancel }) {
                 <textarea value={recipe.notes} onChange={e => setRecipe({...recipe, notes: e.target.value})} placeholder="Anything you want to remember..." rows={3} style={{ ...inputStyle, resize: 'vertical' }} />
               </div>
 
-              {/* Log a Cook option */}
-              <div style={{
-                background: 'var(--parchment)', borderRadius: 'var(--radius-md)',
-                padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between'
-              }}>
+              {/* Log a Cook toggle */}
+              <div style={{ background: 'var(--parchment)', borderRadius: 'var(--radius-md)', padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div>
                   <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--ink)', marginBottom: '2px' }}>Already made this?</div>
                   <div style={{ fontSize: '12px', color: 'var(--muted)' }}>Log a cook right away</div>
                 </div>
-                <button onClick={() => setRecipe({ ...recipe, logCookNow: !recipe.logCookNow })} style={{
+                <button onClick={() => { setRecipe({ ...recipe, logCookNow: !recipe.logCookNow }); setVerdict(null); setScores({ flavor: 0, effort: 0, would_share: 0, true_to_recipe: 0 }); setCookNotes('') }} style={{
                   width: '44px', height: '26px', borderRadius: '13px', border: 'none',
                   background: recipe.logCookNow ? 'var(--clay)' : 'var(--tan)',
                   cursor: 'pointer', position: 'relative', transition: 'background 0.2s', flexShrink: 0
                 }}>
-                  <div style={{
-                    position: 'absolute', top: '3px',
-                    left: recipe.logCookNow ? '21px' : '3px',
-                    width: '20px', height: '20px', borderRadius: '50%',
-                    background: 'white', transition: 'left 0.2s'
-                  }} />
+                  <div style={{ position: 'absolute', top: '3px', left: recipe.logCookNow ? '21px' : '3px', width: '20px', height: '20px', borderRadius: '50%', background: 'white', transition: 'left 0.2s' }} />
                 </button>
               </div>
+
+              {/* Verdict UI — shown when logCookNow is on */}
+              {recipe.logCookNow && (
+                <div style={{ background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--parchment)', padding: '20px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                  <div>
+                    <div style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '12px' }}>The Verdict</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {verdictOptions.map(v => (
+                        <button key={v.value} onClick={() => setVerdict(v.value)} style={{
+                          padding: '12px 16px', borderRadius: 'var(--radius-md)',
+                          border: `2px solid ${verdict === v.value ? v.border : 'var(--parchment)'}`,
+                          background: verdict === v.value ? v.bg : 'var(--cream)',
+                          cursor: 'pointer', textAlign: 'left', transition: 'all 0.15s'
+                        }}>
+                          <div style={{ fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: '500', color: verdict === v.value ? v.color : 'var(--ink)' }}>{v.label}</div>
+                          <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '2px' }}>{v.sub}</div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '12px' }}>Nuance Scores</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      {nuanceCategories.map(cat => (
+                        <div key={cat.key} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <span style={{ fontSize: '12px', fontWeight: '500', color: 'var(--charcoal)', width: '120px', flexShrink: 0 }}>{cat.label}</span>
+                          <div style={{ display: 'flex', gap: '5px', flex: 1 }}>
+                            {[1,2,3,4,5].map(n => (
+                              <button key={n} onClick={() => setScores(s => ({...s, [cat.key]: n}))} style={{
+                                width: '30px', height: '30px', borderRadius: '50%',
+                                border: `2px solid ${scores[cat.key] >= n ? 'var(--clay)' : 'var(--tan)'}`,
+                                background: scores[cat.key] >= n ? 'var(--clay)' : 'transparent',
+                                color: scores[cat.key] >= n ? 'var(--cream)' : 'var(--muted)',
+                                fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: '600',
+                                cursor: 'pointer', transition: 'all 0.15s'
+                              }}>{n}</button>
+                            ))}
+                          </div>
+                          <span style={{ fontFamily: 'var(--font-display)', fontSize: '13px', fontWeight: '700', color: 'var(--clay)', width: '28px', textAlign: 'right' }}>
+                            {scores[cat.key] > 0 ? `${scores[cat.key]}/5` : '—'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={labelStyle}>Cook Notes</label>
+                    <textarea value={cookNotes} onChange={e => setCookNotes(e.target.value)}
+                      placeholder="What did you tweak? Would you change anything?" rows={3}
+                      style={{ ...inputStyle, resize: 'vertical' }} />
+                  </div>
+                </div>
+              )}
             </div>
 
-            {error && (
-              <div style={{
-                background: '#FDE8E8', border: '1px solid #F5C0C0',
-                borderRadius: 'var(--radius-md)', padding: '10px 14px',
-                fontSize: '13px', color: '#B85252', margin: '16px 0'
-              }}>{error}</div>
-            )}
+            {error && <div style={{ background: '#FDE8E8', border: '1px solid #F5C0C0', borderRadius: 'var(--radius-md)', padding: '10px 14px', fontSize: '13px', color: '#B85252', margin: '16px 0' }}>{error}</div>}
 
             <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
               <button onClick={() => setRecipe(null)} style={{
@@ -418,10 +413,7 @@ export default function AddRecipe({ session, onSave, onCancel }) {
 
         {/* Manual entry */}
         {mode === 'manual' && !recipe && (
-          <div style={{
-            background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)',
-            border: '1px solid var(--parchment)', padding: '28px'
-          }}>
+          <div style={{ background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--parchment)', padding: '28px' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div>
                 <label style={labelStyle}>Title *</label>
@@ -464,13 +456,7 @@ export default function AddRecipe({ session, onSave, onCancel }) {
               </div>
             </div>
 
-            {error && (
-              <div style={{
-                background: '#FDE8E8', border: '1px solid #F5C0C0',
-                borderRadius: 'var(--radius-md)', padding: '10px 14px',
-                fontSize: '13px', color: '#B85252', margin: '16px 0'
-              }}>{error}</div>
-            )}
+            {error && <div style={{ background: '#FDE8E8', border: '1px solid #F5C0C0', borderRadius: 'var(--radius-md)', padding: '10px 14px', fontSize: '13px', color: '#B85252', margin: '16px 0' }}>{error}</div>}
 
             <button onClick={handleManualSave} disabled={loading} style={{
               width: '100%', padding: '13px',
@@ -481,7 +467,6 @@ export default function AddRecipe({ session, onSave, onCancel }) {
             }}>{loading ? 'Saving...' : 'Save to My Cookbook'}</button>
           </div>
         )}
-
       </div>
     </div>
   )
