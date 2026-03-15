@@ -84,28 +84,26 @@ export default function Notifications({ session, onSelectUser, onSelectCook, onC
   }
 
   async function handleTap(n) {
-    if (n.type === 'follow_request' || n.type === 'follow_approved') {
-      onSelectUser(n.actor_id)
-      onClose()
-    } else if ((n.type === 'like' || n.type === 'comment') && n.target_id && n.target_type === 'cook') {
-      // Fetch the cook with recipe + profile so onSelectCook works
-      const { data: cook } = await supabase
-        .from('cooks')
-        .select('*, recipes(*)')
-        .eq('id', n.target_id)
+  if (n.type === 'follow_request' || n.type === 'follow_approved') {
+    onClose()
+    setTimeout(() => onSelectUser(n.actor_id), 50)
+  } else if ((n.type === 'like' || n.type === 'comment') && n.target_id && n.target_type === 'cook') {
+    const { data: cook } = await supabase
+      .from('cooks')
+      .select('*, recipes(*)')
+      .eq('id', n.target_id)
+      .single()
+    if (cook) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id, full_name, username')
+        .eq('id', cook.user_id)
         .single()
-      if (cook) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('id, full_name, username')
-          .eq('id', cook.user_id)
-          .single()
-        onSelectCook({ ...cook, profiles: profile }, n.type === 'comment')
-        onClose()
-      }
+      onClose()
+      setTimeout(() => onSelectCook({ ...cook, profiles: profile }, n.type === 'comment'), 50)
     }
-    // save notifications — no deep link needed yet
   }
+}
 
   function timeAgo(ts) {
     const diff = Date.now() - new Date(ts).getTime()
