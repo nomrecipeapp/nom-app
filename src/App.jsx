@@ -30,6 +30,7 @@ export default function App() {
   const [unreadCount, setUnreadCount] = useState(0)
   const [selectedPost, setSelectedPost] = useState(null)
   const [selectedSaveRecipe, setSelectedSaveRecipe] = useState(null)
+  const [recipeBackScreen, setRecipeBackScreen] = useState('cookbook')
   const [selectedSaveScrollToComments, setSelectedSaveScrollToComments] = useState(false)
   const [followListUserId, setFollowListUserId] = useState(null)
   const [followListType, setFollowListType] = useState('following')
@@ -130,7 +131,7 @@ export default function App() {
       .eq('id', recipeId)
       .single()
     if (data) {
-      setPrevScreen(screen)
+      setRecipeBackScreen(screen)
       setSelectedRecipe(data)
       setScreen('recipe')
     }
@@ -211,6 +212,7 @@ export default function App() {
           session={session}
           onSave={(recipe, logCookNow) => {
             if (logCookNow && recipe) {
+              setRecipeBackScreen('cookbook')
               setSelectedRecipe(recipe)
               setScreen('recipe')
             } else {
@@ -225,8 +227,7 @@ export default function App() {
         <Profile
           session={session}
           onBack={() => setScreen(prevScreen)}
-          onSelectRecipe={(recipe) => { setPrevScreen('profile'); setSelectedRecipe(recipe); setScreen('recipe') }}
-          onViewFollowList={(type) => goToFollowList(session.user.id, type)}
+          onSelectRecipe={(recipe) => { setRecipeBackScreen('profile'); setSelectedRecipe(recipe); setScreen('recipe') }}          onViewFollowList={(type) => goToFollowList(session.user.id, type)}
         />
       )}
 
@@ -234,7 +235,7 @@ export default function App() {
         <RecipeDetail
           recipe={selectedRecipe}
           session={session}
-          onBack={() => setScreen(prevScreen)}
+          onBack={() => setScreen(recipeBackScreen)}
           onUpdate={async () => {
             const { data } = await supabase
               .from('recipes')
@@ -313,7 +314,7 @@ export default function App() {
           session={session}
           onAddRecipe={() => setScreen('add')}
           onSelectRecipe={(recipe) => {
-            setPrevScreen('cookbook')
+            setRecipeBackScreen('cookbook')
             setSelectedRecipe(recipe)
             setScreen('recipe')
           }}
