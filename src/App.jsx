@@ -11,9 +11,9 @@ import Feed from './Feed'
 import Search from './Search'
 import FriendProfile from './FriendProfile'
 import Notifications from './Notifications'
+import FriendRecipeDetail from './FriendRecipeDetail'
 import './index.css'
 import ResetPassword from './ResetPassword'
-import FriendRecipeDetail from './FriendRecipeDetail'
 
 export default function App() {
   const [session, setSession] = useState(null)
@@ -58,7 +58,6 @@ export default function App() {
     return () => subscription.unsubscribe()
   }, [])
 
-  // Poll unread count every 30s
   useEffect(() => {
     if (!session) return
     fetchUnreadCount(session.user.id)
@@ -97,6 +96,11 @@ export default function App() {
   }
 
   function goToFriendProfile(userId) {
+    if (session && userId === session.user.id) {
+      setPrevScreen(screen)
+      setScreen('profile')
+      return
+    }
     setPrevScreen(screen)
     setSelectedUserId(userId)
     setScreen('friendProfile')
@@ -109,18 +113,14 @@ export default function App() {
     setScreen('socialRecipe')
   }
 
-function goToFriendProfile(userId) {
-  if (userId === session.user.id) {
+  function goToFriendRecipeDetail(recipe, toComments = false) {
     setPrevScreen(screen)
-    setScreen('profile')
-    return
-  }
-  setPrevScreen(screen)
-  setSelectedUserId(userId)
-  setScreen('friendProfile')
+    setSelectedSaveRecipe(recipe)
+    setSelectedSaveScrollToComments(toComments)
+    setScreen('friendRecipeDetail')
   }
 
- async function goToRecipeFromId(recipeId) {
+  async function goToRecipeFromId(recipeId) {
     const { data } = await supabase
       .from('recipes')
       .select('*')
@@ -148,7 +148,6 @@ function goToFriendProfile(userId) {
 
   return (
     <>
-      {/* Bell icon — top right, always visible except on add screen */}
       {!hideNav && (
         <div style={{
           position: 'fixed', top: '14px', right: '20px',
@@ -190,9 +189,9 @@ function goToFriendProfile(userId) {
       {screen === 'notifications' && (
         <Notifications
           session={session}
-          onSelectUser={(userId) => { goToFriendProfile(userId) }}
-          onSelectCook={(cook, toComments) => { goToSocialRecipe(cook, toComments) }}
-          onSelectSaveCard={(recipe, toComments) => { goToFriendRecipeDetail(recipe, toComments) }}
+          onSelectUser={goToFriendProfile}
+          onSelectCook={(cook, toComments) => goToSocialRecipe(cook, toComments)}
+          onSelectSaveCard={(recipe, toComments) => goToFriendRecipeDetail(recipe, toComments)}
           onClose={() => { setScreen(prevScreen); fetchUnreadCount(session.user.id) }}
         />
       )}
@@ -215,7 +214,7 @@ function goToFriendProfile(userId) {
       {screen === 'profile' && (
         <Profile
           session={session}
-          onBack={() => setScreen('feed')}
+          onBack={() => setScreen(prevScreen)}
           onSelectRecipe={(recipe) => { setSelectedRecipe(recipe); setScreen('recipe') }}
         />
       )}
@@ -224,7 +223,7 @@ function goToFriendProfile(userId) {
         <RecipeDetail
           recipe={selectedRecipe}
           session={session}
-          onBack={() => setScreen('cookbook')}
+          onBack={() => setScreen(prevScreen)}
           onUpdate={async () => {
             const { data } = await supabase
               .from('recipes')
@@ -269,27 +268,14 @@ function goToFriendProfile(userId) {
         />
       )}
 
-      {screen === 'postDetail' && selectedPost && (
-        <PostDetail
-          item={selectedPost}
-          session={session}
-          onBack={() => setScreen(prevScreen)}
-          onSelectUser={goToFriendProfile}
-          onSelectRecipe={(item) => {
-            if (item._type === 'cook') goToSocialRecipe(item)
-            else { setSelectedPost(null); setScreen(prevScreen) }
-          }}
-        />
-      )}
-
       {screen === 'feed' && (
         <Feed
-           session={session}
-           onSelectCook={goToSocialRecipe}
-           onSelectUser={goToFriendProfile}
-           onSelectPost={goToPost}
-           onSelectSave={goToFriendRecipeDetail}
-       />
+          session={session}
+          onSelectCook={goToSocialRecipe}
+          onSelectUser={goToFriendProfile}
+          onSelectPost={goToPost}
+          onSelectSave={goToFriendRecipeDetail}
+        />
       )}
 
       {screen === 'search' && (
@@ -316,7 +302,6 @@ function goToFriendProfile(userId) {
         />
       )}
 
-      {/* Bottom Nav */}
       {!hideNav && (
         <div style={{
           position: 'fixed',
