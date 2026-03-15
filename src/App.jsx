@@ -25,7 +25,6 @@ export default function App() {
   const [selectedUserId, setSelectedUserId] = useState(null)
   const [prevScreen, setPrevScreen] = useState('feed')
   const [scrollToComments, setScrollToComments] = useState(false)
-  const [showNotifications, setShowNotifications] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
   const [selectedPost, setSelectedPost] = useState(null)
 
@@ -56,7 +55,7 @@ export default function App() {
     return () => subscription.unsubscribe()
   }, [])
 
-  // Poll unread count every 30s when logged in
+  // Poll unread count every 30s
   useEffect(() => {
     if (!session) return
     fetchUnreadCount(session.user.id)
@@ -113,12 +112,6 @@ export default function App() {
     setScreen('postDetail')
   }
 
-  function handleNotificationsClose() {
-    setShowNotifications(false)
-    // Refresh unread count after closing (will be 0 since we marked read)
-    if (session) fetchUnreadCount(session.user.id)
-  }
-
   if (showLogin) return <Auth />
   if (loading) return null
   if (!session) return <Onboarding onComplete={handleOnboardingComplete} />
@@ -128,20 +121,15 @@ export default function App() {
 
   return (
     <>
-      {/* Floating bell — always visible except on add screen */}
+      {/* Bell icon — top right, always visible except on add screen */}
       {!hideNav && (
         <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0,
-          maxWidth: '480px', margin: '0 auto',
-          display: 'flex', justifyContent: 'flex-end',
-          padding: '14px 20px',
+          position: 'fixed', top: '14px', right: '20px',
           zIndex: 150,
-          pointerEvents: 'none',
         }}>
           <button
             onClick={() => { setPrevScreen(screen); setScreen('notifications') }}
             style={{
-              pointerEvents: 'all',
               position: 'relative',
               width: '38px', height: '38px', borderRadius: '50%',
               background: 'var(--warm-white)',
@@ -172,15 +160,14 @@ export default function App() {
         </div>
       )}
 
-      {/* Notifications overlay */}
       {screen === 'notifications' && (
-  <Notifications
-    session={session}
-    onSelectUser={(userId) => { goToFriendProfile(userId) }}
-    onSelectCook={(cook, toComments) => { goToSocialRecipe(cook, toComments) }}
-    onClose={() => setScreen(prevScreen)}
-  />
-)}
+        <Notifications
+          session={session}
+          onSelectUser={(userId) => { goToFriendProfile(userId) }}
+          onSelectCook={(cook, toComments) => { goToSocialRecipe(cook, toComments) }}
+          onClose={() => { setScreen(prevScreen); fetchUnreadCount(session.user.id) }}
+        />
+      )}
 
       {screen === 'add' && (
         <AddRecipe

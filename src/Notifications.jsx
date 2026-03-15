@@ -48,14 +48,12 @@ export default function Notifications({ session, onSelectUser, onSelectCook, onC
       return
     }
 
-    // Fetch actor profiles
     const actorIds = [...new Set(data.map(n => n.actor_id))]
     const { data: profiles } = await supabase
       .from('profiles')
       .select('id, full_name, username')
       .in('id', actorIds)
 
-    // Fetch recipe names for relevant notifications
     const recipeIds = data.filter(n => n.recipe_id).map(n => n.recipe_id)
     let recipeMap = {}
     if (recipeIds.length > 0) {
@@ -75,7 +73,6 @@ export default function Notifications({ session, onSelectUser, onSelectCook, onC
     setNotifications(enriched)
     setLoading(false)
 
-    // Mark all as read
     await supabase
       .from('notifications')
       .update({ read: true })
@@ -83,28 +80,32 @@ export default function Notifications({ session, onSelectUser, onSelectCook, onC
       .eq('read', false)
   }
 
-async function handleTap(n) {
-  console.log('notification tapped:', JSON.stringify(n))
-  if (n.type === 'follow_request' || n.type === 'follow_approved') {
-    onClose()
-    setTimeout(() => onSelectUser(n.actor_id), 50)
-  } else if ((n.type === 'like' || n.type === 'comment') && n.target_id && n.target_type === 'cook') {
-    const { data: cook } = await supabase
-      .from('cooks')
-      .select('*, recipes(*)')
-      .eq('id', n.target_id)
-      .single()
-    if (cook) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('id, full_name, username')
-        .eq('id', cook.user_id)
-        .single()
+  async function handleTap(n) {
+    if (n.type === 'follow_request' || n.type === 'follow_approved') {
       onClose()
-      setTimeout(() => onSelectCook({ ...cook, profiles: profile }, n.type === 'comment'), 50)
+      setTimeout(() => onSelectUser(n.actor_id), 50)
+    } else if ((n.type === 'like' || n.type === 'comment') && n.target_id && n.target_type === 'cook') {
+      const { data: cook } = await supabase
+        .from('cooks')
+        .select('*, recipes(*)')
+        .eq('id', n.target_id)
+        .single()
+      if (cook) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id, full_name, username')
+          .eq('id', cook.user_id)
+          .single()
+        onClose()
+        setTimeout(() => onSelectCook({ ...cook, profiles: profile }, n.type === 'comment'), 50)
+      }
+    } else if ((n.type === 'like' || n.type === 'comment') && n.target_type === 'save') {
+      // Save cards live inside Feed — just go to feed for now
+      onClose()
+    } else if (n.type === 'save') {
+      onClose()
     }
   }
-}
 
   function timeAgo(ts) {
     const diff = Date.now() - new Date(ts).getTime()
@@ -125,7 +126,6 @@ async function handleTap(n) {
       maxWidth: '480px', margin: '0 auto',
       display: 'flex', flexDirection: 'column',
     }}>
-      {/* Header */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         padding: '56px 20px 16px',
@@ -146,8 +146,7 @@ async function handleTap(n) {
         </button>
       </div>
 
-      {/* List */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '8px 0 40px' }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '8px 0 100px' }}>
         {loading ? (
           <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--muted)', fontSize: '14px' }}>Loading...</div>
         ) : notifications.length === 0 ? (
@@ -162,7 +161,7 @@ async function handleTap(n) {
             if (!config) return null
             const actorName = n.actorProfile?.full_name || n.actorProfile?.username || 'Someone'
             const label = config.label(actorName, n.recipeName)
-            const tappable = ['follow_request', 'follow_approved', 'like', 'comment'].includes(n.type)
+            const tappable = ['follow_request', 'follow_approved', 'like', 'comment', 'save'].includes(n.type)
 
             return (
               <div
@@ -177,14 +176,12 @@ async function handleTap(n) {
                   transition: 'background 0.15s',
                 }}
               >
-                {/* Unread dot */}
                 <div style={{ paddingTop: '6px', width: '8px', flexShrink: 0 }}>
                   {!n.read && (
                     <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: 'var(--clay)' }} />
                   )}
                 </div>
 
-                {/* Avatar */}
                 <div style={{
                   width: '38px', height: '38px', borderRadius: '50%', flexShrink: 0,
                   background: 'linear-gradient(135deg, var(--clay), var(--ember))',
@@ -194,7 +191,6 @@ async function handleTap(n) {
                   {actorName[0].toUpperCase()}
                 </div>
 
-                {/* Text */}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: '13px', color: 'var(--ink)', lineHeight: '1.5', marginBottom: '3px' }}>
                     {label}
@@ -202,7 +198,6 @@ async function handleTap(n) {
                   <div style={{ fontSize: '11px', color: 'var(--muted)' }}>{timeAgo(n.created_at)}</div>
                 </div>
 
-                {/* Type icon */}
                 <div style={{ fontSize: '16px', paddingTop: '2px', flexShrink: 0 }}>{config.icon}</div>
               </div>
             )
