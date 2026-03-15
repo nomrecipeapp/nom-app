@@ -196,8 +196,3 @@ export default function Notifications({ session, onSelectUser, onSelectCook, onS
     </div>
   )
 }
-```
-
-Once you have all files updated, push:
-```
-cd /Users/sydneybernstein/nom-app && git add -A && git commit -m "Add proper top bar across all screens" && git push
