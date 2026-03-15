@@ -139,7 +139,7 @@ export default function App() {
           pointerEvents: 'none',
         }}>
           <button
-            onClick={() => setShowNotifications(true)}
+            onClick={() => { setPrevScreen(screen); setScreen('notifications') }}
             style={{
               pointerEvents: 'all',
               position: 'relative',
@@ -173,14 +173,14 @@ export default function App() {
       )}
 
       {/* Notifications overlay */}
-      {showNotifications && (
-        <Notifications
-          session={session}
-          onSelectUser={(userId) => { goToFriendProfile(userId) }}
-          onSelectCook={(cook, toComments) => { goToSocialRecipe(cook, toComments) }}
-          onClose={handleNotificationsClose}
-        />
-      )}
+      {screen === 'notifications' && (
+  <Notifications
+    session={session}
+    onSelectUser={(userId) => { goToFriendProfile(userId) }}
+    onSelectCook={(cook, toComments) => { goToSocialRecipe(cook, toComments) }}
+    onClose={() => setScreen(prevScreen)}
+  />
+)}
 
       {screen === 'add' && (
         <AddRecipe
