@@ -252,7 +252,7 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: '13px', color: 'var(--muted)' }}>
                         <span style={{ fontWeight: '600', color: 'var(--ink)' }}>
-                          {profile?.full_name || profile?.username || 'Unknown'}
+                          {item.user_id === session.user.id ? 'You' : (profile?.full_name || profile?.username || 'Unknown')}
                         </span>
                         {' '}saved a recipe
                       </div>
@@ -337,7 +337,7 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
                   </div>
                   <div>
                     <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--ink)' }}>
-                      {profile?.full_name || profile?.username || 'Unknown'}
+                      {item.user_id === session.user.id ? 'You' : (profile?.full_name || profile?.username || 'Unknown')}
                     </div>
                     <div style={{ fontSize: '11px', color: 'var(--muted)' }}>
                       {new Date(item.cooked_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
