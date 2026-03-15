@@ -118,7 +118,7 @@ function goToFriendProfile(userId) {
   setPrevScreen(screen)
   setSelectedUserId(userId)
   setScreen('friendProfile')
-}
+  }
 
  async function goToRecipeFromId(recipeId) {
     const { data } = await supabase
