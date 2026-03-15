@@ -225,7 +225,7 @@ export default function App() {
         <Profile
           session={session}
           onBack={() => setScreen(prevScreen)}
-          onSelectRecipe={(recipe) => { setSelectedRecipe(recipe); setScreen('recipe') }}
+          onSelectRecipe={(recipe) => { setPrevScreen('profile'); setSelectedRecipe(recipe); setScreen('recipe') }}
           onViewFollowList={(type) => goToFollowList(session.user.id, type)}
         />
       )}
@@ -313,6 +313,7 @@ export default function App() {
           session={session}
           onAddRecipe={() => setScreen('add')}
           onSelectRecipe={(recipe) => {
+            setPrevScreen('cookbook')
             setSelectedRecipe(recipe)
             setScreen('recipe')
           }}
