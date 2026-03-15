@@ -293,8 +293,8 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
                       <span style={{ fontSize: '12px', fontWeight: '600', color: feedLikes[`save-${item.id}`] ? 'var(--clay)' : 'var(--muted)' }}>
                         {feedLikeCounts[`save-${item.id}`] > 0 ? feedLikeCounts[`save-${item.id}`] : ''} {feedLikes[`save-${item.id}`] ? 'Liked' : 'Like'}
                       </span>
-                    </button>onClick={e => { e.stopPropagation(); onSelectSave(item, true) }}
-                    <button  style={{
+                    </button>
+                    <button onClick={e => { e.stopPropagation(); onSelectSave(item, true) }} style={{
                       display: 'flex', alignItems: 'center', gap: '5px',
                       background: 'none', border: 'none', cursor: 'pointer', padding: 0
                     }}>
