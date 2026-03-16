@@ -251,8 +251,8 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
                         </span>
                         {' '}saved a recipe
                       </div>
-                      <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '1px' }}>
-                        {new Date(item.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+jsx                      <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '1px' }}>
+                        {new Date(item.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · {new Date(item.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
                       </div>
                     </div>
                   </div>
@@ -335,7 +335,7 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
                       {item.user_id === session.user.id ? 'You' : (profile?.full_name || profile?.username || 'Unknown')}
                     </div>
                     <div style={{ fontSize: '11px', color: 'var(--muted)' }}>
-                      {new Date(item.cooked_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      {new Date(item.cooked_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · {new Date(item.cooked_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
                     </div>
                   </div>
                 </div>
