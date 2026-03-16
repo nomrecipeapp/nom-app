@@ -301,6 +301,7 @@ export default function App() {
               .single()
             if (data) setSelectedRecipe(data)
             setScreen('recipe')
+            setRecipeBackScreen(recipeBackScreen)
           }}
         />
       )}
