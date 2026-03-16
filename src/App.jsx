@@ -189,10 +189,10 @@ export default function App() {
 
           {/* Left */}
           <div style={{ width: '72px' }}>
-                      {screen === 'feed' ? (
+          {screen === 'feed' ? (
               <div style={{ fontFamily: 'var(--font-display)', fontSize: '24px', fontWeight: '700', color: 'var(--clay)', letterSpacing: '-0.5px' }}>Nom</div>
             ) : ['recipe', 'socialRecipe', 'friendRecipeDetail', 'friendProfile', 'followList', 'notifications'].includes(screen) ? (
-              <button onClick={() => setScreen(prevScreen)} style={{
+              <button onClick={() => screen === 'recipe' ? setScreen(recipeBackScreen) : setScreen(prevScreen)} style={{
                 display: 'flex', alignItems: 'center', gap: '5px',
                 background: 'none', border: 'none', cursor: 'pointer', padding: 0
               }}>
@@ -292,8 +292,7 @@ export default function App() {
         <RecipeDetail
           recipe={selectedRecipe}
           session={session}
-          onBack={() => setScreen(recipeBackScreen)}
-          onUpdate={async () => {
+onBack={() => { console.log('recipeBackScreen is:', recipeBackScreen); setScreen(recipeBackScreen) }}          onUpdate={async () => {
             const { data } = await supabase
               .from('recipes')
               .select('*')
