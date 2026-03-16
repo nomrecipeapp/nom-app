@@ -319,18 +319,18 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
               }}>
                 <div
                   onClick={e => { e.stopPropagation(); onSelectUser && onSelectUser(item.user_id) }}
-                  style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '14px 16px', cursor: 'pointer' }}
+                  style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '14px 16px', cursor: 'pointer', pointerEvents: 'all' }}
                 >
                   <div style={{
                     width: '36px', height: '36px', borderRadius: '50%',
                     background: 'linear-gradient(135deg, var(--clay), var(--ember))',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: '700',
-                    color: 'var(--cream)', flexShrink: 0
+                    color: 'var(--cream)', flexShrink: 0, pointerEvents: 'none'
                   }}>
                     {(profile?.full_name || profile?.username || '?')[0].toUpperCase()}
                   </div>
-                  <div>
+                  <div style={{ pointerEvents: 'none' }}>
                     <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--ink)' }}>
                       {item.user_id === session.user.id ? 'You' : (profile?.full_name || profile?.username || 'Unknown')}
                     </div>
