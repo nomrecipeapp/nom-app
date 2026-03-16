@@ -2,8 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from './supabase'
 
 const FILTERS = ['All', 'Want to Make', 'Cooked', 'Never Again']
-const TAG_FILTERS = ['Breakfast', 'Lunch', 'Dinner', 'Appetizer', 'Dessert', 'Baking', 'Cocktail']
-
+const PRESET_TAGS = ['Breakfast', 'Lunch', 'Dinner', 'Appetizer', 'Dessert', 'Baking', 'Cocktail']
 const statusLabel = {
   want_to_make: 'Want to Make',
   cooked: 'Cooked',
@@ -39,7 +38,12 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe }) {
     setLoading(false)
   }
 
-const filtered = recipes
+const allTags = [...new Set([
+    ...PRESET_TAGS,
+    ...recipes.flatMap(r => r.tags || [])
+  ])]
+
+  const filtered = recipes
     .filter(r => {
       if (filter === 'Want to Make') return r.status === 'want_to_make'
       if (filter === 'Cooked') return r.status === 'cooked'
@@ -129,7 +133,7 @@ const filtered = recipes
 
         {/* Tag filters */}
         <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px', marginBottom: '16px' }}>
-          {TAG_FILTERS.map(tag => (
+          {allTags.map(tag => (
             <button key={tag} onClick={() => setTagFilter(tagFilter === tag ? null : tag)} style={{
               padding: '5px 12px', borderRadius: 'var(--radius-pill)',
               border: tagFilter === tag ? 'none' : '1.5px solid var(--tan)',
