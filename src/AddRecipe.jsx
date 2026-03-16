@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from './supabase'
 
 const verdictOptions = [
@@ -14,6 +14,8 @@ const nuanceCategories = [
   { key: 'true_to_recipe', label: 'True to Recipe' },
 ]
 
+const PRESET_TAGS = ['Breakfast', 'Lunch', 'Dinner', 'Appetizer', 'Dessert', 'Baking', 'Cocktail']
+
 export default function AddRecipe({ session, onSave, onCancel }) {
   const [mode, setMode] = useState('url')
   const [url, setUrl] = useState('')
@@ -25,6 +27,21 @@ export default function AddRecipe({ session, onSave, onCancel }) {
   // Verdict state
   const [verdict, setVerdict] = useState(null)
   const [manualLogCook, setManualLogCook] = useState(false)
+  const [availableTags, setAvailableTags] = useState(PRESET_TAGS)
+
+  useEffect(() => {
+    fetchUserTags()
+  }, [])
+
+  async function fetchUserTags() {
+    const { data } = await supabase
+      .from('recipes')
+      .select('tags')
+      .eq('user_id', session.user.id)
+    if (!data) return
+    const customTags = [...new Set(data.flatMap(r => r.tags || []).filter(t => !PRESET_TAGS.includes(t)))]
+    if (customTags.length > 0) setAvailableTags([...PRESET_TAGS, ...customTags])
+  }
   const [scores, setScores] = useState({ flavor: 0, effort: 0, would_share: 0, true_to_recipe: 0 })
   const [cookNotes, setCookNotes] = useState('')
 
@@ -147,7 +164,7 @@ export default function AddRecipe({ session, onSave, onCancel }) {
       ingredients,
       instructions,
       notes,
-      logCookNow: false
+      logCookNow: manualLogCook
     })
   }
 
@@ -268,7 +285,7 @@ export default function AddRecipe({ session, onSave, onCancel }) {
               <div>
                 <label style={labelStyle}>Tags</label>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
-                  {['Breakfast','Lunch','Dinner','Appetizer','Dessert','Baking','Cocktail'].map(tag => {
+                  {availableTags.map(tag => {
                     const selected = (recipe.tags || []).includes(tag)
                     return (
                       <button key={tag} onClick={() => {
@@ -295,7 +312,7 @@ export default function AddRecipe({ session, onSave, onCancel }) {
                     }
                   }}
                 />
-                {(recipe.tags || []).filter(t => !['Breakfast','Lunch','Dinner','Appetizer','Dessert','Baking','Cocktail'].includes(t)).map(tag => (
+                {(recipe.tags || []).filter(t => !availableTags.includes(t)).map(tag => (
                   <div key={tag} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', marginTop: '6px', marginRight: '6px', padding: '4px 10px', background: 'var(--parchment)', borderRadius: 'var(--radius-pill)', fontSize: '12px', color: 'var(--charcoal)' }}>
                     {tag}
                     <button onClick={() => setRecipe({ ...recipe, tags: (recipe.tags || []).filter(t => t !== tag) })} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', fontSize: '14px', lineHeight: 1, padding: 0 }}>×</button>
