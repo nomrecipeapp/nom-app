@@ -50,9 +50,6 @@ export default function App() {
         setLoading(false)
         return
       }
-      if (event === 'SIGNED_IN' && !session?.user?.user_metadata?.onboarding_complete) {
-        return
-      }
       setSession(session)
       if (session) {
         setShowLogin(false)
