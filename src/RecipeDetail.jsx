@@ -20,6 +20,8 @@ const verdictStyles = {
   never_again: { bg: '#F4E8E8', border: '#C47070', color: '#9B4040', label: 'Never' },
 }
 
+const PRESET_TAGS = ['Breakfast', 'Lunch', 'Dinner', 'Appetizer', 'Dessert', 'Baking', 'Cocktail']
+
 export default function RecipeDetail({ recipe: initialRecipe, session, onBack, onUpdate }) {
   const [recipe, setRecipe] = useState(initialRecipe)
   const [logging, setLogging] = useState(false)
@@ -35,6 +37,21 @@ export default function RecipeDetail({ recipe: initialRecipe, session, onBack, o
   const [cooks, setCooks] = useState([])
   const [loadingCooks, setLoadingCooks] = useState(true)
   const [circleCooks, setCircleCooks] = useState([])
+  const [availableTags, setAvailableTags] = useState(PRESET_TAGS)
+
+  useEffect(() => {
+    fetchUserTags()
+  }, [])
+
+  async function fetchUserTags() {
+    const { data } = await supabase
+      .from('recipes')
+      .select('tags')
+      .eq('user_id', session.user.id)
+    if (!data) return
+    const customTags = [...new Set(data.flatMap(r => r.tags || []).filter(t => !PRESET_TAGS.includes(t)))]
+    if (customTags.length > 0) setAvailableTags([...PRESET_TAGS, ...customTags])
+  }
 
   // Edit form state
   const [editForm, setEditForm] = useState({
@@ -324,7 +341,7 @@ export default function RecipeDetail({ recipe: initialRecipe, session, onBack, o
             <div>
               <label style={fieldLabel}>Tags</label>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
-                {['Breakfast','Lunch','Dinner','Appetizer','Dessert','Baking','Cocktail'].map(tag => {
+                {availableTags.map(tag => {
                   const selected = (editForm.tags || []).includes(tag)
                   return (
                     <button key={tag} onClick={() => {
@@ -355,7 +372,7 @@ export default function RecipeDetail({ recipe: initialRecipe, session, onBack, o
                   }
                 }}
               />
-              {(editForm.tags || []).filter(t => !['Breakfast','Lunch','Dinner','Appetizer','Dessert','Baking','Cocktail'].includes(t)).map(tag => (
+              {(editForm.tags || []).filter(t => !availableTags.includes(t)).map(tag => (
                 <div key={tag} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', marginTop: '6px', marginRight: '6px', padding: '4px 10px', background: 'var(--parchment)', borderRadius: 'var(--radius-pill)', fontSize: '12px', color: 'var(--charcoal)' }}>
                   {tag}
                   <button onClick={() => setEditForm(f => ({ ...f, tags: (f.tags || []).filter(t => t !== tag) }))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', fontSize: '14px', lineHeight: 1, padding: 0 }}>×</button>
