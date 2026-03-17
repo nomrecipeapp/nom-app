@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from './supabase'
 
-export default function FriendRecipeDetail({ recipe, session, onBack, scrollToComments, isOwner, onViewInCookbook }) {
+export default function FriendRecipeDetail({ recipe, session, onBack, scrollToComments, isOwner, onViewInCookbook, onSelectUser }) {
   const [saved, setSaved] = useState(false)
   const [saving, setSaving] = useState(false)
   const [duplicate, setDuplicate] = useState(null)
@@ -347,7 +347,7 @@ export default function FriendRecipeDetail({ recipe, session, onBack, scrollToCo
                     }}>{name[0].toUpperCase()}</div>
                     <div style={{ flex: 1, background: 'var(--warm-white)', borderRadius: 'var(--radius-md)', border: '1px solid var(--parchment)', padding: '10px 14px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
-                        <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--ink)' }}>{name}</span>
+                        <span onClick={() => onSelectUser && onSelectUser(comment.user_id)} style={{ fontSize: '12px', fontWeight: '600', color: 'var(--ink)', cursor: 'pointer', textDecoration: 'underline', textDecorationColor: 'var(--tan)' }}>{name}</span>
                         <span style={{ fontSize: '11px', color: 'var(--muted)' }}>
                           {new Date(comment.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                         </span>

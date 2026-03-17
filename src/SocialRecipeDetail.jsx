@@ -401,7 +401,7 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
                           fontFamily: 'var(--font-display)', fontSize: '11px',
                           fontWeight: '700', color: 'var(--cream)', flexShrink: 0
                         }}>{name[0].toUpperCase()}</div>
-                        <span style={{ fontSize: '13px', fontWeight: '600', color: 'var(--ink)' }}>{name}</span>
+                        <span onClick={() => onSelectUser && onSelectUser(c.user_id)} style={{ fontSize: '13px', fontWeight: '600', color: 'var(--ink)', cursor: 'pointer', textDecoration: 'underline', textDecorationColor: 'var(--tan)' }}>{name}</span>
                       </div>
                       {vs && (
                         <div style={{ background: vs.bg, border: '1px solid ' + vs.border, borderRadius: '100px', padding: '2px 8px', fontSize: '10px', fontWeight: '700', color: vs.color }}>{vs.label}</div>
@@ -504,7 +504,7 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
                     }}>{name[0].toUpperCase()}</div>
                     <div style={{ flex: 1, background: 'var(--warm-white)', borderRadius: 'var(--radius-md)', border: '1px solid var(--parchment)', padding: '10px 14px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
-                        <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--ink)' }}>{name}</span>
+                        <span onClick={() => onSelectUser && onSelectUser(comment.user_id)} style={{ fontSize: '12px', fontWeight: '600', color: 'var(--ink)', cursor: 'pointer', textDecoration: 'underline', textDecorationColor: 'var(--tan)' }}>{name}</span>
                         <span style={{ fontSize: '11px', color: 'var(--muted)' }}>
                           {new Date(comment.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                         </span>

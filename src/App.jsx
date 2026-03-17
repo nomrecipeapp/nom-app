@@ -289,7 +289,9 @@ export default function App() {
         <RecipeDetail
           recipe={selectedRecipe}
           session={session}
-onBack={() => { console.log('recipeBackScreen is:', recipeBackScreen); setScreen(recipeBackScreen) }}          onUpdate={async () => {
+          onBack={() => setScreen(recipeBackScreen)}
+          onSelectUser={goToFriendProfile}
+          onUpdate={async () => {
             const { data } = await supabase
               .from('recipes')
               .select('*')
@@ -322,6 +324,7 @@ onBack={() => { console.log('recipeBackScreen is:', recipeBackScreen); setScreen
           scrollToComments={selectedSaveScrollToComments}
           isOwner={selectedSaveRecipe.user_id === session.user.id}
           onViewInCookbook={goToRecipeFromId}
+          onSelectUser={goToFriendProfile}
         />
       )}
 

@@ -22,8 +22,7 @@ const verdictStyles = {
 
 const PRESET_TAGS = ['Breakfast', 'Lunch', 'Dinner', 'Appetizer', 'Dessert', 'Baking', 'Cocktail']
 
-export default function RecipeDetail({ recipe: initialRecipe, session, onBack, onUpdate }) {
-  const [recipe, setRecipe] = useState(initialRecipe)
+export default function RecipeDetail({ recipe: initialRecipe, session, onBack, onUpdate, onSelectUser }) {  const [recipe, setRecipe] = useState(initialRecipe)
   const [logging, setLogging] = useState(false)
   const [editing, setEditing] = useState(false)
   const [verdict, setVerdict] = useState(null)
@@ -601,7 +600,7 @@ export default function RecipeDetail({ recipe: initialRecipe, session, onBack, o
                           fontFamily: 'var(--font-display)', fontSize: '11px',
                           fontWeight: '700', color: 'var(--cream)', flexShrink: 0
                         }}>{name[0].toUpperCase()}</div>
-                        <span style={{ fontSize: '13px', fontWeight: '600', color: 'var(--ink)' }}>{name}</span>
+                        <span onClick={() => onSelectUser && onSelectUser(c.user_id)} style={{ fontSize: '13px', fontWeight: '600', color: 'var(--ink)', cursor: 'pointer', textDecoration: 'underline', textDecorationColor: 'var(--tan)' }}>{name}</span>
                       </div>
                       {v && (
                         <div style={{ background: v.bg, border: '1px solid ' + v.border, borderRadius: '100px', padding: '2px 8px', fontSize: '10px', fontWeight: '700', color: v.color }}>{v.label}</div>
