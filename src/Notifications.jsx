@@ -191,7 +191,7 @@ export default function Notifications({ session, onSelectUser, onSelectCook, onS
                         e.stopPropagation()
                         await supabase.from('follows').update({ status: 'approved' }).eq('follower_id', n.actor_id).eq('following_id', session.user.id)
                         await supabase.from('notifications').insert({ recipient_id: n.actor_id, actor_id: session.user.id, type: 'follow_approved' })
-                        await supabase.from('notifications').update({ read: true }).eq('id', n.id)
+                        await supabase.from('notifications').delete().eq('id', n.id)
                         setNotifications(prev => prev.filter(x => x.id !== n.id))
                       }} style={{
                         padding: '6px 14px', background: 'var(--clay)', color: 'var(--cream)',
@@ -201,7 +201,7 @@ export default function Notifications({ session, onSelectUser, onSelectCook, onS
                       <button onClick={async e => {
                         e.stopPropagation()
                         await supabase.from('follows').delete().eq('follower_id', n.actor_id).eq('following_id', session.user.id)
-                        await supabase.from('notifications').update({ read: true }).eq('id', n.id)
+                        await supabase.from('notifications').delete().eq('id', n.id)
                         setNotifications(prev => prev.filter(x => x.id !== n.id))
                       }} style={{
                         padding: '6px 14px', background: 'transparent', color: 'var(--muted)',
