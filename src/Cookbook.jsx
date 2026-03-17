@@ -15,10 +15,10 @@ const verdictStyle = {
   never_again: { background: '#F4E8E8', color: '#9B4040', border: '1px solid #C47070' }
 }
 
-export default function Cookbook({ session, onAddRecipe, onSelectRecipe }) {
+export default function Cookbook({ session, onAddRecipe, onSelectRecipe, defaultFilter }) {
   const [recipes, setRecipes] = useState([])
   const [loading, setLoading] = useState(true)
-  const [filter, setFilter] = useState('All')
+  const [filter, setFilter] = useState(defaultFilter || 'All')
   const [tagFilter, setTagFilter] = useState(null)
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState('date')

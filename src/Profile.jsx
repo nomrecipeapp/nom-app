@@ -40,7 +40,7 @@ function RecipeThumbnailSmall({ recipe, dashed }) {
   return <RecipeInitial title={recipe.title} dashed={dashed} />
 }
 
-export default function Profile({ session, onBack, onSelectRecipe, onViewFollowList, externalEditing, onEditingDone }) {
+export default function Profile({ session, onBack, onSelectRecipe, onViewFollowList, externalEditing, onEditingDone, onViewCookbook }) {
   const [profile, setProfile] = useState({ full_name: '', username: '' })
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -294,14 +294,14 @@ export default function Profile({ session, onBack, onSelectRecipe, onViewFollowL
           display: 'flex', borderTop: '1px solid var(--parchment)',
           borderBottom: '1px solid var(--parchment)', margin: '0 0 20px'
         }}>
-          <div style={{ flex: 1, padding: '12px 0', textAlign: 'center', borderRight: '1px solid var(--parchment)' }}>
+          <button onClick={() => onViewCookbook && onViewCookbook('All')} style={{ flex: 1, padding: '12px 0', textAlign: 'center', borderRight: '1px solid var(--parchment)', background: 'none', border: 'none', borderRight: '1px solid var(--parchment)', cursor: 'pointer' }}>
             <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: '700', color: 'var(--ink)' }}>{stats.saved}</div>
             <div style={{ fontSize: '10px', color: 'var(--muted)', marginTop: '2px' }}>Saved</div>
-          </div>
-          <div style={{ flex: 1, padding: '12px 0', textAlign: 'center', borderRight: '1px solid var(--parchment)' }}>
+          </button>
+          <button onClick={() => onViewCookbook && onViewCookbook('Cooked')} style={{ flex: 1, padding: '12px 0', textAlign: 'center', background: 'none', border: 'none', borderRight: '1px solid var(--parchment)', cursor: 'pointer' }}>
             <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: '700', color: 'var(--ink)' }}>{stats.cooked}</div>
             <div style={{ fontSize: '10px', color: 'var(--muted)', marginTop: '2px' }}>Cooked</div>
-          </div>
+          </button>
           <div style={{ flex: 1, padding: '12px 0', textAlign: 'center' }}>
             <div style={{ fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: '700', color: 'var(--ink)' }}>—</div>
             <div style={{ fontSize: '10px', color: 'var(--muted)', marginTop: '2px' }}>Top cuisine</div>

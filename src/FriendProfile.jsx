@@ -224,8 +224,9 @@ export default function FriendProfile({ userId, session, onBack, onSelectCook, o
   const [wantToMake, setWantToMake] = useState([])
   const [activeTab, setActiveTab] = useState('stats')
   const [cookbookFilter, setCookbookFilter] = useState('All')
-const [selectedRecipe, setSelectedRecipe] = useState(null)
+  const [selectedRecipe, setSelectedRecipe] = useState(null)
   const [cookbookSort, setCookbookSort] = useState('date')
+  const [cookbookSearch, setCookbookSearch] = useState('')
   const [followCounts, setFollowCounts] = useState({ following: 0, followers: 0 })
 
   useEffect(() => {
@@ -401,6 +402,11 @@ const [selectedRecipe, setSelectedRecipe] = useState(null)
       if (cookbookFilter === 'Never Again') return r.status === 'never_again'
       return true
     })
+    .filter(r => {
+      if (!cookbookSearch.trim()) return true
+      const q = cookbookSearch.toLowerCase()
+      return r.title?.toLowerCase().includes(q) || r.source_name?.toLowerCase().includes(q)
+    })
     .sort((a, b) => {
       if (cookbookSort === 'alpha') return a.title.localeCompare(b.title)
       return 0
@@ -481,14 +487,14 @@ const [selectedRecipe, setSelectedRecipe] = useState(null)
 
           {followStatus === 'approved' && (
             <div style={{ display: 'flex', width: '100%', borderTop: '1px solid var(--parchment)', borderBottom: '1px solid var(--parchment)' }}>
-              <div style={{ flex: 1, padding: '12px 0', textAlign: 'center', borderRight: '1px solid var(--parchment)' }}>
+              <button onClick={() => { setActiveTab('cookbook'); setCookbookFilter('All') }} style={{ flex: 1, padding: '12px 0', textAlign: 'center', borderRight: '1px solid var(--parchment)', background: 'none', border: 'none', borderRight: '1px solid var(--parchment)', cursor: 'pointer' }}>
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: '700', color: 'var(--ink)' }}>{stats.saved}</div>
                 <div style={{ fontSize: '10px', color: 'var(--muted)', marginTop: '2px' }}>Saved</div>
-              </div>
-              <div style={{ flex: 1, padding: '12px 0', textAlign: 'center', borderRight: '1px solid var(--parchment)' }}>
+              </button>
+              <button onClick={() => { setActiveTab('cookbook'); setCookbookFilter('Cooked') }} style={{ flex: 1, padding: '12px 0', textAlign: 'center', background: 'none', border: 'none', borderRight: '1px solid var(--parchment)', cursor: 'pointer' }}>
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: '700', color: 'var(--ink)' }}>{stats.cooked}</div>
                 <div style={{ fontSize: '10px', color: 'var(--muted)', marginTop: '2px' }}>Cooked</div>
-              </div>
+              </button>
               <button onClick={() => onViewFollowList && onViewFollowList(userId, 'following')} style={{ flex: 1, padding: '12px 0', textAlign: 'center', background: 'none', border: 'none', borderRight: '1px solid var(--parchment)', cursor: 'pointer' }}>
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: '700', color: 'var(--ink)' }}>{followCounts.following}</div>
                 <div style={{ fontSize: '10px', color: 'var(--muted)', marginTop: '2px' }}>Following</div>
@@ -635,6 +641,36 @@ const [selectedRecipe, setSelectedRecipe] = useState(null)
         {/* Cookbook Tab */}
         {followStatus === 'approved' && activeTab === 'cookbook' && (
           <div style={{ padding: '0 20px' }}>
+            {/* Search */}
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: '10px',
+              background: 'var(--warm-white)', borderRadius: 'var(--radius-md)',
+              padding: '10px 14px', marginBottom: '16px',
+              border: '1.5px solid var(--tan)'
+            }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <circle cx="11" cy="11" r="7" stroke="var(--muted)" strokeWidth="1.8"/>
+                <path d="M16.5 16.5L21 21" stroke="var(--muted)" strokeWidth="1.8" strokeLinecap="round"/>
+              </svg>
+              <input
+                type="text"
+                value={cookbookSearch}
+                onChange={e => setCookbookSearch(e.target.value)}
+                placeholder="Search recipes..."
+                style={{
+                  flex: 1, border: 'none', background: 'none',
+                  fontFamily: 'var(--font-body)', fontSize: '14px',
+                  color: 'var(--ink)', outline: 'none'
+                }}
+              />
+              {cookbookSearch && (
+                <button onClick={() => setCookbookSearch('')} style={{
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  color: 'var(--muted)', fontSize: '16px', padding: 0, lineHeight: 1
+                }}>×</button>
+              )}
+            </div>
+
             {/* Filters + Sort */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
               <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>

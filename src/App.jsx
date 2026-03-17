@@ -35,6 +35,7 @@ export default function App() {
   const [followListUserId, setFollowListUserId] = useState(null)
   const [followListType, setFollowListType] = useState('following')
   const [profileEditing, setProfileEditing] = useState(false)
+  const [cookbookDefaultFilter, setCookbookDefaultFilter] = useState('All')
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -282,6 +283,7 @@ if (showLogin) return <Auth />
           onViewFollowList={(type) => goToFollowList(session.user.id, type)}
           externalEditing={profileEditing}
           onEditingDone={() => setProfileEditing(false)}
+          onViewCookbook={(filter) => { setCookbookDefaultFilter(filter); setPrevScreen('profile'); setScreen('cookbook') }}
         />
       )}
 
@@ -370,6 +372,7 @@ if (showLogin) return <Auth />
         <Cookbook
           session={session}
           onAddRecipe={() => setScreen('add')}
+          defaultFilter={cookbookDefaultFilter}
           onSelectRecipe={(recipe) => {
             setRecipeBackScreen('cookbook')
             setSelectedRecipe(recipe)
