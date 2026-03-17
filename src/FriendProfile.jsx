@@ -229,6 +229,10 @@ const [selectedRecipe, setSelectedRecipe] = useState(null)
   const [followCounts, setFollowCounts] = useState({ following: 0, followers: 0 })
 
   useEffect(() => {
+    setFollowCounts({ following: 0, followers: 0 })
+    setFollowStatus(null)
+    setProfile(null)
+    setLoading(true)
     fetchProfile()
     fetchFollowStatus()
     fetchFollowCounts()
