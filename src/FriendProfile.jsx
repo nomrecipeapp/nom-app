@@ -239,12 +239,14 @@ const [selectedRecipe, setSelectedRecipe] = useState(null)
   }, [userId])
 
   async function fetchFollowCounts() {
+    console.log('fetchFollowCounts for userId:', userId)
     const { count: followingCount } = await supabase
       .from('follows').select('*', { count: 'exact', head: true })
       .eq('follower_id', userId).eq('status', 'approved')
     const { count: followersCount } = await supabase
       .from('follows').select('*', { count: 'exact', head: true })
       .eq('following_id', userId).eq('status', 'approved')
+    console.log('followingCount:', followingCount, 'followersCount:', followersCount)
     setFollowCounts({ following: followingCount || 0, followers: followersCount || 0 })
   }
 
