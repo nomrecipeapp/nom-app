@@ -30,6 +30,9 @@ export default function FriendRecipeDetail({ recipe, session, onBack, scrollToCo
   const [submitting, setSubmitting] = useState(false)
   const [loadingComments, setLoadingComments] = useState(true)
   const [ingredientsOpen, setIngredientsOpen] = useState(false)
+  const [openMenuId, setOpenMenuId] = useState(null)
+  const [editingCommentId, setEditingCommentId] = useState(null)
+  const [editingBody, setEditingBody] = useState('')
 
   // Mention state
   const [mentionQuery, setMentionQuery] = useState(null)
@@ -149,6 +152,20 @@ export default function FriendRecipeDetail({ recipe, session, onBack, scrollToCo
         })
       }
     }
+  }
+
+  async function deleteComment(commentId) {
+    await supabase.from('comments').delete().eq('id', commentId)
+    setOpenMenuId(null)
+    await fetchComments()
+  }
+
+  async function saveEditComment(commentId) {
+    if (!editingBody.trim()) return
+    await supabase.from('comments').update({ body: editingBody.trim() }).eq('id', commentId)
+    setEditingCommentId(null)
+    setEditingBody('')
+    await fetchComments()
   }
 
   async function submitComment() {
@@ -339,6 +356,12 @@ export default function FriendRecipeDetail({ recipe, session, onBack, scrollToCo
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '24px' }}>
               {comments.map(comment => {
                 const name = comment.profiles?.full_name || comment.profiles?.username || 'Someone'
+                const isCommentAuthor = comment.user_id === session.user.id
+                const isPostOwner = (targetType === 'cook' ? cook?.user_id : recipe?.user_id) === session.user.id
+                const canEdit = isCommentAuthor
+                const canDelete = isCommentAuthor || isPostOwner
+                const showMenu = canEdit || canDelete
+
                 return (
                   <div key={comment.id} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
                     <div style={{
@@ -347,14 +370,89 @@ export default function FriendRecipeDetail({ recipe, session, onBack, scrollToCo
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: '700', color: 'var(--cream)'
                     }}>{name[0].toUpperCase()}</div>
-                    <div style={{ flex: 1, background: 'var(--warm-white)', borderRadius: 'var(--radius-md)', border: '1px solid var(--parchment)', padding: '10px 14px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
-                        <span onClick={() => onSelectUser && onSelectUser(comment.user_id)} style={{ fontSize: '12px', fontWeight: '600', color: 'var(--ink)', cursor: 'pointer', textDecoration: 'underline', textDecorationColor: 'var(--tan)' }}>{name}</span>
-                        <span style={{ fontSize: '11px', color: 'var(--muted)' }}>{new Date(comment.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+
+                    <div style={{ flex: 1, position: 'relative' }}>
+                      <div style={{ background: 'var(--warm-white)', borderRadius: 'var(--radius-md)', border: '1px solid var(--parchment)', padding: '10px 14px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                          <span onClick={() => onSelectUser && onSelectUser(comment.user_id)} style={{ fontSize: '12px', fontWeight: '600', color: 'var(--ink)', cursor: 'pointer', textDecoration: 'underline', textDecorationColor: 'var(--tan)' }}>{name}</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ fontSize: '11px', color: 'var(--muted)' }}>{new Date(comment.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                            {showMenu && (
+                              <button onClick={() => setOpenMenuId(openMenuId === comment.id ? null : comment.id)} style={{
+                                background: 'none', border: 'none', cursor: 'pointer',
+                                color: 'var(--muted)', fontSize: '16px', padding: '0 2px',
+                                lineHeight: 1, fontWeight: '700'
+                              }}>⋯</button>
+                            )}
+                          </div>
+                        </div>
+
+                        {editingCommentId === comment.id ? (
+                          <div>
+                            <textarea
+                              value={editingBody}
+                              onChange={e => setEditingBody(e.target.value)}
+                              rows={2}
+                              style={{
+                                width: '100%', padding: '8px 10px',
+                                border: '1.5px solid var(--clay)', borderRadius: 'var(--radius-md)',
+                                background: 'var(--cream)', fontFamily: 'var(--font-body)',
+                                fontSize: '13px', color: 'var(--ink)', outline: 'none',
+                                resize: 'none', lineHeight: '1.5', boxSizing: 'border-box'
+                              }}
+                            />
+                            <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
+                              <button onClick={() => saveEditComment(comment.id)} style={{
+                                padding: '5px 12px', background: 'var(--clay)', color: 'var(--cream)',
+                                border: 'none', borderRadius: 'var(--radius-pill)',
+                                fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600', cursor: 'pointer'
+                              }}>Save</button>
+                              <button onClick={() => { setEditingCommentId(null); setEditingBody('') }} style={{
+                                padding: '5px 12px', background: 'transparent', color: 'var(--muted)',
+                                border: '1px solid var(--tan)', borderRadius: 'var(--radius-pill)',
+                                fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600', cursor: 'pointer'
+                              }}>Cancel</button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div style={{ fontSize: '13px', color: 'var(--charcoal)', lineHeight: '1.5' }}>
+                            {renderCommentBody(comment.body, onSelectUser, allCommentProfiles)}
+                          </div>
+                        )}
                       </div>
-                      <div style={{ fontSize: '13px', color: 'var(--charcoal)', lineHeight: '1.5' }}>
-                        {renderCommentBody(comment.body, onSelectUser, allCommentProfiles)}
-                      </div>
+
+                      {/* Dropdown menu */}
+                      {openMenuId === comment.id && (
+                        <div style={{
+                          position: 'absolute', top: '100%', right: 0,
+                          background: 'var(--warm-white)', border: '1px solid var(--parchment)',
+                          borderRadius: 'var(--radius-md)', marginTop: '4px',
+                          boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 50,
+                          minWidth: '120px', overflow: 'hidden'
+                        }}>
+                          {canEdit && (
+                            <button onClick={() => { setEditingCommentId(comment.id); setEditingBody(comment.body); setOpenMenuId(null) }} style={{
+                              width: '100%', padding: '10px 16px', background: 'none', border: 'none',
+                              textAlign: 'left', fontFamily: 'var(--font-body)', fontSize: '13px',
+                              fontWeight: '500', color: 'var(--ink)', cursor: 'pointer',
+                              borderBottom: canDelete ? '1px solid var(--parchment)' : 'none'
+                            }}
+                              onMouseEnter={e => e.currentTarget.style.background = 'var(--parchment)'}
+                              onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                            >Edit</button>
+                          )}
+                          {canDelete && (
+                            <button onClick={() => deleteComment(comment.id)} style={{
+                              width: '100%', padding: '10px 16px', background: 'none', border: 'none',
+                              textAlign: 'left', fontFamily: 'var(--font-body)', fontSize: '13px',
+                              fontWeight: '500', color: '#B85252', cursor: 'pointer'
+                            }}
+                              onMouseEnter={e => e.currentTarget.style.background = '#FDE8E8'}
+                              onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                            >Delete</button>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 )
