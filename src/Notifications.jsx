@@ -185,6 +185,31 @@ export default function Notifications({ session, onSelectUser, onSelectCook, onS
                     {label}
                   </div>
                   <div style={{ fontSize: '11px', color: 'var(--muted)' }}>{timeAgo(n.created_at)}</div>
+                  {n.type === 'follow_request' && (
+                    <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                      <button onClick={async e => {
+                        e.stopPropagation()
+                        await supabase.from('follows').update({ status: 'approved' }).eq('follower_id', n.actor_id).eq('following_id', session.user.id)
+                        await supabase.from('notifications').insert({ recipient_id: n.actor_id, actor_id: session.user.id, type: 'follow_approved' })
+                        await supabase.from('notifications').update({ read: true }).eq('id', n.id)
+                        setNotifications(prev => prev.filter(x => x.id !== n.id))
+                      }} style={{
+                        padding: '6px 14px', background: 'var(--clay)', color: 'var(--cream)',
+                        border: 'none', borderRadius: 'var(--radius-pill)',
+                        fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600', cursor: 'pointer'
+                      }}>Approve</button>
+                      <button onClick={async e => {
+                        e.stopPropagation()
+                        await supabase.from('follows').delete().eq('follower_id', n.actor_id).eq('following_id', session.user.id)
+                        await supabase.from('notifications').update({ read: true }).eq('id', n.id)
+                        setNotifications(prev => prev.filter(x => x.id !== n.id))
+                      }} style={{
+                        padding: '6px 14px', background: 'transparent', color: 'var(--muted)',
+                        border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-pill)',
+                        fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600', cursor: 'pointer'
+                      }}>Deny</button>
+                    </div>
+                  )}
                 </div>
 
                 <div style={{ fontSize: '16px', paddingTop: '2px', flexShrink: 0 }}>{config.icon}</div>

@@ -12,14 +12,12 @@ import FriendRecipeDetail from './FriendRecipeDetail'
 export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave }) {
   const [feed, setFeed] = useState([])
   const [loading, setLoading] = useState(true)
-  const [requests, setRequests] = useState([])
   const [feedLikes, setFeedLikes] = useState({})
   const [feedLikeCounts, setFeedLikeCounts] = useState({})
   const [feedCommentCounts, setFeedCommentCounts] = useState({})
 
   useEffect(() => {
     fetchFeed()
-    fetchRequests()
   }, [session.user.id])
 
   async function fetchFeed() {
@@ -139,79 +137,8 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
     }
   }
 
-  async function fetchRequests() {
-    const { data } = await supabase
-      .from('follows')
-      .select('*')
-      .eq('following_id', session.user.id)
-      .eq('status', 'pending')
-    if (data && data.length > 0) {
-      const followerIds = data.map(r => r.follower_id)
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('*')
-        .in('id', followerIds)
-      setRequests(data.map(r => ({
-        ...r,
-        profiles: profiles?.find(p => p.id === r.follower_id) || null
-      })))
-    } else {
-      setRequests([])
-    }
-  }
-
-  async function approveRequest(id) {
-    await supabase.from('follows').update({ status: 'approved' }).eq('id', id)
-    const request = requests.find(r => r.id === id)
-    if (request) {
-      await supabase.from('notifications').insert({
-        recipient_id: request.follower_id,
-        actor_id: session.user.id,
-        type: 'follow_approved',
-      })
-    }
-    fetchRequests()
-    fetchFeed()
-  }
-
-  async function denyRequest(id) {
-    await supabase.from('follows').delete().eq('id', id)
-    fetchRequests()
-  }
-
   return (
     <div style={{ maxWidth: '480px', margin: '0 auto', padding: '70px 16px 100px' }}>
-
-      {requests.length > 0 && (
-        <div style={{
-          background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)',
-          border: '1px solid var(--parchment)', padding: '16px 20px', marginBottom: '24px'
-        }}>
-          <div style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '12px' }}>Follow Requests</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {requests.map(r => (
-              <div key={r.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div>
-                  <div style={{ fontSize: '14px', fontWeight: '600', color: 'var(--ink)' }}>{r.profiles?.full_name || r.profiles?.username || 'Someone'}</div>
-                  {r.profiles?.username && <div style={{ fontSize: '11px', color: 'var(--muted)' }}>@{r.profiles.username}</div>}
-                </div>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <button onClick={() => approveRequest(r.id)} style={{
-                    padding: '7px 14px', background: 'var(--clay)', color: 'var(--cream)',
-                    border: 'none', borderRadius: 'var(--radius-pill)',
-                    fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600', cursor: 'pointer'
-                  }}>Approve</button>
-                  <button onClick={() => denyRequest(r.id)} style={{
-                    padding: '7px 14px', background: 'transparent', color: 'var(--muted)',
-                    border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-pill)',
-                    fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600', cursor: 'pointer'
-                  }}>Deny</button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {loading ? (
         <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--muted)', fontSize: '14px' }}>Loading...</div>
