@@ -232,7 +232,7 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
                   background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)',
                   border: '1px solid var(--parchment)', overflow: 'hidden', cursor: 'pointer'
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 16px' }}>
+                  <div onClick={e => { e.stopPropagation(); onSelectUser && onSelectUser(item.user_id) }} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 16px', cursor: 'pointer' }}>
                     <div style={{
                         width: '36px', height: '36px', borderRadius: '50%',
                         background: 'linear-gradient(135deg, var(--clay), var(--ember))',
