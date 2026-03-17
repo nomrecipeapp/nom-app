@@ -148,10 +148,10 @@ export default function App() {
     setScreen('postDetail')
   }
 
-  if (showLogin) return <Auth />
+if (showLogin) return <Auth />
   if (loading) return null
   if (!session) return <Onboarding onComplete={handleOnboardingComplete} />
-  if (!onboardingComplete) return <Onboarding onComplete={handleOnboardingComplete} />
+  if (!onboardingComplete) return <Onboarding session={session} onComplete={handleOnboardingComplete} />
 
   const hideNav = screen === 'add'
   const hideTopBar = screen === 'add' || screen === 'resetPassword'

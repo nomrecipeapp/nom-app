@@ -19,8 +19,8 @@ function ProgressDots({ step }) {
   )
 }
 
-export default function Onboarding({ onComplete }) {
-  const [step, setStep] = useState(1)
+export default function Onboarding({ onComplete, session }) {
+  const [step, setStep] = useState(session ? 3 : 1)
 
   // Step 2 — account
   const [fullName, setFullName] = useState('')
@@ -29,7 +29,7 @@ export default function Onboarding({ onComplete }) {
   const [password, setPassword] = useState('')
   const [authLoading, setAuthLoading] = useState(false)
   const [authError, setAuthError] = useState(null)
-  const [userId, setUserId] = useState(null)
+  const [userId, setUserId] = useState(session?.user?.id || null)
 
   // Step 3 — find cooks
   const [searchQuery, setSearchQuery] = useState('')
@@ -155,8 +155,9 @@ export default function Onboarding({ onComplete }) {
 
   async function finishOnboarding() {
     try {
-      if (userId) {
-        await supabase.from('profiles').update({ onboarding_complete: true }).eq('id', userId)
+      const id = userId || session?.user?.id
+      if (id) {
+        await supabase.from('profiles').update({ onboarding_complete: true }).eq('id', id)
       }
     } catch (e) {
       console.log('Profile update error:', e)
