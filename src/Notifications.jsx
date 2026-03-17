@@ -70,7 +70,11 @@ export default function Notifications({ session, onSelectUser, onSelectCook, onS
       recipeName: n.recipe_id ? recipeMap[n.recipe_id] || null : null,
     }))
 
-    setNotifications(enriched)
+       const sorted = [
+      ...enriched.filter(n => n.type === 'follow_request'),
+      ...enriched.filter(n => n.type !== 'follow_request'),
+    ]
+    setNotifications(sorted)
     setLoading(false)
 
     await supabase
