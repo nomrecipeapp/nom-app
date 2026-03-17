@@ -233,25 +233,23 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
                   border: '1px solid var(--parchment)', overflow: 'hidden', cursor: 'pointer'
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 16px' }}>
-                    <div
-                      onClick={e => { e.stopPropagation(); onSelectUser && onSelectUser(item.user_id) }}
-                      style={{
+                    <div style={{
                         width: '36px', height: '36px', borderRadius: '50%',
                         background: 'linear-gradient(135deg, var(--clay), var(--ember))',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: '700',
-                        color: 'var(--cream)', flexShrink: 0, cursor: 'pointer'
+                        color: 'var(--cream)', flexShrink: 0, pointerEvents: 'none'
                       }}>
                       {(profile?.full_name || profile?.username || '?')[0].toUpperCase()}
                     </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ flex: 1, minWidth: 0, pointerEvents: 'none' }}>
                       <div style={{ fontSize: '13px', color: 'var(--muted)' }}>
                         <span style={{ fontWeight: '600', color: 'var(--ink)' }}>
                           {item.user_id === session.user.id ? 'You' : (profile?.full_name || profile?.username || 'Unknown')}
                         </span>
                         {' '}saved a recipe
                       </div>
-                         <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '1px' }}>
+                      <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '1px' }}>
                         {new Date(item.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · {new Date(item.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
                       </div>
                     </div>
