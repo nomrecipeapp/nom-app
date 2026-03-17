@@ -117,6 +117,11 @@ export default function Onboarding({ onComplete, session }) {
       following_id: targetId,
       status: 'pending'
     })
+    await supabase.from('notifications').insert({
+      recipient_id: targetId,
+      actor_id: userId,
+      type: 'follow_request',
+    })
     setRequested(prev => ({ ...prev, [targetId]: true }))
   }
 
