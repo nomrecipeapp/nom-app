@@ -22,6 +22,10 @@ const typeConfig = {
     icon: '🔖',
     label: (actor, recipeName) => `${actor} saved ${recipeName ? `"${recipeName}"` : 'a recipe'} from your cookbook`,
   },
+  mention: {
+    icon: '@',
+    label: (actor, recipeName) => `${actor} mentioned you in a comment${recipeName ? ` on ${recipeName}` : ''}`,
+  },
 }
 
 export default function Notifications({ session, onSelectUser, onSelectCook, onSelectSaveCard, onClose }) {
@@ -88,7 +92,7 @@ export default function Notifications({ session, onSelectUser, onSelectCook, onS
     if (n.type === 'follow_request' || n.type === 'follow_approved') {
       onClose()
       setTimeout(() => onSelectUser(n.actor_id), 50)
-    } else if ((n.type === 'like' || n.type === 'comment') && n.target_id && n.target_type === 'cook') {
+    } else if ((n.type === 'like' || n.type === 'comment' || n.type === 'mention') && n.target_id && n.target_type === 'cook') {
       const { data: cook } = await supabase
         .from('cooks')
         .select('*, recipes(*)')
@@ -103,7 +107,7 @@ export default function Notifications({ session, onSelectUser, onSelectCook, onS
         onClose()
         setTimeout(() => onSelectCook({ ...cook, profiles: profile }, n.type === 'comment'), 50)
       }
-    } else if ((n.type === 'like' || n.type === 'comment' || n.type === 'save') && n.target_type === 'save') {
+    } else if ((n.type === 'like' || n.type === 'comment' || n.type === 'save' || n.type === 'mention') && n.target_type === 'save') {
       const { data: recipe } = await supabase
         .from('recipes')
         .select('*')
@@ -154,8 +158,7 @@ export default function Notifications({ session, onSelectUser, onSelectCook, onS
             if (!config) return null
             const actorName = n.actorProfile?.full_name || n.actorProfile?.username || 'Someone'
             const label = config.label(actorName, n.recipeName)
-            const tappable = ['follow_request', 'follow_approved', 'like', 'comment', 'save'].includes(n.type)
-
+            const tappable = ['follow_request', 'follow_approved', 'like', 'comment', 'save', 'mention'].includes(n.type)
             return (
               <div
                 key={n.id}

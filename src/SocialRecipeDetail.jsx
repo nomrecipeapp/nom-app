@@ -13,6 +13,23 @@ const verdictStylesShort = {
   never_again: { bg: '#F4E8E8', border: '#C47070', color: '#9B4040', label: 'Never' },
 }
 
+function renderCommentBody(body, onSelectUser, profiles) {
+  const parts = body.split(/(@\w+)/g)
+  return parts.map((part, i) => {
+    if (part.startsWith('@')) {
+      const username = part.slice(1)
+      const profile = profiles?.find(p => p.username === username)
+      return (
+        <span key={i} onClick={() => profile && onSelectUser && onSelectUser(profile.id)}
+          style={{ color: 'var(--clay)', fontWeight: '600', cursor: profile ? 'pointer' : 'default' }}>
+          {part}
+        </span>
+      )
+    }
+    return <span key={i}>{part}</span>
+  })
+}
+
 export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser, scrollToComments, isOwner, onViewInCookbook }) {
   const [saved, setSaved] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -26,6 +43,13 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
   const [submitting, setSubmitting] = useState(false)
   const [loadingComments, setLoadingComments] = useState(true)
   const [ingredientsOpen, setIngredientsOpen] = useState(false)
+
+  // Mention state
+  const [mentionQuery, setMentionQuery] = useState(null)
+  const [mentionResults, setMentionResults] = useState([])
+  const [allCommenters, setAllCommenters] = useState([])
+  const [followingProfiles, setFollowingProfiles] = useState([])
+  const textareaRef = useRef(null)
   const commentsRef = useRef(null)
 
   const recipe = cook.recipes
@@ -39,94 +63,108 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
     fetchLikes()
     fetchComments()
     checkIfSaved()
+    fetchFollowing()
   }, [cook.id])
-
-  async function checkIfSaved() {
-    if (!recipe?.source_url) return
-    const { data } = await supabase
-      .from('recipes')
-      .select('id')
-      .eq('user_id', session.user.id)
-      .eq('source_url', recipe.source_url)
-      .maybeSingle()
-    if (data) setMyRecipeId(data.id)
-  }
 
   useEffect(() => {
     if (scrollToComments && commentsRef.current) {
-      setTimeout(() => {
-        commentsRef.current.scrollIntoView({ behavior: 'smooth' })
-      }, 300)
+      setTimeout(() => { commentsRef.current.scrollIntoView({ behavior: 'smooth' }) }, 300)
     }
   }, [scrollToComments])
 
+  async function fetchFollowing() {
+    const { data: follows } = await supabase
+      .from('follows').select('following_id')
+      .eq('follower_id', session.user.id).eq('status', 'approved')
+    if (!follows || follows.length === 0) return
+    const ids = follows.map(f => f.following_id)
+    const { data: profiles } = await supabase
+      .from('profiles').select('id, full_name, username').in('id', ids)
+    setFollowingProfiles(profiles || [])
+  }
+
+  async function checkIfSaved() {
+    if (!recipe?.source_url) return
+    const { data } = await supabase.from('recipes').select('id')
+      .eq('user_id', session.user.id).eq('source_url', recipe.source_url).maybeSingle()
+    if (data) setMyRecipeId(data.id)
+  }
+
   async function fetchLikes() {
-    const { count } = await supabase
-      .from('likes')
+    const { count } = await supabase.from('likes')
       .select('*', { count: 'exact', head: true })
-      .eq('target_type', targetType)
-      .eq('target_id', targetId)
-
-    const { data: myLike } = await supabase
-      .from('likes')
-      .select('id')
-      .eq('target_type', targetType)
-      .eq('target_id', targetId)
-      .eq('user_id', session.user.id)
-      .maybeSingle()
-
+      .eq('target_type', targetType).eq('target_id', targetId)
+    const { data: myLike } = await supabase.from('likes').select('id')
+      .eq('target_type', targetType).eq('target_id', targetId)
+      .eq('user_id', session.user.id).maybeSingle()
     setLikeCount(count || 0)
     setLiked(!!myLike)
   }
 
   async function fetchComments() {
     setLoadingComments(true)
-    const { data } = await supabase
-      .from('comments')
-      .select('*')
-      .eq('target_type', targetType)
-      .eq('target_id', targetId)
+    const { data } = await supabase.from('comments').select('*')
+      .eq('target_type', targetType).eq('target_id', targetId)
       .order('created_at', { ascending: true })
-
     if (!data || data.length === 0) { setComments([]); setLoadingComments(false); return }
-
     const userIds = [...new Set(data.map(c => c.user_id))]
-    const { data: profiles } = await supabase
-      .from('profiles')
-      .select('id, full_name, username')
-      .in('id', userIds)
-
-    setComments(data.map(c => ({
-      ...c,
-      profiles: profiles?.find(p => p.id === c.user_id) || null
-    })))
+    const { data: profiles } = await supabase.from('profiles')
+      .select('id, full_name, username').in('id', userIds)
+    const enriched = data.map(c => ({ ...c, profiles: profiles?.find(p => p.id === c.user_id) || null }))
+    setComments(enriched)
+    setAllCommenters(profiles || [])
     setLoadingComments(false)
+  }
+
+  function handleCommentChange(e) {
+    const val = e.target.value
+    setCommentBody(val)
+    const cursor = e.target.selectionStart
+    const textUpToCursor = val.slice(0, cursor)
+    const match = textUpToCursor.match(/@(\w*)$/)
+    if (match) {
+      const query = match[1].toLowerCase()
+      setMentionQuery(query)
+      const combined = [...followingProfiles, ...allCommenters]
+      const deduped = combined.filter((p, idx, arr) => arr.findIndex(x => x.id === p.id) === idx)
+        .filter(p => p.id !== session.user.id)
+      const filtered = deduped.filter(p =>
+        p.username?.toLowerCase().includes(query) ||
+        p.full_name?.toLowerCase().includes(query)
+      )
+      setMentionResults(filtered.slice(0, 6))
+    } else {
+      setMentionQuery(null)
+      setMentionResults([])
+    }
+  }
+
+  function insertMention(profile) {
+    const cursor = textareaRef.current?.selectionStart || commentBody.length
+    const textUpToCursor = commentBody.slice(0, cursor)
+    const beforeMention = textUpToCursor.replace(/@\w*$/, '')
+    const after = commentBody.slice(cursor)
+    const newBody = `${beforeMention}@${profile.username} ${after}`
+    setCommentBody(newBody)
+    setMentionQuery(null)
+    setMentionResults([])
+    setTimeout(() => textareaRef.current?.focus(), 50)
   }
 
   async function toggleLike() {
     if (liked) {
       await supabase.from('likes').delete()
-        .eq('target_type', targetType)
-        .eq('target_id', targetId)
-        .eq('user_id', session.user.id)
-      setLiked(false)
-      setLikeCount(c => c - 1)
+        .eq('target_type', targetType).eq('target_id', targetId).eq('user_id', session.user.id)
+      setLiked(false); setLikeCount(c => c - 1)
     } else {
       await supabase.from('likes').upsert({
-        user_id: session.user.id,
-        target_type: targetType,
-        target_id: targetId
+        user_id: session.user.id, target_type: targetType, target_id: targetId
       }, { onConflict: 'user_id,target_type,target_id', ignoreDuplicates: true })
-      setLiked(true)
-      setLikeCount(c => c + 1)
+      setLiked(true); setLikeCount(c => c + 1)
       if (cook.user_id !== session.user.id) {
         await supabase.from('notifications').insert({
-          recipient_id: cook.user_id,
-          actor_id: session.user.id,
-          type: 'like',
-          recipe_id: cook.recipe_id,
-          target_type: targetType,
-          target_id: targetId,
+          recipient_id: cook.user_id, actor_id: session.user.id,
+          type: 'like', recipe_id: cook.recipe_id, target_type: targetType, target_id: targetId,
         })
       }
     }
@@ -136,157 +174,105 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
     if (!commentBody.trim()) return
     setSubmitting(true)
     await supabase.from('comments').insert({
-      user_id: session.user.id,
-      target_type: targetType,
-      target_id: targetId,
-      body: commentBody.trim()
+      user_id: session.user.id, target_type: targetType,
+      target_id: targetId, body: commentBody.trim()
     })
     if (cook.user_id !== session.user.id) {
       await supabase.from('notifications').insert({
-        recipient_id: cook.user_id,
-        actor_id: session.user.id,
-        type: 'comment',
-        recipe_id: cook.recipe_id,
-        target_type: targetType,
-        target_id: targetId,
+        recipient_id: cook.user_id, actor_id: session.user.id,
+        type: 'comment', recipe_id: cook.recipe_id, target_type: targetType, target_id: targetId,
       })
     }
+    // Send mention notifications
+    const mentionMatches = commentBody.match(/@(\w+)/g) || []
+    const allProfiles = [...followingProfiles, ...allCommenters]
+    for (const mention of mentionMatches) {
+      const username = mention.slice(1)
+      const mentioned = allProfiles.find(p => p.username === username)
+      if (mentioned && mentioned.id !== session.user.id && mentioned.id !== cook.user_id) {
+        await supabase.from('notifications').insert({
+          recipient_id: mentioned.id, actor_id: session.user.id,
+          type: 'mention', recipe_id: cook.recipe_id, target_type: targetType, target_id: targetId,
+        })
+      }
+    }
     setCommentBody('')
+    setMentionQuery(null)
+    setMentionResults([])
     await fetchComments()
     setSubmitting(false)
   }
 
   async function fetchCircleCooks() {
-    const { data: following } = await supabase
-      .from('follows')
-      .select('following_id')
-      .eq('follower_id', session.user.id)
-      .eq('status', 'approved')
-
+    const { data: following } = await supabase.from('follows').select('following_id')
+      .eq('follower_id', session.user.id).eq('status', 'approved')
     if (!following || following.length === 0) return
-
     const followingIds = following.map(f => f.following_id)
-
-    const { data: matchingRecipes } = await supabase
-      .from('recipes')
-      .select('id, user_id')
-      .eq('source_url', recipe.source_url)
-      .in('user_id', followingIds)
-
+    const { data: matchingRecipes } = await supabase.from('recipes').select('id, user_id')
+      .eq('source_url', recipe.source_url).in('user_id', followingIds)
     if (!matchingRecipes || matchingRecipes.length === 0) return
-
     const recipeIds = matchingRecipes.map(r => r.id)
-
-    const { data: cooksData } = await supabase
-      .from('cooks')
-      .select('*')
-      .in('recipe_id', recipeIds)
-      .order('cooked_at', { ascending: false })
-
+    const { data: cooksData } = await supabase.from('cooks').select('*')
+      .in('recipe_id', recipeIds).order('cooked_at', { ascending: false })
     if (!cooksData || cooksData.length === 0) return
-
     const userIds = [...new Set(cooksData.map(c => c.user_id))]
-    const { data: profiles } = await supabase
-      .from('profiles')
-      .select('id, full_name, username')
-      .in('id', userIds)
-
-    const cooksWithProfiles = cooksData.map(c => ({
-      ...c,
-      profiles: profiles?.find(p => p.id === c.user_id) || null
-    }))
-
+    const { data: profiles } = await supabase.from('profiles').select('id, full_name, username').in('id', userIds)
+    const cooksWithProfiles = cooksData.map(c => ({ ...c, profiles: profiles?.find(p => p.id === c.user_id) || null }))
     const seen = new Set()
     const deduped = cooksWithProfiles.filter(c => {
       if (c.user_id === cook.user_id) return false
       if (seen.has(c.user_id)) return false
-      seen.add(c.user_id)
-      return true
+      seen.add(c.user_id); return true
     })
-
     setCircleCooks(deduped)
   }
 
   async function saveRecipe() {
     if (saved || saving) return
     setSaving(true)
-
-    const { data: existing } = await supabase
-      .from('recipes')
-      .select('id, title')
-      .eq('user_id', session.user.id)
-      .eq('source_url', recipe.source_url)
-      .maybeSingle()
-
-    if (existing) {
-      setDuplicate(existing)
-      setSaving(false)
-      return
-    }
-
+    const { data: existing } = await supabase.from('recipes').select('id, title')
+      .eq('user_id', session.user.id).eq('source_url', recipe.source_url).maybeSingle()
+    if (existing) { setDuplicate(existing); setSaving(false); return }
     await supabase.from('recipes').insert({
-      user_id: session.user.id,
-      title: recipe.title,
-      source_url: recipe.source_url,
-      source_name: recipe.source_name,
-      image_url: recipe.image_url,
-      cook_time: recipe.cook_time,
-      difficulty: recipe.difficulty,
-      ingredients: recipe.ingredients,
-      instructions: recipe.instructions,
-      status: 'want_to_make'
+      user_id: session.user.id, title: recipe.title, source_url: recipe.source_url,
+      source_name: recipe.source_name, image_url: recipe.image_url, cook_time: recipe.cook_time,
+      difficulty: recipe.difficulty, ingredients: recipe.ingredients,
+      instructions: recipe.instructions, status: 'want_to_make'
     })
-
     if (cook.user_id !== session.user.id) {
       await supabase.from('notifications').insert({
-        recipient_id: cook.user_id,
-        actor_id: session.user.id,
-        type: 'save',
-        recipe_id: recipe.id,
-        target_type: 'cook',
-        target_id: cook.id,
+        recipient_id: cook.user_id, actor_id: session.user.id,
+        type: 'save', recipe_id: recipe.id, target_type: 'cook', target_id: cook.id,
       })
     }
-
-    setSaving(false)
-    setSaved(true)
+    setSaving(false); setSaved(true)
   }
 
   async function addAnyway() {
-    setDuplicate(null)
-    setSaving(true)
+    setDuplicate(null); setSaving(true)
     await supabase.from('recipes').insert({
-      user_id: session.user.id,
-      title: recipe.title,
-      source_url: recipe.source_url,
-      source_name: recipe.source_name,
-      image_url: recipe.image_url,
-      cook_time: recipe.cook_time,
-      difficulty: recipe.difficulty,
-      ingredients: recipe.ingredients,
-      instructions: recipe.instructions,
-      status: 'want_to_make'
+      user_id: session.user.id, title: recipe.title, source_url: recipe.source_url,
+      source_name: recipe.source_name, image_url: recipe.image_url, cook_time: recipe.cook_time,
+      difficulty: recipe.difficulty, ingredients: recipe.ingredients,
+      instructions: recipe.instructions, status: 'want_to_make'
     })
     if (cook.user_id !== session.user.id) {
       await supabase.from('notifications').insert({
-        recipient_id: cook.user_id,
-        actor_id: session.user.id,
-        type: 'save',
-        recipe_id: recipe.id,
-        target_type: 'cook',
-        target_id: cook.id,
+        recipient_id: cook.user_id, actor_id: session.user.id,
+        type: 'save', recipe_id: recipe.id, target_type: 'cook', target_id: cook.id,
       })
     }
-    setSaving(false)
-    setSaved(true)
+    setSaving(false); setSaved(true)
   }
 
   if (!recipe) return null
 
+  const allCommentProfiles = [...followingProfiles, ...allCommenters]
+    .filter((p, i, arr) => arr.findIndex(x => x.id === p.id) === i)
+
   return (
     <div style={{ maxWidth: '480px', margin: '0 auto', paddingBottom: '100px' }}>
 
-      {/* Image or spacer */}
       {recipe.image_url ? (
         <div style={{ marginTop: '54px' }}>
           <img src={recipe.image_url} alt="" style={{ width: '100%', height: '260px', objectFit: 'cover', display: 'block' }} />
@@ -299,9 +285,7 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
         <div style={{ marginBottom: '14px' }}>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: '24px', fontWeight: '700', color: 'var(--ink)', lineHeight: '1.2', marginBottom: '10px' }}>{recipe.title}</div>
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-            {recipe.source_name && (
-              <div style={{ background: 'var(--parchment)', borderRadius: 'var(--radius-pill)', padding: '3px 10px', fontSize: '11px', fontWeight: '500', color: 'var(--charcoal)' }}>{recipe.source_name}</div>
-            )}
+            {recipe.source_name && <div style={{ background: 'var(--parchment)', borderRadius: 'var(--radius-pill)', padding: '3px 10px', fontSize: '11px', fontWeight: '500', color: 'var(--charcoal)' }}>{recipe.source_name}</div>}
             {recipe.cook_time && <div style={{ fontSize: '11px', color: 'var(--muted)' }}>{recipe.cook_time}</div>}
             {recipe.difficulty && <div style={{ fontSize: '11px', color: 'var(--muted)' }}>· {recipe.difficulty}</div>}
           </div>
@@ -398,23 +382,14 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
                           width: '28px', height: '28px', borderRadius: '50%',
                           background: 'linear-gradient(135deg, var(--clay), var(--ember))',
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          fontFamily: 'var(--font-display)', fontSize: '11px',
-                          fontWeight: '700', color: 'var(--cream)', flexShrink: 0
+                          fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: '700', color: 'var(--cream)', flexShrink: 0
                         }}>{name[0].toUpperCase()}</div>
                         <span onClick={() => onSelectUser && onSelectUser(c.user_id)} style={{ fontSize: '13px', fontWeight: '600', color: 'var(--ink)', cursor: 'pointer', textDecoration: 'underline', textDecorationColor: 'var(--tan)' }}>{name}</span>
                       </div>
-                      {vs && (
-                        <div style={{ background: vs.bg, border: '1px solid ' + vs.border, borderRadius: '100px', padding: '2px 8px', fontSize: '10px', fontWeight: '700', color: vs.color }}>{vs.label}</div>
-                      )}
+                      {vs && <div style={{ background: vs.bg, border: '1px solid ' + vs.border, borderRadius: '100px', padding: '2px 8px', fontSize: '10px', fontWeight: '700', color: vs.color }}>{vs.label}</div>}
                     </div>
-                    {c.notes && (
-                      <div style={{ fontSize: '13px', color: 'var(--charcoal)', fontStyle: 'italic', lineHeight: '1.5', paddingLeft: '36px' }}>"{c.notes}"</div>
-                    )}
-                    {c.flavor && (
-                      <div style={{ fontSize: '11px', color: 'var(--muted)', paddingLeft: '36px', marginTop: '4px' }}>
-                        Flavor <strong style={{ color: 'var(--clay)' }}>{c.flavor}/5</strong>
-                      </div>
-                    )}
+                    {c.notes && <div style={{ fontSize: '13px', color: 'var(--charcoal)', fontStyle: 'italic', lineHeight: '1.5', paddingLeft: '36px' }}>"{c.notes}"</div>}
+                    {c.flavor && <div style={{ fontSize: '11px', color: 'var(--muted)', paddingLeft: '36px', marginTop: '4px' }}>Flavor <strong style={{ color: 'var(--clay)' }}>{c.flavor}/5</strong></div>}
                   </div>
                 )
               })}
@@ -424,11 +399,9 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
 
         {isOwner && myRecipeId && (
           <button onClick={() => onViewInCookbook && onViewInCookbook(myRecipeId)} style={{
-            width: '100%', padding: '15px',
-            background: 'var(--parchment)', color: 'var(--charcoal)',
+            width: '100%', padding: '15px', background: 'var(--parchment)', color: 'var(--charcoal)',
             border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-pill)',
-            fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: '600',
-            cursor: 'pointer', marginBottom: '32px'
+            fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: '600', cursor: 'pointer', marginBottom: '32px'
           }}>View in Cookbook →</button>
         )}
 
@@ -438,39 +411,27 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
             background: saved ? 'var(--sage)' : 'var(--clay)', color: 'var(--cream)',
             border: 'none', borderRadius: 'var(--radius-pill)',
             fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: '600',
-            cursor: saved ? 'default' : 'pointer', transition: 'background 0.2s',
-            marginBottom: '16px'
-          }}>
-            {saved ? '✓ Saved to Cookbook' : saving ? 'Saving...' : '+ Save to My Cookbook'}
-          </button>
+            cursor: saved ? 'default' : 'pointer', transition: 'background 0.2s', marginBottom: '16px'
+          }}>{saved ? '✓ Saved to Cookbook' : saving ? 'Saving...' : '+ Save to My Cookbook'}</button>
         )}
 
         {!isOwner && myRecipeId && !saved && (
           <button onClick={() => onViewInCookbook && onViewInCookbook(myRecipeId)} style={{
-            width: '100%', padding: '15px',
-            background: 'var(--parchment)', color: 'var(--charcoal)',
+            width: '100%', padding: '15px', background: 'var(--parchment)', color: 'var(--charcoal)',
             border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-pill)',
-            fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: '600',
-            cursor: 'pointer', marginBottom: '32px'
+            fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: '600', cursor: 'pointer', marginBottom: '32px'
           }}>You have this — View in Cookbook →</button>
         )}
 
         {!isOwner && duplicate && (
           <div style={{ background: '#FEF3E2', border: '1px solid #F5C47A', borderRadius: 'var(--radius-md)', padding: '12px 16px', marginBottom: '32px' }}>
             <div style={{ fontSize: '13px', fontWeight: '600', color: '#9A6B1A', marginBottom: '8px' }}>Already in your Cookbook: "{duplicate.title}"</div>
-            <button onClick={addAnyway} style={{
-              width: '100%', padding: '8px', background: 'transparent',
-              border: '1px solid #F5C47A', borderRadius: 'var(--radius-pill)',
-              fontSize: '12px', fontWeight: '600', color: '#9A6B1A', cursor: 'pointer'
-            }}>Add Anyway</button>
+            <button onClick={addAnyway} style={{ width: '100%', padding: '8px', background: 'transparent', border: '1px solid #F5C47A', borderRadius: 'var(--radius-pill)', fontSize: '12px', fontWeight: '600', color: '#9A6B1A', cursor: 'pointer' }}>Add Anyway</button>
           </div>
         )}
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
-          <button onClick={toggleLike} style={{
-            display: 'flex', alignItems: 'center', gap: '6px',
-            background: 'none', border: 'none', cursor: 'pointer', padding: 0
-          }}>
+          <button onClick={toggleLike} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill={liked ? 'var(--clay)' : 'none'}>
               <path d="M12 21C12 21 3 14.5 3 8.5C3 5.42 5.42 3 8.5 3C10.24 3 11.91 3.81 13 5.08C14.09 3.81 15.76 3 17.5 3C20.58 3 23 5.42 23 8.5C23 14.5 12 21 12 21Z"
                 stroke={liked ? 'var(--clay)' : 'var(--muted)'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
@@ -505,11 +466,11 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
                     <div style={{ flex: 1, background: 'var(--warm-white)', borderRadius: 'var(--radius-md)', border: '1px solid var(--parchment)', padding: '10px 14px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
                         <span onClick={() => onSelectUser && onSelectUser(comment.user_id)} style={{ fontSize: '12px', fontWeight: '600', color: 'var(--ink)', cursor: 'pointer', textDecoration: 'underline', textDecorationColor: 'var(--tan)' }}>{name}</span>
-                        <span style={{ fontSize: '11px', color: 'var(--muted)' }}>
-                          {new Date(comment.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                        </span>
+                        <span style={{ fontSize: '11px', color: 'var(--muted)' }}>{new Date(comment.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
                       </div>
-                      <div style={{ fontSize: '13px', color: 'var(--charcoal)', lineHeight: '1.5' }}>{comment.body}</div>
+                      <div style={{ fontSize: '13px', color: 'var(--charcoal)', lineHeight: '1.5' }}>
+                        {renderCommentBody(comment.body, onSelectUser, allCommentProfiles)}
+                      </div>
                     </div>
                   </div>
                 )
@@ -517,36 +478,71 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
             </div>
           )}
 
-          <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
-            <div style={{
-              width: '30px', height: '30px', borderRadius: '50%', flexShrink: 0,
-              background: 'linear-gradient(135deg, var(--clay), var(--ember))',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: '700', color: 'var(--cream)'
-            }}>{(session.user.email || '?')[0].toUpperCase()}</div>
-            <div style={{ flex: 1, display: 'flex', gap: '8px', alignItems: 'flex-end' }}>
-              <textarea
-                value={commentBody}
-                onChange={e => setCommentBody(e.target.value)}
-                placeholder="Add a comment..."
-                rows={1}
-                style={{
-                  flex: 1, padding: '10px 14px',
-                  border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-md)',
-                  background: 'var(--cream)', fontFamily: 'var(--font-body)',
-                  fontSize: '14px', color: 'var(--ink)', outline: 'none',
-                  resize: 'none', lineHeight: '1.5'
-                }}
-                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitComment() } }}
-              />
-              <button onClick={submitComment} disabled={submitting || !commentBody.trim()} style={{
-                padding: '10px 16px',
-                background: commentBody.trim() ? 'var(--clay)' : 'var(--tan)',
-                color: 'var(--cream)', border: 'none', borderRadius: 'var(--radius-pill)',
-                fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '600',
-                cursor: commentBody.trim() ? 'pointer' : 'not-allowed',
-                transition: 'background 0.15s', whiteSpace: 'nowrap'
-              }}>Post</button>
+          {/* Comment input with mention dropdown */}
+          <div style={{ position: 'relative' }}>
+            {mentionQuery !== null && mentionResults.length > 0 && (
+              <div style={{
+                position: 'absolute', bottom: '100%', left: '40px', right: '0',
+                background: 'var(--warm-white)', border: '1px solid var(--parchment)',
+                borderRadius: 'var(--radius-md)', marginBottom: '6px',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 50, overflow: 'hidden'
+              }}>
+                {mentionResults.map(p => (
+                  <div key={p.id} onMouseDown={e => { e.preventDefault(); insertMention(p) }} style={{
+                    display: 'flex', alignItems: 'center', gap: '10px',
+                    padding: '10px 14px', cursor: 'pointer',
+                    borderBottom: '1px solid var(--parchment)',
+                  }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'var(--parchment)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  >
+                    <div style={{
+                      width: '28px', height: '28px', borderRadius: '50%', flexShrink: 0,
+                      background: 'linear-gradient(135deg, var(--clay), var(--ember))',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: '700', color: 'var(--cream)'
+                    }}>{(p.full_name || p.username || '?')[0].toUpperCase()}</div>
+                    <div>
+                      <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--ink)' }}>{p.full_name || p.username}</div>
+                      {p.username && <div style={{ fontSize: '11px', color: 'var(--muted)' }}>@{p.username}</div>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
+              <div style={{
+                width: '30px', height: '30px', borderRadius: '50%', flexShrink: 0,
+                background: 'linear-gradient(135deg, var(--clay), var(--ember))',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: '700', color: 'var(--cream)'
+              }}>{(session.user.email || '?')[0].toUpperCase()}</div>
+              <div style={{ flex: 1, display: 'flex', gap: '8px', alignItems: 'flex-end' }}>
+                <textarea
+                  ref={textareaRef}
+                  value={commentBody}
+                  onChange={handleCommentChange}
+                  placeholder="Add a comment... (type @ to mention)"
+                  rows={1}
+                  style={{
+                    flex: 1, padding: '10px 14px',
+                    border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-md)',
+                    background: 'var(--cream)', fontFamily: 'var(--font-body)',
+                    fontSize: '14px', color: 'var(--ink)', outline: 'none',
+                    resize: 'none', lineHeight: '1.5'
+                  }}
+                  onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitComment() } }}
+                />
+                <button onClick={submitComment} disabled={submitting || !commentBody.trim()} style={{
+                  padding: '10px 16px',
+                  background: commentBody.trim() ? 'var(--clay)' : 'var(--tan)',
+                  color: 'var(--cream)', border: 'none', borderRadius: 'var(--radius-pill)',
+                  fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '600',
+                  cursor: commentBody.trim() ? 'pointer' : 'not-allowed',
+                  transition: 'background 0.15s', whiteSpace: 'nowrap'
+                }}>Post</button>
+              </div>
             </div>
           </div>
         </div>
