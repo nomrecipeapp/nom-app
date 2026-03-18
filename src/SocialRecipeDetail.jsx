@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from './supabase'
+import LikesModal from './LikesModal'
 
 const verdictStyles = {
   would_make_again: { bg: '#EEF4E5', border: '#7A8C6E', color: '#4A5E42', label: 'Would Make Again' },
@@ -43,6 +44,7 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
   const [submitting, setSubmitting] = useState(false)
   const [loadingComments, setLoadingComments] = useState(true)
   const [ingredientsOpen, setIngredientsOpen] = useState(false)
+  const [showLikesModal, setShowLikesModal] = useState(false)
   const [openMenuId, setOpenMenuId] = useState(null)
   const [editingCommentId, setEditingCommentId] = useState(null)
   const [editingBody, setEditingBody] = useState('')
@@ -454,16 +456,31 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
           </div>
         )}
 
+        {showLikesModal && (
+          <LikesModal
+            targetType={targetType}
+            targetId={targetId}
+            onClose={() => setShowLikesModal(false)}
+            onSelectUser={onSelectUser}
+          />
+        )}
+
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
-          <button onClick={toggleLike} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill={liked ? 'var(--clay)' : 'none'}>
-              <path d="M12 21C12 21 3 14.5 3 8.5C3 5.42 5.42 3 8.5 3C10.24 3 11.91 3.81 13 5.08C14.09 3.81 15.76 3 17.5 3C20.58 3 23 5.42 23 8.5C23 14.5 12 21 12 21Z"
-                stroke={liked ? 'var(--clay)' : 'var(--muted)'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            <span style={{ fontSize: '13px', fontWeight: '600', color: liked ? 'var(--clay)' : 'var(--muted)' }}>
-              {likeCount > 0 ? `${likeCount} ` : ''}{liked ? 'Liked' : 'Like'}
-            </span>
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <button onClick={toggleLike} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center' }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill={liked ? 'var(--clay)' : 'none'}>
+                <path d="M12 21C12 21 3 14.5 3 8.5C3 5.42 5.42 3 8.5 3C10.24 3 11.91 3.81 13 5.08C14.09 3.81 15.76 3 17.5 3C20.58 3 23 5.42 23 8.5C23 14.5 12 21 12 21Z"
+                  stroke={liked ? 'var(--clay)' : 'var(--muted)'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+            {likeCount > 0 ? (
+              <button onClick={() => setShowLikesModal(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                <span style={{ fontSize: '13px', fontWeight: '600', color: liked ? 'var(--clay)' : 'var(--muted)' }}>{likeCount} {liked ? 'Liked' : 'Like'}</span>
+              </button>
+            ) : (
+              <span style={{ fontSize: '13px', fontWeight: '600', color: 'var(--muted)' }}>Like</span>
+            )}
+          </div>
         </div>
 
         <div ref={commentsRef}>

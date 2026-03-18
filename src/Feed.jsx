@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from './supabase'
+import LikesModal from './LikesModal'
 
 const verdictStyles = {
   would_make_again: { bg: '#EEF4E5', border: '#7A8C6E', color: '#4A5E42', label: 'Would Make Again' },
@@ -15,6 +16,7 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
   const [feedLikes, setFeedLikes] = useState({})
   const [feedLikeCounts, setFeedLikeCounts] = useState({})
   const [feedCommentCounts, setFeedCommentCounts] = useState({})
+  const [likesModal, setLikesModal] = useState(null)
 
   useEffect(() => {
     fetchFeed()
@@ -139,6 +141,14 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
 
   return (
     <div style={{ maxWidth: '480px', margin: '0 auto', padding: '70px 16px 100px' }}>
+      {likesModal && (
+        <LikesModal
+          targetType={likesModal.targetType}
+          targetId={likesModal.targetId}
+          onClose={() => setLikesModal(null)}
+          onSelectUser={onSelectUser}
+        />
+      )}
 
       {loading ? (
         <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--muted)', fontSize: '14px' }}>Loading...</div>
@@ -202,18 +212,21 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '10px 16px 12px', borderTop: '1px solid var(--parchment)' }}
                     onClick={e => e.stopPropagation()}>
-                    <button onClick={e => toggleFeedLike(e, item)} style={{
-                      display: 'flex', alignItems: 'center', gap: '5px',
-                      background: 'none', border: 'none', cursor: 'pointer', padding: 0
-                    }}>
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill={feedLikes[`save-${item.id}`] ? 'var(--clay)' : 'none'}>
-                        <path d="M12 21C12 21 3 14.5 3 8.5C3 5.42 5.42 3 8.5 3C10.24 3 11.91 3.81 13 5.08C14.09 3.81 15.76 3 17.5 3C20.58 3 23 5.42 23 8.5C23 14.5 12 21 12 21Z"
-                          stroke={feedLikes[`save-${item.id}`] ? 'var(--clay)' : 'var(--muted)'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                      <span style={{ fontSize: '12px', fontWeight: '600', color: feedLikes[`save-${item.id}`] ? 'var(--clay)' : 'var(--muted)' }}>
-                        {feedLikeCounts[`save-${item.id}`] > 0 ? feedLikeCounts[`save-${item.id}`] : ''} {feedLikes[`save-${item.id}`] ? 'Liked' : 'Like'}
-                      </span>
-                    </button>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                      <button onClick={e => toggleFeedLike(e, item)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center' }}>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill={feedLikes[`save-${item.id}`] ? 'var(--clay)' : 'none'}>
+                          <path d="M12 21C12 21 3 14.5 3 8.5C3 5.42 5.42 3 8.5 3C10.24 3 11.91 3.81 13 5.08C14.09 3.81 15.76 3 17.5 3C20.58 3 23 5.42 23 8.5C23 14.5 12 21 12 21Z"
+                            stroke={feedLikes[`save-${item.id}`] ? 'var(--clay)' : 'var(--muted)'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      </button>
+                      {feedLikeCounts[`save-${item.id}`] > 0 ? (
+                        <button onClick={e => { e.stopPropagation(); setLikesModal({ targetType: 'save', targetId: item.id }) }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                          <span style={{ fontSize: '12px', fontWeight: '600', color: feedLikes[`save-${item.id}`] ? 'var(--clay)' : 'var(--muted)' }}>{feedLikeCounts[`save-${item.id}`]} {feedLikes[`save-${item.id}`] ? 'Liked' : 'Like'}</span>
+                        </button>
+                      ) : (
+                        <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--muted)' }}>Like</span>
+                      )}
+                    </div>
                     <button onClick={e => { e.stopPropagation(); onSelectSave(item, true) }} style={{
                       display: 'flex', alignItems: 'center', gap: '5px',
                       background: 'none', border: 'none', cursor: 'pointer', padding: 0
@@ -286,18 +299,21 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '10px 16px 12px', borderTop: '1px solid var(--parchment)' }}
                     onClick={e => e.stopPropagation()}>
-                    <button onClick={e => toggleFeedLike(e, item)} style={{
-                      display: 'flex', alignItems: 'center', gap: '5px',
-                      background: 'none', border: 'none', cursor: 'pointer', padding: 0
-                    }}>
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill={feedLikes[`cook-${item.id}`] ? 'var(--clay)' : 'none'}>
-                        <path d="M12 21C12 21 3 14.5 3 8.5C3 5.42 5.42 3 8.5 3C10.24 3 11.91 3.81 13 5.08C14.09 3.81 15.76 3 17.5 3C20.58 3 23 5.42 23 8.5C23 14.5 12 21 12 21Z"
-                          stroke={feedLikes[`cook-${item.id}`] ? 'var(--clay)' : 'var(--muted)'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                      <span style={{ fontSize: '12px', fontWeight: '600', color: feedLikes[`cook-${item.id}`] ? 'var(--clay)' : 'var(--muted)' }}>
-                        {feedLikeCounts[`cook-${item.id}`] > 0 ? feedLikeCounts[`cook-${item.id}`] : ''} {feedLikes[`cook-${item.id}`] ? 'Liked' : 'Like'}
-                      </span>
-                    </button>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                      <button onClick={e => toggleFeedLike(e, item)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center' }}>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill={feedLikes[`cook-${item.id}`] ? 'var(--clay)' : 'none'}>
+                          <path d="M12 21C12 21 3 14.5 3 8.5C3 5.42 5.42 3 8.5 3C10.24 3 11.91 3.81 13 5.08C14.09 3.81 15.76 3 17.5 3C20.58 3 23 5.42 23 8.5C23 14.5 12 21 12 21Z"
+                            stroke={feedLikes[`cook-${item.id}`] ? 'var(--clay)' : 'var(--muted)'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      </button>
+                      {feedLikeCounts[`cook-${item.id}`] > 0 ? (
+                        <button onClick={e => { e.stopPropagation(); setLikesModal({ targetType: 'cook', targetId: item.id }) }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                          <span style={{ fontSize: '12px', fontWeight: '600', color: feedLikes[`cook-${item.id}`] ? 'var(--clay)' : 'var(--muted)' }}>{feedLikeCounts[`cook-${item.id}`]} {feedLikes[`cook-${item.id}`] ? 'Liked' : 'Like'}</span>
+                        </button>
+                      ) : (
+                        <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--muted)' }}>Like</span>
+                      )}
+                    </div>
                     <button onClick={e => { e.stopPropagation(); onSelectCook(item, true) }} style={{
                       display: 'flex', alignItems: 'center', gap: '5px',
                       background: 'none', border: 'none', cursor: 'pointer', padding: 0
