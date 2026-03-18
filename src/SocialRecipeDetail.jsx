@@ -190,29 +190,41 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
   async function submitComment() {
     if (!commentBody.trim()) return
     setSubmitting(true)
+
+    // Calculate mentions first
+    const mentionMatches = commentBody.match(/@(\w+)/g) || []
+    const allProfiles = [...followingProfiles, ...allCommenters]
+    const mentionedOwner = mentionMatches.some(m => {
+      const username = m.slice(1)
+      const p = allProfiles.find(p => p.username === username)
+      return p && p.id === cook.user_id
+    })
+
     await supabase.from('comments').insert({
       user_id: session.user.id, target_type: targetType,
       target_id: targetId, body: commentBody.trim()
     })
-    if (cook.user_id !== session.user.id) {
+
+    // Comment notification — skip if owner was mentioned (they'll get mention notification instead)
+    if (cook.user_id !== session.user.id && !mentionedOwner) {
       await supabase.from('notifications').insert({
         recipient_id: cook.user_id, actor_id: session.user.id,
         type: 'comment', recipe_id: cook.recipe_id, target_type: targetType, target_id: targetId,
       })
     }
-    // Send mention notifications
-    const mentionMatches = commentBody.match(/@(\w+)/g) || []
-    const allProfiles = [...followingProfiles, ...allCommenters]
+
+    // Mention notifications — send to everyone tagged including post owner
     for (const mention of mentionMatches) {
       const username = mention.slice(1)
       const mentioned = allProfiles.find(p => p.username === username)
-      if (mentioned && mentioned.id !== session.user.id && mentioned.id !== cook.user_id) {
+      if (mentioned && mentioned.id !== session.user.id) {
         await supabase.from('notifications').insert({
           recipient_id: mentioned.id, actor_id: session.user.id,
           type: 'mention', recipe_id: cook.recipe_id, target_type: targetType, target_id: targetId,
         })
       }
     }
+
     setCommentBody('')
     setMentionQuery(null)
     setMentionResults([])
