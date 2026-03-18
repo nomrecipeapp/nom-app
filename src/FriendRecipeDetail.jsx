@@ -191,12 +191,6 @@ export default function FriendRecipeDetail({ recipe, session, onBack, scrollToCo
       const username = mention.slice(1)
       const mentioned = allProfiles.find(p => p.username === username)
       if (mentioned && mentioned.id !== session.user.id) {
-
-    // Mention notifications — send to everyone tagged including post owner
-    for (const mention of mentionMatches) {
-      const username = mention.slice(1)
-      const mentioned = allProfiles.find(p => p.username === username)
-      if (mentioned && mentioned.id !== session.user.id) {
         await supabase.from('notifications').insert({
           recipient_id: mentioned.id, actor_id: session.user.id,
           type: 'mention', recipe_id: recipe.id, target_type: targetType, target_id: targetId,
