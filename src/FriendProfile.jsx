@@ -487,7 +487,7 @@ export default function FriendProfile({ userId, session, onBack, onSelectCook, o
 
           {followStatus === 'approved' && (
             <div style={{ display: 'flex', width: '100%', borderTop: '1px solid var(--parchment)', borderBottom: '1px solid var(--parchment)' }}>
-              <button onClick={() => { setActiveTab('cookbook'); setCookbookFilter('All') }} style={{ flex: 1, padding: '12px 0', textAlign: 'center', borderRight: '1px solid var(--parchment)', background: 'none', border: 'none', borderRight: '1px solid var(--parchment)', cursor: 'pointer' }}>
+              <button onClick={() => { setActiveTab('cookbook'); setCookbookFilter('All') }} style={{ flex: 1, padding: '12px 0', textAlign: 'center', background: 'none', border: 'none', borderRight: '1px solid var(--parchment)', cursor: 'pointer' }}>
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: '700', color: 'var(--ink)' }}>{stats.saved}</div>
                 <div style={{ fontSize: '10px', color: 'var(--muted)', marginTop: '2px' }}>Saved</div>
               </button>
