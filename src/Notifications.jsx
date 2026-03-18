@@ -192,14 +192,24 @@ export default function Notifications({ session, onSelectUser, onSelectCook, onS
                     {label}
                   </div>
                   <div style={{ fontSize: '11px', color: 'var(--muted)' }}>{timeAgo(n.created_at)}</div>
-                  {n.type === 'follow_request' && (
+                  {n.type === 'follow_request' && !n._approved && (
                     <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
                       <button onClick={async e => {
                         e.stopPropagation()
                         await supabase.from('follows').update({ status: 'approved' }).eq('follower_id', n.actor_id).eq('following_id', session.user.id)
                         await supabase.from('notifications').insert({ recipient_id: n.actor_id, actor_id: session.user.id, type: 'follow_approved' })
                         await supabase.from('notifications').delete().eq('id', n.id)
-                        setNotifications(prev => prev.filter(x => x.id !== n.id))
+                        const { data: existingFollow } = await supabase
+                          .from('follows')
+                          .select('status')
+                          .eq('follower_id', session.user.id)
+                          .eq('following_id', n.actor_id)
+                          .maybeSingle()
+                        setNotifications(prev => prev.map(x => x.id !== n.id ? x : {
+                          ...x,
+                          _approved: true,
+                          _followsBack: existingFollow ? existingFollow.status : false,
+                        }))
                       }} style={{
                         padding: '6px 14px', background: 'var(--clay)', color: 'var(--cream)',
                         border: 'none', borderRadius: 'var(--radius-pill)',
@@ -215,6 +225,42 @@ export default function Notifications({ session, onSelectUser, onSelectCook, onS
                         border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-pill)',
                         fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600', cursor: 'pointer'
                       }}>Deny</button>
+                    </div>
+                  )}
+                  {n.type === 'follow_request' && n._approved && (
+                    <div style={{ marginTop: '8px' }}>
+                      <div style={{ fontSize: '12px', color: 'var(--muted)', marginBottom: n._followsBack ? '0' : '8px' }}>
+                        ✓ You approved their request
+                      </div>
+                      {!n._followsBack && (
+                        <button onClick={async e => {
+                          e.stopPropagation()
+                          await supabase.from('follows').insert({
+                            follower_id: session.user.id,
+                            following_id: n.actor_id,
+                            status: 'pending'
+                          })
+                          await supabase.from('notifications').insert({
+                            recipient_id: n.actor_id,
+                            actor_id: session.user.id,
+                            type: 'follow_request',
+                          })
+                          setNotifications(prev => prev.map(x => x.id !== n.id ? x : {
+                            ...x,
+                            _followsBack: 'pending',
+                          }))
+                        }} style={{
+                          padding: '6px 14px', background: 'transparent', color: 'var(--clay)',
+                          border: '2px solid var(--clay)', borderRadius: 'var(--radius-pill)',
+                          fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600', cursor: 'pointer'
+                        }}>Request to Follow Back</button>
+                      )}
+                      {n._followsBack === 'pending' && (
+                        <div style={{ fontSize: '12px', color: 'var(--muted)' }}>Requested</div>
+                      )}
+                      {n._followsBack === 'approved' && (
+                        <div style={{ fontSize: '12px', color: 'var(--muted)' }}>You follow each other</div>
+                      )}
                     </div>
                   )}
                 </div>
