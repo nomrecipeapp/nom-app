@@ -217,18 +217,6 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
       }
     }
 
-    // Mention notifications — send to everyone tagged including post owner
-    for (const mention of mentionMatches) {
-      const username = mention.slice(1)
-      const mentioned = allProfiles.find(p => p.username === username)
-      if (mentioned && mentioned.id !== session.user.id) {
-        await supabase.from('notifications').insert({
-          recipient_id: mentioned.id, actor_id: session.user.id,
-          type: 'mention', recipe_id: cook.recipe_id, target_type: targetType, target_id: targetId,
-        })
-      }
-    }
-
     setCommentBody('')
     setMentionQuery(null)
     setMentionResults([])
