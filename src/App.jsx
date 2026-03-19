@@ -378,6 +378,7 @@ if (showLogin) return <Auth />
             setSelectedRecipe(recipe)
             setScreen('recipe')
           }}
+          onSelectUser={goToFriendProfile}
         />
       )}
 

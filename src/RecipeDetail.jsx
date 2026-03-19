@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from './supabase'
+import CircleFriendsModal from './CircleFriendsModal'
 
 const verdictOptions = [
   { value: 'would_make_again', label: 'Would Make Again', sub: 'A keeper', bg: '#EEF4E5', border: '#7A8C6E', color: '#4A5E42' },
@@ -36,6 +37,9 @@ export default function RecipeDetail({ recipe: initialRecipe, session, onBack, o
   const [cooks, setCooks] = useState([])
   const [loadingCooks, setLoadingCooks] = useState(true)
   const [circleCooks, setCircleCooks] = useState([])
+  const [circleFriendsCount, setCircleFriendsCount] = useState(0)
+  const [circleFriendAvatars, setCircleFriendAvatars] = useState([])
+  const [showCircleModal, setShowCircleModal] = useState(false)
   const [availableTags, setAvailableTags] = useState(PRESET_TAGS)
 
   useEffect(() => {
@@ -130,6 +134,13 @@ export default function RecipeDetail({ recipe: initialRecipe, session, onBack, o
     })
 
     setCircleCooks(deduped)
+
+    // Build teaser data
+    const allFriendIds = [...new Set(matchingRecipes.map(r => r.user_id))]
+    const { data: teaserProfiles } = await supabase
+      .from('profiles').select('id, full_name, username').in('id', allFriendIds.slice(0, 3))
+    setCircleFriendsCount(allFriendIds.length)
+    setCircleFriendAvatars(teaserProfiles || [])
   }
 
   async function logCook() {
@@ -454,6 +465,41 @@ export default function RecipeDetail({ recipe: initialRecipe, session, onBack, o
             {recipe.difficulty && <span style={{ fontSize: '12px', color: 'var(--muted)' }}>· {recipe.difficulty}</span>}
           </div>
         </div>
+
+        {showCircleModal && (
+          <CircleFriendsModal
+            sourceUrl={recipe.source_url}
+            session={session}
+            onClose={() => setShowCircleModal(false)}
+            onSelectUser={onSelectUser}
+          />
+        )}
+
+        {circleFriendsCount > 0 && (
+          <div onClick={() => setShowCircleModal(true)} style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            background: 'var(--parchment)', borderRadius: 'var(--radius-md)',
+            padding: '10px 14px', marginBottom: '12px', cursor: 'pointer'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ display: 'flex' }}>
+                {circleFriendAvatars.map((p, i) => (
+                  <div key={p.id} style={{
+                    width: '24px', height: '24px', borderRadius: '50%',
+                    background: 'linear-gradient(135deg, var(--clay), var(--ember))',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontFamily: 'var(--font-display)', fontSize: '9px', fontWeight: '700', color: 'var(--cream)',
+                    marginLeft: i === 0 ? '0' : '-6px', border: '2px solid var(--parchment)', flexShrink: 0
+                  }}>{(p.full_name || p.username || '?')[0].toUpperCase()}</div>
+                ))}
+              </div>
+              <span style={{ fontSize: '12px', color: 'var(--charcoal)' }}>
+                <span style={{ fontWeight: '600', color: 'var(--clay)' }}>{circleFriendsCount} {circleFriendsCount === 1 ? 'friend' : 'friends'}</span> also {circleFriendsCount === 1 ? 'has' : 'have'} this
+              </span>
+            </div>
+            <span style={{ fontSize: '12px', color: 'var(--clay)', fontWeight: '600' }}>See all →</span>
+          </div>
+        )}
 
         {recipe.source_url && (
           <a href={recipe.source_url} target="_blank" rel="noopener noreferrer" style={{

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from './supabase'
+import CircleFriendsModal from './CircleFriendsModal'
 
 const FILTERS = ['All', 'Want to Make', 'Cooked', 'Never Again']
 const PRESET_TAGS = ['Breakfast', 'Lunch', 'Dinner', 'Appetizer', 'Dessert', 'Baking', 'Cocktail']
@@ -15,13 +16,15 @@ const verdictStyle = {
   never_again: { background: '#F4E8E8', color: '#9B4040', border: '1px solid #C47070' }
 }
 
-export default function Cookbook({ session, onAddRecipe, onSelectRecipe, defaultFilter }) {
+export default function Cookbook({ session, onAddRecipe, onSelectRecipe, defaultFilter, onSelectUser }) {
   const [recipes, setRecipes] = useState([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState(defaultFilter || 'All')
   const [tagFilter, setTagFilter] = useState(null)
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState('date')
+  const [circleFriendsMap, setCircleFriendsMap] = useState({})
+  const [circleModal, setCircleModal] = useState(null)
 
   useEffect(() => {
     fetchRecipes()
@@ -34,8 +37,43 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
       .select('*')
       .eq('user_id', session.user.id)
       .order('created_at', { ascending: false })
-    if (data) setRecipes(data)
+    if (data) {
+      setRecipes(data)
+      fetchCircleFriendsForRecipes(data)
+    }
     setLoading(false)
+  }
+
+  async function fetchCircleFriendsForRecipes(recipeList) {
+    const { data: following } = await supabase
+      .from('follows').select('following_id')
+      .eq('follower_id', session.user.id).eq('status', 'approved')
+    if (!following || following.length === 0) return
+    const followingIds = following.map(f => f.following_id)
+
+    const sourceUrls = recipeList.filter(r => r.source_url).map(r => r.source_url)
+    if (sourceUrls.length === 0) return
+
+    const { data: matchingRecipes } = await supabase
+      .from('recipes').select('id, user_id, source_url')
+      .in('source_url', sourceUrls).in('user_id', followingIds)
+
+    if (!matchingRecipes || matchingRecipes.length === 0) return
+
+    const allUserIds = [...new Set(matchingRecipes.map(r => r.user_id))]
+    const { data: profiles } = await supabase
+      .from('profiles').select('id, full_name, username').in('id', allUserIds)
+
+    const map = {}
+    for (const r of recipeList) {
+      if (!r.source_url) continue
+      const matches = matchingRecipes.filter(m => m.source_url === r.source_url)
+      if (matches.length === 0) continue
+      const userIds = [...new Set(matches.map(m => m.user_id))]
+      const avatars = userIds.slice(0, 3).map(id => profiles?.find(p => p.id === id)).filter(Boolean)
+      map[r.id] = { count: userIds.length, avatars }
+    }
+    setCircleFriendsMap(map)
   }
 
 const allTags = [...new Set([
@@ -151,6 +189,15 @@ const allTags = [...new Set([
         </div>
 
         {/* Recipe list */}
+        {circleModal && (
+          <CircleFriendsModal
+            sourceUrl={circleModal}
+            session={session}
+            onClose={() => setCircleModal(null)}
+            onSelectUser={onSelectUser}
+          />
+        )}
+
         {loading ? null : filtered.length === 0 ? (
           <div style={{
             textAlign: 'center', padding: '60px 24px',
@@ -177,44 +224,67 @@ const allTags = [...new Set([
               <div key={recipe.id} onClick={() => onSelectRecipe(recipe)} style={{
                 background: 'var(--warm-white)', borderRadius: 'var(--radius-md)',
                 border: '1px solid var(--parchment)', padding: '16px 18px',
-                cursor: 'pointer', display: 'flex', alignItems: 'center',
-                gap: '14px', transition: 'box-shadow 0.15s'
+                cursor: 'pointer', transition: 'box-shadow 0.15s'
               }}>
-                {recipe.image_url && (
-                  <div style={{
-                    width: '52px', height: '52px', borderRadius: 'var(--radius-sm)',
-                    background: 'var(--parchment)', flexShrink: 0, overflow: 'hidden'
-                  }}>
-                    <img src={recipe.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  </div>
-                )}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{
-                    fontFamily: 'var(--font-display)', fontSize: '16px', fontWeight: '500',
-                    color: 'var(--ink)', marginBottom: '4px',
-                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
-                  }}>{recipe.title}</div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                    {recipe.source_name && <span style={{ fontSize: '11px', color: 'var(--muted)' }}>{recipe.source_name}</span>}
-                    {recipe.cook_time && <span style={{ fontSize: '11px', color: 'var(--muted)' }}>· {recipe.cook_time}</span>}
-                  </div>
-                  {(recipe.tags || []).length > 0 && (
-                    <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '5px' }}>
-                      {(recipe.tags || []).map(tag => (
-                        <span key={tag} style={{
-                          padding: '2px 8px', borderRadius: 'var(--radius-pill)',
-                          background: 'var(--parchment)', fontSize: '10px',
-                          fontWeight: '600', color: 'var(--charcoal)'
-                        }}>{tag}</span>
-                      ))}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                  {recipe.image_url && (
+                    <div style={{
+                      width: '52px', height: '52px', borderRadius: 'var(--radius-sm)',
+                      background: 'var(--parchment)', flexShrink: 0, overflow: 'hidden'
+                    }}>
+                      <img src={recipe.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     </div>
                   )}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{
+                      fontFamily: 'var(--font-display)', fontSize: '16px', fontWeight: '500',
+                      color: 'var(--ink)', marginBottom: '4px',
+                      whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
+                    }}>{recipe.title}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                      {recipe.source_name && <span style={{ fontSize: '11px', color: 'var(--muted)' }}>{recipe.source_name}</span>}
+                      {recipe.cook_time && <span style={{ fontSize: '11px', color: 'var(--muted)' }}>· {recipe.cook_time}</span>}
+                    </div>
+                    {(recipe.tags || []).length > 0 && (
+                      <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '5px' }}>
+                        {(recipe.tags || []).map(tag => (
+                          <span key={tag} style={{
+                            padding: '2px 8px', borderRadius: 'var(--radius-pill)',
+                            background: 'var(--parchment)', fontSize: '10px',
+                            fontWeight: '600', color: 'var(--charcoal)'
+                          }}>{tag}</span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <div style={{
+                    ...verdictStyle[recipe.status],
+                    padding: '4px 10px', borderRadius: 'var(--radius-pill)',
+                    fontSize: '11px', fontWeight: '600', flexShrink: 0
+                  }}>{statusLabel[recipe.status]}</div>
                 </div>
-                <div style={{
-                  ...verdictStyle[recipe.status],
-                  padding: '4px 10px', borderRadius: 'var(--radius-pill)',
-                  fontSize: '11px', fontWeight: '600', flexShrink: 0
-                }}>{statusLabel[recipe.status]}</div>
+                {circleFriendsMap[recipe.id] && (
+                  <div onClick={e => { e.stopPropagation(); setCircleModal(recipe.source_url) }} style={{
+                    display: 'flex', alignItems: 'center', gap: '6px',
+                    marginTop: '10px', paddingTop: '10px',
+                    borderTop: '1px solid var(--parchment)'
+                  }}>
+                    <div style={{ display: 'flex' }}>
+                      {circleFriendsMap[recipe.id].avatars.map((p, i) => (
+                        <div key={p.id} style={{
+                          width: '20px', height: '20px', borderRadius: '50%',
+                          background: 'linear-gradient(135deg, var(--clay), var(--ember))',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontFamily: 'var(--font-display)', fontSize: '8px', fontWeight: '700', color: 'var(--cream)',
+                          marginLeft: i === 0 ? '0' : '-5px', border: '1.5px solid var(--warm-white)', flexShrink: 0
+                        }}>{(p.full_name || p.username || '?')[0].toUpperCase()}</div>
+                      ))}
+                    </div>
+                    <span style={{ fontSize: '11px', color: 'var(--muted)' }}>
+                      <span style={{ fontWeight: '600', color: 'var(--clay)' }}>{circleFriendsMap[recipe.id].count} {circleFriendsMap[recipe.id].count === 1 ? 'friend' : 'friends'}</span> also {circleFriendsMap[recipe.id].count === 1 ? 'has' : 'have'} this
+                    </span>
+                  </div>
+                )}
               </div>
             ))}
           </div>

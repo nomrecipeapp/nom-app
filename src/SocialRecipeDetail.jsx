@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from './supabase'
 import LikesModal from './LikesModal'
+import CircleFriendsModal from './CircleFriendsModal'
 
 const verdictStyles = {
   would_make_again: { bg: '#EEF4E5', border: '#7A8C6E', color: '#4A5E42', label: 'Would Make Again' },
@@ -44,7 +45,11 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
   const [submitting, setSubmitting] = useState(false)
   const [loadingComments, setLoadingComments] = useState(true)
   const [ingredientsOpen, setIngredientsOpen] = useState(false)
+  const [directionsOpen, setDirectionsOpen] = useState(false)
   const [showLikesModal, setShowLikesModal] = useState(false)
+  const [showCircleModal, setShowCircleModal] = useState(false)
+  const [circleFriendsCount, setCircleFriendsCount] = useState(0)
+  const [circleFriendAvatars, setCircleFriendAvatars] = useState([])
   const [openMenuId, setOpenMenuId] = useState(null)
   const [editingCommentId, setEditingCommentId] = useState(null)
   const [editingBody, setEditingBody] = useState('')
@@ -69,6 +74,7 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
     fetchComments()
     checkIfSaved()
     fetchFollowing()
+    fetchCircleFriends()
   }, [cook.id])
 
   useEffect(() => {
@@ -86,6 +92,24 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
     const { data: profiles } = await supabase
       .from('profiles').select('id, full_name, username').in('id', ids)
     setFollowingProfiles(profiles || [])
+  }
+
+  async function fetchCircleFriends() {
+    if (!recipe?.source_url) return
+    const { data: following } = await supabase
+      .from('follows').select('following_id')
+      .eq('follower_id', session.user.id).eq('status', 'approved')
+    if (!following || following.length === 0) return
+    const followingIds = following.map(f => f.following_id)
+    const { data: matchingRecipes } = await supabase
+      .from('recipes').select('id, user_id')
+      .eq('source_url', recipe.source_url).in('user_id', followingIds)
+    if (!matchingRecipes || matchingRecipes.length === 0) return
+    const userIds = [...new Set(matchingRecipes.map(r => r.user_id))]
+    const { data: profiles } = await supabase
+      .from('profiles').select('id, full_name, username').in('id', userIds.slice(0, 3))
+    setCircleFriendsCount(userIds.length)
+    setCircleFriendAvatars(profiles || [])
   }
 
   async function checkIfSaved() {
@@ -317,6 +341,41 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
           </div>
         </div>
 
+        {showCircleModal && (
+          <CircleFriendsModal
+            sourceUrl={recipe.source_url}
+            session={session}
+            onClose={() => setShowCircleModal(false)}
+            onSelectUser={onSelectUser}
+          />
+        )}
+
+        {circleFriendsCount > 0 && (
+          <div onClick={() => setShowCircleModal(true)} style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            background: 'var(--parchment)', borderRadius: 'var(--radius-md)',
+            padding: '10px 14px', marginBottom: '12px', cursor: 'pointer'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ display: 'flex' }}>
+                {circleFriendAvatars.map((p, i) => (
+                  <div key={p.id} style={{
+                    width: '24px', height: '24px', borderRadius: '50%',
+                    background: 'linear-gradient(135deg, var(--clay), var(--ember))',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontFamily: 'var(--font-display)', fontSize: '9px', fontWeight: '700', color: 'var(--cream)',
+                    marginLeft: i === 0 ? '0' : '-6px', border: '2px solid var(--parchment)', flexShrink: 0
+                  }}>{(p.full_name || p.username || '?')[0].toUpperCase()}</div>
+                ))}
+              </div>
+              <span style={{ fontSize: '12px', color: 'var(--charcoal)' }}>
+                <span style={{ fontWeight: '600', color: 'var(--clay)' }}>{circleFriendsCount} {circleFriendsCount === 1 ? 'friend' : 'friends'}</span> also {circleFriendsCount === 1 ? 'has' : 'have'} this
+              </span>
+            </div>
+            <span style={{ fontSize: '12px', color: 'var(--clay)', fontWeight: '600' }}>See all →</span>
+          </div>
+        )}
+
         {recipe.source_url && (
           <a href={recipe.source_url} target="_blank" rel="noopener noreferrer" style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -393,6 +452,32 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
           </div>
         )}
 
+      {recipe.instructions && (
+                <div style={{ background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--parchment)', marginBottom: '16px', overflow: 'hidden' }}>
+                  <button onClick={() => setDirectionsOpen(o => !o)} style={{
+                    width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: '14px 20px', background: 'none', border: 'none', cursor: 'pointer'
+                  }}>
+                    <div style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--muted)' }}>Directions</div>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ transform: directionsOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>
+                      <path d="M6 9l6 6 6-6" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </button>
+                  {directionsOpen && (
+                    <div style={{ padding: '0 20px 20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                      {recipe.instructions.split('\n').filter(Boolean).map((line, i) => (
+                        <div key={i} style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                          <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: 'var(--clay)', color: 'var(--cream)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: '700', flexShrink: 0, marginTop: '1px' }}>{i + 1}</div>
+                          <span style={{ fontSize: '14px', color: 'var(--charcoal)', lineHeight: '1.6', flex: 1 }}>{line.replace(/^\d+\.\s*/, '')}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+        {circleCooks.length > 0 && (
+        
         {circleCooks.length > 0 && (
           <div style={{ background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--parchment)', padding: '20px', marginBottom: '24px' }}>
             <div style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '14px' }}>From Your Circle</div>

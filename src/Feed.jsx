@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from './supabase'
 import LikesModal from './LikesModal'
+import CircleFriendsModal from './CircleFriendsModal'
 
 const verdictStyles = {
   would_make_again: { bg: '#EEF4E5', border: '#7A8C6E', color: '#4A5E42', label: 'Would Make Again' },
@@ -17,6 +18,8 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
   const [feedLikeCounts, setFeedLikeCounts] = useState({})
   const [feedCommentCounts, setFeedCommentCounts] = useState({})
   const [likesModal, setLikesModal] = useState(null)
+  const [circleModal, setCircleModal] = useState(null)
+  const [circleFriendsMap, setCircleFriendsMap] = useState({})
 
   useEffect(() => {
     fetchFeed()
@@ -75,8 +78,43 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
     setFeed(merged)
     setLoading(false)
     await fetchFeedEngagement(merged)
+    fetchCircleFriendsForFeed(merged)
   }
 
+  async function fetchCircleFriendsForFeed(items) {
+    const { data: following } = await supabase
+      .from('follows').select('following_id')
+      .eq('follower_id', session.user.id).eq('status', 'approved')
+    if (!following || following.length === 0) return
+    const followingIds = following.map(f => f.following_id)
+
+    const sourceUrls = items.filter(i => i.source_url).map(i => i.source_url)
+    if (sourceUrls.length === 0) return
+
+    const { data: matchingRecipes } = await supabase
+      .from('recipes').select('id, user_id, source_url')
+      .in('source_url', sourceUrls).in('user_id', followingIds)
+
+    if (!matchingRecipes || matchingRecipes.length === 0) return
+
+    const allUserIds = [...new Set(matchingRecipes.map(r => r.user_id))]
+    const { data: profiles } = await supabase
+      .from('profiles').select('id, full_name, username').in('id', allUserIds)
+
+    const map = {}
+    for (const item of items) {
+      const url = item._type === 'cook' ? item.recipes?.source_url : item.source_url
+      if (!url) continue
+      const matches = matchingRecipes.filter(m => m.source_url === url)
+        .filter(m => m.user_id !== item.user_id)
+      if (matches.length === 0) continue
+      const userIds = [...new Set(matches.map(m => m.user_id))]
+      const avatars = userIds.slice(0, 3).map(id => profiles?.find(p => p.id === id)).filter(Boolean)
+      map[`${item._type}-${item.id}`] = { count: userIds.length, avatars, sourceUrl: url }
+    }
+    setCirkleFriendsMap(map)
+  }
+  
   async function fetchFeedEngagement(items) {
     if (!items || items.length === 0) return
 
@@ -149,6 +187,14 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
           onSelectUser={onSelectUser}
         />
       )}
+      {circleModal && (
+        <CircleFriendsModal
+          sourceUrl={circleModal}
+          session={session}
+          onClose={() => setCircleModal(null)}
+          onSelectUser={onSelectUser}
+        />
+      )}
 
       {loading ? (
         <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--muted)', fontSize: '14px' }}>Loading...</div>
@@ -209,6 +255,28 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
                       {item.source_name && <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '2px' }}>{item.source_name}</div>}
                     </div>
                   </div>
+
+                      {circleFriendsMap[`save-${item.id}`] && (
+                    <div onClick={e => { e.stopPropagation(); setCircleModal(circleFriendsMap[`save-${item.id}`].sourceUrl) }} style={{
+                      display: 'flex', alignItems: 'center', gap: '6px',
+                      padding: '8px 16px', borderTop: '1px solid var(--parchment)', cursor: 'pointer'
+                    }}>
+                      <div style={{ display: 'flex' }}>
+                        {circleFriendsMap[`save-${item.id}`].avatars.map((p, i) => (
+                          <div key={p.id} style={{
+                            width: '18px', height: '18px', borderRadius: '50%',
+                            background: 'linear-gradient(135deg, var(--clay), var(--ember))',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontFamily: 'var(--font-display)', fontSize: '7px', fontWeight: '700', color: 'var(--cream)',
+                            marginLeft: i === 0 ? '0' : '-4px', border: '1.5px solid var(--warm-white)', flexShrink: 0
+                          }}>{(p.full_name || p.username || '?')[0].toUpperCase()}</div>
+                        ))}
+                      </div>
+                      <span style={{ fontSize: '11px', color: 'var(--muted)' }}>
+                        <span style={{ fontWeight: '600', color: 'var(--clay)' }}>{circleFriendsMap[`save-${item.id}`].count} {circleFriendsMap[`save-${item.id}`].count === 1 ? 'friend' : 'friends'}</span> also {circleFriendsMap[`save-${item.id}`].count === 1 ? 'has' : 'have'} this
+                      </span>
+                    </div>
+                  )}
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '10px 16px 12px', borderTop: '1px solid var(--parchment)' }}
                     onClick={e => e.stopPropagation()}>
@@ -296,6 +364,28 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
                     <div style={{ fontSize: '13px', color: 'var(--charcoal)', lineHeight: '1.55', fontStyle: 'italic' }}>"{item.notes}"</div>
                   )}
                 </div>
+
+                 {circleFriendsMap[`cook-${item.id}`] && (
+                    <div onClick={e => { e.stopPropagation(); setCircleModal(circleFriendsMap[`cook-${item.id}`].sourceUrl) }} style={{
+                      display: 'flex', alignItems: 'center', gap: '6px',
+                      padding: '8px 16px', borderTop: '1px solid var(--parchment)', cursor: 'pointer'
+                    }}>
+                      <div style={{ display: 'flex' }}>
+                        {circleFriendsMap[`cook-${item.id}`].avatars.map((p, i) => (
+                          <div key={p.id} style={{
+                            width: '18px', height: '18px', borderRadius: '50%',
+                            background: 'linear-gradient(135deg, var(--clay), var(--ember))',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontFamily: 'var(--font-display)', fontSize: '7px', fontWeight: '700', color: 'var(--cream)',
+                            marginLeft: i === 0 ? '0' : '-4px', border: '1.5px solid var(--warm-white)', flexShrink: 0
+                          }}>{(p.full_name || p.username || '?')[0].toUpperCase()}</div>
+                        ))}
+                      </div>
+                      <span style={{ fontSize: '11px', color: 'var(--muted)' }}>
+                        <span style={{ fontWeight: '600', color: 'var(--clay)' }}>{circleFriendsMap[`cook-${item.id}`].count} {circleFriendsMap[`cook-${item.id}`].count === 1 ? 'friend' : 'friends'}</span> also {circleFriendsMap[`cook-${item.id}`].count === 1 ? 'has' : 'have'} this
+                      </span>
+                    </div>
+                  )}
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '10px 16px 12px', borderTop: '1px solid var(--parchment)' }}
                     onClick={e => e.stopPropagation()}>
