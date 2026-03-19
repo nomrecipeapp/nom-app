@@ -477,8 +477,6 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
               )}
 
         {circleCooks.length > 0 && (
-        
-        {circleCooks.length > 0 && (
           <div style={{ background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--parchment)', padding: '20px', marginBottom: '24px' }}>
             <div style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '14px' }}>From Your Circle</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
