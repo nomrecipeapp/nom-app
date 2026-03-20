@@ -256,6 +256,7 @@ export default function FriendRecipeDetail({ recipe, session, onBack, scrollToCo
     }
     setSaving(false)
     setSaved(true)
+    console.log('saved set to true, duplicate:', duplicate, 'myRecipeId:', myRecipeId)
     const { data: newRecipe } = await supabase
       .from('recipes').select('id')
       .eq('user_id', session.user.id).eq('source_url', recipe.source_url).maybeSingle()
@@ -420,7 +421,7 @@ export default function FriendRecipeDetail({ recipe, session, onBack, scrollToCo
           }}>{saving ? 'Saving...' : '+ Save to My Cookbook'}</button>
         )}
         {!isOwner && !duplicate && saved && (
-          <div style={{ marginBottom: '16px', background: 'red' }}>
+          <div style={{ marginBottom: '16px' }}>
             <div style={{ fontSize: '13px', color: 'var(--sage)', fontWeight: '600', textAlign: 'center', marginBottom: '8px' }}>✓ Saved to Cookbook</div>
             <button onClick={() => onViewInCookbook && onViewInCookbook(myRecipeId || recipe.id)} style={{
               width: '100%', padding: '12px',
