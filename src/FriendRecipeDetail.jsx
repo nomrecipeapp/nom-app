@@ -254,7 +254,12 @@ export default function FriendRecipeDetail({ recipe, session, onBack, scrollToCo
         type: 'save', recipe_id: recipe.id, target_type: 'save', target_id: recipe.id,
       })
     }
-    setSaving(false); setSaved(true)
+    setSaving(false)
+    setSaved(true)
+    const { data: newRecipe } = await supabase
+      .from('recipes').select('id')
+      .eq('user_id', session.user.id).eq('source_url', recipe.source_url).maybeSingle()
+    if (newRecipe) setMyRecipeId(newRecipe.id)
   }
 
   async function addAnyway() {
@@ -271,7 +276,12 @@ export default function FriendRecipeDetail({ recipe, session, onBack, scrollToCo
         type: 'save', recipe_id: recipe.id, target_type: 'save', target_id: recipe.id,
       })
     }
-    setSaving(false); setSaved(true)
+    setSaving(false)
+    setSaved(true)
+    const { data: newRecipe } = await supabase
+      .from('recipes').select('id')
+      .eq('user_id', session.user.id).eq('source_url', recipe.source_url).maybeSingle()
+    if (newRecipe) setMyRecipeId(newRecipe.id)
   }
 
   const allCommentProfiles = [...followingProfiles, ...allCommenters]
@@ -393,7 +403,7 @@ export default function FriendRecipeDetail({ recipe, session, onBack, scrollToCo
         )}
 
         {isOwner && (
-          <button onClick={() => onViewInCookbook && onViewInCookbook(recipe.id)} style={{
+            <button onClick={() => onViewInCookbook && onViewInCookbook(myRecipeId || recipe.id)} style={{
             width: '100%', padding: '15px', background: 'var(--parchment)', color: 'var(--charcoal)',
             border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-pill)',
             fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: '600', cursor: 'pointer', marginBottom: '32px'
@@ -412,7 +422,7 @@ export default function FriendRecipeDetail({ recipe, session, onBack, scrollToCo
         {!isOwner && !duplicate && saved && (
           <div style={{ marginBottom: '16px' }}>
             <div style={{ fontSize: '13px', color: 'var(--sage)', fontWeight: '600', textAlign: 'center', marginBottom: '8px' }}>✓ Saved to Cookbook</div>
-            <button onClick={() => onViewInCookbook && onViewInCookbook(recipe.id)} style={{
+            <button onClick={() => onViewInCookbook && onViewInCookbook(myRecipeId || recipe.id)} style={{
               width: '100%', padding: '12px',
               background: 'var(--parchment)', color: 'var(--charcoal)',
               border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-pill)',
