@@ -73,6 +73,7 @@ export default function RecipeDetail({ recipe: initialRecipe, session, onBack, o
   useEffect(() => {
     fetchCooks()
     if (recipe.source_url) fetchCircleCooks()
+    if (recipe.source_url) fetchCircleFriends()
   }, [recipe.id])
 
   async function fetchCooks() {
@@ -141,6 +142,25 @@ export default function RecipeDetail({ recipe: initialRecipe, session, onBack, o
       .from('profiles').select('id, full_name, username').in('id', allFriendIds.slice(0, 3))
     setCircleFriendsCount(allFriendIds.length)
     setCircleFriendAvatars(teaserProfiles || [])
+  }
+
+
+  async function fetchCircleFriends() {
+    if (!recipe.source_url) return
+    const { data: following } = await supabase
+      .from('follows').select('following_id')
+      .eq('follower_id', session.user.id).eq('status', 'approved')
+    if (!following || following.length === 0) return
+    const followingIds = following.map(f => f.following_id)
+    const { data: matchingRecipes } = await supabase
+      .from('recipes').select('id, user_id')
+      .eq('source_url', recipe.source_url).in('user_id', followingIds)
+    if (!matchingRecipes || matchingRecipes.length === 0) return
+    const userIds = [...new Set(matchingRecipes.map(r => r.user_id))]
+    const { data: profiles } = await supabase
+      .from('profiles').select('id, full_name, username').in('id', userIds.slice(0, 3))
+    setCircleFriendsCount(userIds.length)
+    setCircleFriendAvatars(profiles || [])
   }
 
   async function logCook() {
