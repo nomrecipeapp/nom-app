@@ -87,7 +87,9 @@ export default function FriendRecipeDetail({ recipe, session, onBack, scrollToCo
       .from('recipes').select('id, user_id')
       .eq('source_url', recipe.source_url).in('user_id', followingIds)
     if (!matchingRecipes || matchingRecipes.length === 0) return
-    const userIds = [...new Set(matchingRecipes.map(r => r.user_id))].filter(id => id !== recipe.user_id)
+    const userIds = [...new Set(matchingRecipes.map(r => r.user_id))]
+    const otherIds = userIds.filter(id => id !== recipe.user_id)
+    if (otherIds.length === 0) return
     const { data: profiles } = await supabase
       .from('profiles').select('id, full_name, username').in('id', userIds.slice(0, 3))
     setCircleFriendsCount(userIds.length)
