@@ -112,7 +112,7 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
       const avatars = userIds.slice(0, 3).map(id => profiles?.find(p => p.id === id)).filter(Boolean)
       map[`${item._type}-${item.id}`] = { count: userIds.length, avatars, sourceUrl: url }
     }
-    setCirkleFriendsMap(map)
+    setCircleFriendsMap(map)
   }
   
   async function fetchFeedEngagement(items) {
