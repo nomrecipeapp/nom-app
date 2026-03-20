@@ -400,14 +400,25 @@ export default function FriendRecipeDetail({ recipe, session, onBack, scrollToCo
           }}>View in Cookbook →</button>
         )}
 
-        {!isOwner && !duplicate && !myRecipeId && (
-          <button onClick={saveRecipe} disabled={saved || saving} style={{
+        {!isOwner && !duplicate && !myRecipeId && !saved && (
+          <button onClick={saveRecipe} disabled={saving} style={{
             width: '100%', padding: '15px',
-            background: saved ? 'var(--sage)' : 'var(--clay)', color: 'var(--cream)',
+            background: 'var(--clay)', color: 'var(--cream)',
             border: 'none', borderRadius: 'var(--radius-pill)',
             fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: '600',
-            cursor: saved ? 'default' : 'pointer', transition: 'background 0.2s', marginBottom: '16px'
-          }}>{saved ? '✓ Saved to Cookbook' : saving ? 'Saving...' : '+ Save to My Cookbook'}</button>
+            cursor: 'pointer', transition: 'background 0.2s', marginBottom: '16px'
+          }}>{saving ? 'Saving...' : '+ Save to My Cookbook'}</button>
+        )}
+        {!isOwner && !duplicate && !myRecipeId && saved && (
+          <div style={{ marginBottom: '16px' }}>
+            <div style={{ fontSize: '13px', color: 'var(--sage)', fontWeight: '600', textAlign: 'center', marginBottom: '8px' }}>✓ Saved to Cookbook</div>
+            <button onClick={() => onViewInCookbook && onViewInCookbook(recipe.id)} style={{
+              width: '100%', padding: '12px',
+              background: 'var(--parchment)', color: 'var(--charcoal)',
+              border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-pill)',
+              fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: '600', cursor: 'pointer'
+            }}>View in Cookbook →</button>
+          </div>
         )}
 
         {!isOwner && myRecipeId && !saved && (
