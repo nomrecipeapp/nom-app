@@ -403,7 +403,7 @@ export default function FriendRecipeDetail({ recipe, session, onBack, scrollToCo
         )}
 
         {isOwner && (
-            <button onClick={() => onViewInCookbook && onViewInCookbook(myRecipeId || recipe.id)} style={{
+            <button onClick={() => { console.log('onViewInCookbook:', onViewInCookbook, 'myRecipeId:', myRecipeId, 'recipe.id:', recipe.id); onViewInCookbook && onViewInCookbook(myRecipeId || recipe.id) }} style={{
             width: '100%', padding: '15px', background: 'var(--parchment)', color: 'var(--charcoal)',
             border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-pill)',
             fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: '600', cursor: 'pointer', marginBottom: '32px'
