@@ -420,7 +420,7 @@ export default function FriendRecipeDetail({ recipe, session, onBack, scrollToCo
           }}>{saving ? 'Saving...' : '+ Save to My Cookbook'}</button>
         )}
         {!isOwner && !duplicate && saved && (
-          <div style={{ marginBottom: '16px' }}>
+          <div style={{ marginBottom: '16px', background: 'red' }}>
             <div style={{ fontSize: '13px', color: 'var(--sage)', fontWeight: '600', textAlign: 'center', marginBottom: '8px' }}>✓ Saved to Cookbook</div>
             <button onClick={() => onViewInCookbook && onViewInCookbook(myRecipeId || recipe.id)} style={{
               width: '100%', padding: '12px',
