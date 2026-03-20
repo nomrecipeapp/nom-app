@@ -105,7 +105,7 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
       .from('recipes').select('id, user_id')
       .eq('source_url', recipe.source_url).in('user_id', followingIds)
     if (!matchingRecipes || matchingRecipes.length === 0) return
-    const userIds = [...new Set(matchingRecipes.map(r => r.user_id))]
+    const userIds = [...new Set(matchingRecipes.map(r => r.user_id))].filter(id => id !== cook.user_id)
     const { data: profiles } = await supabase
       .from('profiles').select('id, full_name, username').in('id', userIds.slice(0, 3))
     setCircleFriendsCount(userIds.length)
@@ -475,7 +475,7 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
                   )}
                 </div>
               )}
-
+        
         {circleCooks.length > 0 && (
           <div style={{ background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--parchment)', padding: '20px', marginBottom: '24px' }}>
             <div style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '14px' }}>From Your Circle</div>
