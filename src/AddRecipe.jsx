@@ -159,6 +159,8 @@ export default function AddRecipe({ session, onSave, onCancel }) {
       const data = await response.json()
       const text = data.content?.[0]?.text || ''
       const clean = text.replace(/```json|```/g, '').trim()
+      console.log('Claude response text:', text)
+      console.log('Cleaned:', clean)
       const parsed = JSON.parse(clean)
 
       setRecipe({
@@ -175,6 +177,7 @@ export default function AddRecipe({ session, onSave, onCancel }) {
         logCookNow: false
       })
     } catch (e) {
+      console.error('Photo import error:', e)
       setError('Could not read the recipe from this image. Try a clearer photo or add manually.')
     }
 
