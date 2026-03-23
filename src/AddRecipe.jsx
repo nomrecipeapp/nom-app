@@ -116,7 +116,6 @@ export default function AddRecipe({ session, onSave, onCancel }) {
     setLoading(true)
     setError(null)
 
-    // Show cycling loading messages
     let msgIndex = 0
     const msgInterval = setInterval(() => {
       msgIndex = (msgIndex + 1) % loadingMessages.length
@@ -124,7 +123,6 @@ export default function AddRecipe({ session, onSave, onCancel }) {
     }, 2000)
 
     try {
-      // Convert to base64
       const base64 = await new Promise((resolve, reject) => {
         const reader = new FileReader()
         reader.onload = () => resolve(reader.result.split(',')[1])
@@ -134,33 +132,16 @@ export default function AddRecipe({ session, onSave, onCancel }) {
 
       const mediaType = file.type || 'image/jpeg'
 
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
+      const response = await fetch('/api/scan-recipe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 1000,
-          messages: [{
-            role: 'user',
-            content: [
-              {
-                type: 'image',
-                source: { type: 'base64', media_type: mediaType, data: base64 }
-              },
-              {
-                type: 'text',
-                text: 'Extract the recipe from this image. Return JSON only, no markdown, no explanation. Use these exact fields: {"title": "", "ingredients": "one per line", "instructions": "numbered steps, one per line", "cook_time": "", "difficulty": "Easy or Medium or Hard or empty", "source_name": ""}. If a field is not visible, use empty string.'
-              }
-            ]
-          }]
-        })
+        body: JSON.stringify({ imageBase64: base64, mediaType })
       })
 
       const data = await response.json()
       const text = data.content?.[0]?.text || ''
       const clean = text.replace(/```json|```/g, '').trim()
-      console.log('Claude response text:', text)
-      console.log('Cleaned:', clean)
+      console.log('Claude response:', text)
       const parsed = JSON.parse(clean)
 
       setRecipe({
