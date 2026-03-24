@@ -111,8 +111,8 @@ export default function AddRecipe({ session, onSave, onCancel }) {
     setLoading(false)
   }
 
-  async function importFromPhoto(file) {
-    if (!file) return
+  async function importFromPhoto(files) {
+    if (!files || files.length === 0) return
     setLoading(true)
     setError(null)
 
@@ -123,19 +123,18 @@ export default function AddRecipe({ session, onSave, onCancel }) {
     }, 2000)
 
     try {
-      const base64 = await new Promise((resolve, reject) => {
+      // Convert all files to base64
+      const images = await Promise.all(files.map(file => new Promise((resolve, reject) => {
         const reader = new FileReader()
-        reader.onload = () => resolve(reader.result.split(',')[1])
+        reader.onload = () => resolve({ base64: reader.result.split(',')[1], mediaType: file.type || 'image/jpeg' })
         reader.onerror = reject
         reader.readAsDataURL(file)
-      })
-
-      const mediaType = file.type || 'image/jpeg'
+      })))
 
       const response = await fetch('/api/scan-recipe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageBase64: base64, mediaType })
+        body: JSON.stringify({ images })
       })
 
       const data = await response.json()
@@ -168,11 +167,11 @@ export default function AddRecipe({ session, onSave, onCancel }) {
   }
 
   function handlePhotoChange(e) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const objectUrl = URL.createObjectURL(file)
+    const files = Array.from(e.target.files || [])
+    if (files.length === 0) return
+    const objectUrl = URL.createObjectURL(files[0])
     setPhotoPreview(objectUrl)
-    importFromPhoto(file)
+    importFromPhoto(files)
   }
 
   async function saveRecipe(recipeData) {
@@ -494,6 +493,7 @@ export default function AddRecipe({ session, onSave, onCancel }) {
               ref={photoInputRef}
               type="file"
               accept="image/*"
+              multiple
               onChange={handlePhotoChange}
               style={{ display: 'none' }}
             />
@@ -512,7 +512,7 @@ export default function AddRecipe({ session, onSave, onCancel }) {
                   Upload a photo of your recipe
                 </div>
                 <div style={{ fontSize: '13px', color: 'var(--muted)', lineHeight: '1.5' }}>
-                  Works with screenshots, cookbook pages, or handwritten cards
+                  Works with screenshots, cookbook pages, or handwritten cards. Select multiple photos if your recipe spans more than one page.
                 </div>
                 <div style={{ marginTop: '20px', padding: '12px 24px', background: 'var(--clay)', color: 'var(--cream)', borderRadius: 'var(--radius-pill)', display: 'inline-block', fontSize: '13px', fontWeight: '600' }}>
                   Choose Photo

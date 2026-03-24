@@ -1,7 +1,12 @@
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
-  const { imageBase64, mediaType } = req.body
+  const { images } = req.body
+
+  const imageContent = images.map(img => ({
+    type: 'image',
+    source: { type: 'base64', media_type: img.mediaType, data: img.base64 }
+  }))
 
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -17,13 +22,10 @@ export default async function handler(req, res) {
         messages: [{
           role: 'user',
           content: [
-            {
-              type: 'image',
-              source: { type: 'base64', media_type: mediaType, data: imageBase64 }
-            },
+            ...imageContent,
             {
               type: 'text',
-              text: 'Extract the recipe from this image. Return JSON only, no markdown, no explanation. Use these exact fields: {"title": "", "ingredients": "one per line", "instructions": "numbered steps, one per line", "cook_time": "", "difficulty": "Easy or Medium or Hard or empty", "source_name": ""}. If a field is not visible, use empty string.'
+              text: 'Extract the recipe from these images. They may be multiple pages of the same recipe — combine them into one. Return JSON only, no markdown, no explanation. Use these exact fields: {"title": "", "ingredients": "one per line", "instructions": "numbered steps, one per line", "cook_time": "", "difficulty": "Easy or Medium or Hard or empty", "source_name": ""}. If a field is not visible, use empty string.'
             }
           ]
         }]
