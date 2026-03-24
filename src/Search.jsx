@@ -115,7 +115,11 @@ export default function Search({ session, onSelectUser, onSelectSave, onSelectCo
           .eq('follower_id', session.user.id).eq('status', 'approved')
         if (!follows || follows.length === 0) return { data: [] }
         const friendIds = follows.map(f => f.following_id)
-        return supabase.from('recipes').select('*, profiles:user_id(id, full_name, username)')
+        const { data: recipes } = await supabase.from('recipes').select('*').in('user_id', friendIds).ilike('title', `%${q}%`).limit(5)
+        if (!recipes || recipes.length === 0) return { data: [] }
+        const uids = [...new Set(recipes.map(r => r.user_id))]
+        const { data: profs } = await supabase.from('profiles').select('id, full_name, username').in('id', uids)
+        return { data: recipes.map(r => ({ ...r, profiles: profs?.find(p => p.id === r.user_id) || null })) }
           .in('user_id', friendIds).ilike('title', `%${q}%`).limit(5)
       })()
     ])
