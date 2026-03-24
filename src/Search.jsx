@@ -1,8 +1,381 @@
-{screen === 'search' && (
-        <Search
-          session={session}
-          onSelectUser={goToFriendProfile}
-          onSelectSave={goToFriendRecipeDetail}
-          onSelectCook={goToSocialRecipe}
-        />
+import { useState, useEffect, useRef } from 'react'
+import { supabase } from './supabase'
+
+const RECENT_SEARCHES_KEY = 'nom_recent_searches'
+
+function getRecentSearches() {
+  try {
+    return JSON.parse(localStorage.getItem(RECENT_SEARCHES_KEY) || '[]')
+  } catch { return [] }
+}
+
+function saveRecentSearch(term) {
+  if (!term.trim()) return
+  const existing = getRecentSearches().filter(s => s !== term)
+  const updated = [term, ...existing].slice(0, 5)
+  localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(updated))
+}
+
+function removeRecentSearch(term) {
+  const updated = getRecentSearches().filter(s => s !== term)
+  localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(updated))
+}
+
+export default function Search({ session, onSelectUser, onSelectSave, onSelectCook }) {
+  const [query, setQuery] = useState('')
+  const [dropdownResults, setDropdownResults] = useState({ people: [], recipes: [] })
+  const [showDropdown, setShowDropdown] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [followStates, setFollowStates] = useState({})
+  const [recentSearches, setRecentSearches] = useState(getRecentSearches())
+  const [circleCooks, setCircleCooks] = useState([])
+  const [circleLikes, setCircleLikes] = useState({})
+  const [loadingCircle, setLoadingCircle] = useState(true)
+  const searchRef = useRef(null)
+  const debounceRef = useRef(null)
+
+  useEffect(() => {
+    fetchCircleCooks()
+  }, [])
+
+  useEffect(() => {
+    if (query.length < 2) {
+      setShowDropdown(false)
+      setDropdownResults({ people: [], recipes: [] })
+      return
+    }
+    clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => {
+      runSearch(query)
+    }, 300)
+    return () => clearTimeout(debounceRef.current)
+  }, [query])
+
+  async function fetchCircleCooks() {
+    setLoadingCircle(true)
+    const { data: follows } = await supabase
+      .from('follows').select('following_id')
+      .eq('follower_id', session.user.id).eq('status', 'approved')
+
+    if (!follows || follows.length === 0) { setLoadingCircle(false); return }
+
+    const friendIds = follows.map(f => f.following_id)
+
+    const { data: cooks } = await supabase
+      .from('cooks').select('*, recipes(*)')
+      .in('user_id', friendIds)
+      .order('cooked_at', { ascending: false })
+      .limit(40)
+
+    if (!cooks || cooks.length === 0) { setLoadingCircle(false); return }
+
+    const userIds = [...new Set(cooks.map(c => c.user_id))]
+    const { data: profiles } = await supabase
+      .from('profiles').select('id, full_name, username').in('id', userIds)
+
+    // Fetch like counts
+    const cookIds = cooks.map(c => c.id)
+    const likeCounts = {}
+    for (const id of cookIds) {
+      const { count } = await supabase.from('likes')
+        .select('*', { count: 'exact', head: true })
+        .eq('target_type', 'cook').eq('target_id', id)
+      likeCounts[id] = count || 0
+    }
+    setCircleLikes(likeCounts)
+
+    const withProfiles = cooks
+      .filter(c => c.recipes)
+      .map(c => ({ ...c, profiles: profiles?.find(p => p.id === c.user_id) || null }))
+
+    // Score: recency 60% + likes 40%
+    const now = Date.now()
+    const maxAge = 30 * 24 * 60 * 60 * 1000
+    const scored = withProfiles.map(c => {
+      const age = now - new Date(c.cooked_at).getTime()
+      const recencyScore = Math.max(0, 1 - age / maxAge)
+      const likeScore = Math.min(1, (likeCounts[c.id] || 0) / 10)
+      return { ...c, _score: recencyScore * 0.6 + likeScore * 0.4 }
+    })
+
+    scored.sort((a, b) => b._score - a._score)
+    setCircleCooks(scored.slice(0, 12))
+    setLoadingCircle(false)
+  }
+
+  async function runSearch(q) {
+    setLoading(true)
+
+    const [peopleRes, recipesRes] = await Promise.all([
+      supabase.from('profiles').select('*')
+        .or(`username.ilike.%${q}%,full_name.ilike.%${q}%`)
+        .neq('id', session.user.id).limit(5),
+      (async () => {
+        const { data: follows } = await supabase.from('follows').select('following_id')
+          .eq('follower_id', session.user.id).eq('status', 'approved')
+        if (!follows || follows.length === 0) return { data: [] }
+        const friendIds = follows.map(f => f.following_id)
+        return supabase.from('recipes').select('*, profiles:user_id(id, full_name, username)')
+          .in('user_id', friendIds).ilike('title', `%${q}%`).limit(5)
+      })()
+    ])
+
+    const people = peopleRes.data || []
+    const recipes = recipesRes.data || []
+
+    // Fetch follow states for people results
+    if (people.length > 0) {
+      const { data: follows } = await supabase.from('follows')
+        .select('following_id, status')
+        .eq('follower_id', session.user.id)
+        .in('following_id', people.map(p => p.id))
+      const states = { ...followStates }
+      if (follows) follows.forEach(f => { states[f.following_id] = f.status })
+      setFollowStates(states)
+    }
+
+    setDropdownResults({ people, recipes })
+    setShowDropdown(true)
+    setLoading(false)
+  }
+
+  function handleSelectPerson(userId) {
+    saveRecentSearch(query)
+    setRecentSearches(getRecentSearches())
+    setShowDropdown(false)
+    setQuery('')
+    onSelectUser(userId)
+  }
+
+  function handleSelectRecipe(recipe) {
+    saveRecentSearch(query)
+    setRecentSearches(getRecentSearches())
+    setShowDropdown(false)
+    setQuery('')
+    onSelectSave && onSelectSave(recipe)
+  }
+
+  function handleRecentSearch(term) {
+    setQuery(term)
+  }
+
+  function handleRemoveRecent(e, term) {
+    e.stopPropagation()
+    removeRecentSearch(term)
+    setRecentSearches(getRecentSearches())
+  }
+
+  async function sendFollowRequest(userId) {
+    await supabase.from('follows').insert({
+      follower_id: session.user.id, following_id: userId, status: 'pending'
+    })
+    await supabase.from('notifications').insert({
+      recipient_id: userId, actor_id: session.user.id, type: 'follow_request'
+    })
+    setFollowStates(s => ({ ...s, [userId]: 'pending' }))
+  }
+
+  async function unfollow(userId) {
+    await supabase.from('follows').delete()
+      .eq('follower_id', session.user.id).eq('following_id', userId)
+    setFollowStates(s => ({ ...s, [userId]: null }))
+  }
+
+  const hasDropdownResults = dropdownResults.people.length > 0 || dropdownResults.recipes.length > 0
+
+  return (
+    <div style={{ maxWidth: '480px', margin: '0 auto', padding: '0 16px 100px' }}>
+      <div style={{ height: '70px' }} />
+
+      {/* Search bar */}
+      <div style={{ position: 'relative', marginBottom: '24px' }} ref={searchRef}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'var(--warm-white)', border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-pill)', padding: '10px 16px' }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}>
+            <circle cx="11" cy="11" r="7" stroke="var(--muted)" strokeWidth="1.8"/>
+            <path d="M16.5 16.5L21 21" stroke="var(--muted)" strokeWidth="1.8" strokeLinecap="round"/>
+          </svg>
+          <input
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            onFocus={() => query.length >= 2 && setShowDropdown(true)}
+            placeholder="Search people or recipes..."
+            style={{
+              flex: 1, border: 'none', background: 'none',
+              fontFamily: 'var(--font-body)', fontSize: '14px',
+              color: 'var(--ink)', outline: 'none'
+            }}
+          />
+          {query.length > 0 && (
+            <button onClick={() => { setQuery(''); setShowDropdown(false) }} style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              color: 'var(--muted)', fontSize: '18px', padding: 0, lineHeight: 1
+            }}>×</button>
+          )}
+        </div>
+
+        {/* Dropdown */}
+        {showDropdown && (
+          <div style={{
+            position: 'absolute', top: '100%', left: 0, right: 0,
+            background: 'var(--cream)', border: '1px solid var(--parchment)',
+            borderRadius: 'var(--radius-lg)', marginTop: '6px',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 100,
+            overflow: 'hidden', maxHeight: '400px', overflowY: 'auto'
+          }}>
+            {loading ? (
+              <div style={{ padding: '20px', textAlign: 'center', fontSize: '13px', color: 'var(--muted)' }}>Searching...</div>
+            ) : !hasDropdownResults ? (
+              <div style={{ padding: '20px', textAlign: 'center', fontSize: '13px', color: 'var(--muted)' }}>No results for "{query}"</div>
+            ) : (
+              <>
+                {dropdownResults.people.length > 0 && (
+                  <div>
+                    <div style={{ padding: '10px 16px 6px', fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--muted)' }}>People</div>
+                    {dropdownResults.people.map(profile => (
+                      <div key={profile.id} onClick={() => handleSelectPerson(profile.id)} style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        padding: '10px 16px', cursor: 'pointer',
+                        borderBottom: '1px solid var(--parchment)'
+                      }}
+                        onMouseEnter={e => e.currentTarget.style.background = 'var(--warm-white)'}
+                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <div style={{
+                            width: '32px', height: '32px', borderRadius: '50%', flexShrink: 0,
+                            background: 'linear-gradient(135deg, var(--clay), var(--ember))',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontFamily: 'var(--font-display)', fontSize: '12px', fontWeight: '700', color: 'var(--cream)'
+                          }}>{(profile.full_name || profile.username || '?')[0].toUpperCase()}</div>
+                          <div>
+                            <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--ink)' }}>{profile.full_name || profile.username}</div>
+                            {profile.username && profile.full_name && <div style={{ fontSize: '11px', color: 'var(--muted)' }}>@{profile.username}</div>}
+                          </div>
+                        </div>
+                        {followStates[profile.id] === 'approved' ? (
+                          <button onClick={e => { e.stopPropagation(); unfollow(profile.id) }} style={{ padding: '5px 10px', background: 'transparent', color: 'var(--muted)', border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>Following</button>
+                        ) : followStates[profile.id] === 'pending' ? (
+                          <button disabled style={{ padding: '5px 10px', background: 'var(--parchment)', color: 'var(--muted)', border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)', fontSize: '11px', fontWeight: '600', cursor: 'not-allowed' }}>Requested</button>
+                        ) : (
+                          <button onClick={e => { e.stopPropagation(); sendFollowRequest(profile.id) }} style={{ padding: '5px 10px', background: 'var(--clay)', color: 'var(--cream)', border: 'none', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>Follow</button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {dropdownResults.recipes.length > 0 && (
+                  <div>
+                    <div style={{ padding: '10px 16px 6px', fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--muted)' }}>Recipes</div>
+                    {dropdownResults.recipes.map(recipe => (
+                      <div key={recipe.id} onClick={() => handleSelectRecipe(recipe)} style={{
+                        display: 'flex', alignItems: 'center', gap: '10px',
+                        padding: '10px 16px', cursor: 'pointer',
+                        borderBottom: '1px solid var(--parchment)'
+                      }}
+                        onMouseEnter={e => e.currentTarget.style.background = 'var(--warm-white)'}
+                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                      >
+                        <div style={{
+                          width: '36px', height: '36px', borderRadius: 'var(--radius-sm)',
+                          overflow: 'hidden', flexShrink: 0,
+                          background: recipe.image_url ? 'var(--parchment)' : 'linear-gradient(135deg, var(--clay), var(--ember))',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center'
+                        }}>
+                          {recipe.image_url
+                            ? <img src={recipe.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            : <span style={{ fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: '700', color: 'var(--cream)' }}>{(recipe.title || '?')[0].toUpperCase()}</span>
+                          }
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{recipe.title}</div>
+                          <div style={{ fontSize: '11px', color: 'var(--muted)' }}>
+                            {recipe.profiles?.full_name || recipe.profiles?.username || 'someone'}'s cookbook
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Empty state — recent searches + circle feed */}
+      {!showDropdown && query.length < 2 && (
+        <>
+          {/* Recent searches */}
+          {recentSearches.length > 0 && (
+            <div style={{ marginBottom: '28px' }}>
+              <div style={{ fontSize: '11px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '12px' }}>Recent Searches</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                {recentSearches.map(term => (
+                  <div key={term} onClick={() => handleRecentSearch(term)} style={{
+                    display: 'flex', alignItems: 'center', gap: '6px',
+                    background: 'var(--warm-white)', border: '1px solid var(--parchment)',
+                    borderRadius: 'var(--radius-pill)', padding: '6px 12px',
+                    cursor: 'pointer', fontSize: '13px', color: 'var(--charcoal)'
+                  }}>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                      <circle cx="11" cy="11" r="7" stroke="var(--muted)" strokeWidth="2"/>
+                      <path d="M16.5 16.5L21 21" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round"/>
+                    </svg>
+                    {term}
+                    <button onClick={e => handleRemoveRecent(e, term)} style={{
+                      background: 'none', border: 'none', cursor: 'pointer',
+                      color: 'var(--muted)', fontSize: '14px', padding: 0, lineHeight: 1, marginLeft: '2px'
+                    }}>×</button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* What your circle is cooking */}
+          <div>
+            <div style={{ fontSize: '11px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '16px' }}>What Your Circle Is Cooking</div>
+            {loadingCircle ? (
+              <div style={{ textAlign: 'center', padding: '40px 0', fontSize: '13px', color: 'var(--muted)' }}>Loading...</div>
+            ) : circleCooks.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: '16px', fontWeight: '500', color: 'var(--ink)', marginBottom: '6px' }}>Nothing here yet</div>
+                <div style={{ fontSize: '13px', color: 'var(--muted)' }}>Follow some cooks to see what they're making.</div>
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                {circleCooks.map(cook => {
+                  const recipe = cook.recipes
+                  const name = cook.profiles?.full_name || cook.profiles?.username || 'Someone'
+                  return (
+                    <div key={cook.id} onClick={() => onSelectCook && onSelectCook(cook)} style={{
+                      background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)',
+                      border: '1px solid var(--parchment)', overflow: 'hidden', cursor: 'pointer'
+                    }}>
+                      <div style={{
+                        height: '110px', background: recipe.image_url ? 'var(--parchment)' : 'linear-gradient(135deg, var(--clay), var(--ember))',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden'
+                      }}>
+                        {recipe.image_url
+                          ? <img src={recipe.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          : <span style={{ fontFamily: 'var(--font-display)', fontSize: '32px', fontWeight: '700', color: 'var(--cream)' }}>{(recipe.title || '?')[0].toUpperCase()}</span>
+                        }
+                      </div>
+                      <div style={{ padding: '10px 12px' }}>
+                        <div style={{ fontFamily: 'var(--font-display)', fontSize: '13px', fontWeight: '600', color: 'var(--ink)', marginBottom: '3px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{recipe.title}</div>
+                        <div style={{ fontSize: '11px', color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>by {name}</div>
+                        {circleLikes[cook.id] > 0 && (
+                          <div style={{ fontSize: '10px', color: 'var(--clay)', marginTop: '3px', fontWeight: '600' }}>♥ {circleLikes[cook.id]}</div>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </>
       )}
+    </div>
+  )
+}
