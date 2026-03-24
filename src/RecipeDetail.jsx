@@ -647,15 +647,21 @@ export default function RecipeDetail({ recipe: initialRecipe, session, onBack, o
 
         {circleCooks.length > 0 && (
           <div style={{ background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--parchment)', padding: '20px', marginBottom: '16px' }}>
-            <div style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '14px' }}>From Your Circle</div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+              <div style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--muted)' }}>From Your Circle</div>
+              {circleCooks.length > 3 && (
+                <button onClick={() => setShowCircleModal(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: '600', color: 'var(--clay)', padding: 0 }}>See all {circleCooks.length} →</button>
+              )}
+            </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              {circleCooks.map((c, i) => {
+              {circleCooks.slice(0, 3).map((c, i) => {
                 const v = verdictStyles[c.verdict]
                 const name = c.profiles?.full_name || c.profiles?.username || 'Someone'
                 return (
                   <div key={c.id} style={{
-                    paddingBottom: i < circleCooks.length - 1 ? '14px' : '0',
-                    borderBottom: i < circleCooks.length - 1 ? '1px solid var(--parchment)' : 'none'
+                  paddingBottom: i < Math.min(circleCooks.length, 3) - 1 ? '14px' : '0',
+                    borderBottom: i < Math.min(circleCooks.length, 3) - 1 ? '1px solid var(--parchment)' : 'none'
+
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
