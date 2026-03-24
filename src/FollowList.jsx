@@ -4,6 +4,7 @@ import { supabase } from './supabase'
 export default function FollowList({ userId, type, session, onBack, onSelectUser }) {
   const [people, setPeople] = useState([])
   const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
 
   useEffect(() => {
     fetchList()
@@ -40,12 +41,53 @@ export default function FollowList({ userId, type, session, onBack, onSelectUser
     setLoading(false)
   }
 
+  const filtered = people.filter(p => {
+    if (!search.trim()) return true
+    const q = search.toLowerCase()
+    return (
+      p.full_name?.toLowerCase().includes(q) ||
+      p.username?.toLowerCase().includes(q)
+    )
+  })
+
   return (
     <div style={{ minHeight: '100vh', background: 'var(--cream)', paddingBottom: '100px' }}>
       <div style={{ maxWidth: '480px', margin: '0 auto' }}>
 
         {/* Spacer for top bar */}
         <div style={{ height: '54px' }} />
+
+        {/* Search bar */}
+        {!loading && people.length > 0 && (
+          <div style={{ padding: '12px 20px 4px' }}>
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: '10px',
+              background: 'var(--warm-white)', border: '1.5px solid var(--tan)',
+              borderRadius: 'var(--radius-pill)', padding: '10px 16px'
+            }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}>
+                <circle cx="11" cy="11" r="7" stroke="var(--muted)" strokeWidth="1.8"/>
+                <path d="M16.5 16.5L21 21" stroke="var(--muted)" strokeWidth="1.8" strokeLinecap="round"/>
+              </svg>
+              <input
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Search..."
+                style={{
+                  flex: 1, border: 'none', background: 'none',
+                  fontFamily: 'var(--font-body)', fontSize: '14px',
+                  color: 'var(--ink)', outline: 'none'
+                }}
+              />
+              {search.length > 0 && (
+                <button onClick={() => setSearch('')} style={{
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  color: 'var(--muted)', fontSize: '18px', padding: 0, lineHeight: 1
+                }}>×</button>
+              )}
+            </div>
+          </div>
+        )}
 
         {loading ? (
           <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--muted)', fontSize: '14px' }}>Loading...</div>
@@ -55,9 +97,13 @@ export default function FollowList({ userId, type, session, onBack, onSelectUser
               {type === 'following' ? 'Not following anyone yet' : 'No followers yet'}
             </div>
           </div>
+        ) : filtered.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--muted)', fontSize: '13px' }}>
+            No results for "{search}"
+          </div>
         ) : (
           <div style={{ padding: '8px 0' }}>
-            {people.map(person => (
+            {filtered.map(person => (
               <div key={person.id} onClick={() => onSelectUser(person.id)} style={{
                 display: 'flex', alignItems: 'center', gap: '14px',
                 padding: '14px 20px', cursor: 'pointer',
