@@ -515,7 +515,7 @@ export default function AddRecipe({ session, onSave, onCancel }) {
                   Works with screenshots, cookbook pages, or handwritten cards. Select multiple photos if your recipe spans more than one page.
                 </div>
                 <div style={{ marginTop: '20px', padding: '12px 24px', background: 'var(--clay)', color: 'var(--cream)', borderRadius: 'var(--radius-pill)', display: 'inline-block', fontSize: '13px', fontWeight: '600' }}>
-                  Choose Photo
+                  Choose Photo(s)
                 </div>
               </div>
             )}
