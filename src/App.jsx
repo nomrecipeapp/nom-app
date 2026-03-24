@@ -365,6 +365,7 @@ if (showLogin) return <Auth />
           session={session}
           onSelectUser={goToFriendProfile}
           onSelectSave={goToFriendRecipeDetail}
+          onSelectCook={goToSocialRecipe}
         />
       )}
 
