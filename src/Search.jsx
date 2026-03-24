@@ -106,35 +106,53 @@ export default function Search({ session, onSelectUser, onSelectSave, onSelectCo
   async function runSearch(q) {
     setLoading(true)
 
-    const [peopleRes, recipesRes] = await Promise.all([
-      supabase.from('profiles').select('*')
-        .or(`username.ilike.%${q}%,full_name.ilike.%${q}%`)
-        .neq('id', session.user.id).limit(5),
-      (async () => {
-        const { data: follows } = await supabase.from('follows').select('following_id')
-          .eq('follower_id', session.user.id).eq('status', 'approved')
-        if (!follows || follows.length === 0) return { data: [] }
-        const friendIds = follows.map(f => f.following_id)
-        const { data: recipes } = await supabase.from('recipes').select('*').in('user_id', friendIds).ilike('title', `%${q}%`).limit(5)
-        if (!recipes || recipes.length === 0) return { data: [] }
-        const uids = [...new Set(recipes.map(r => r.user_id))]
-        const { data: profs } = await supabase.from('profiles').select('id, full_name, username').in('id', uids)
-        return { data: recipes.map(r => ({ ...r, profiles: profs?.find(p => p.id === r.user_id) || null })) }
-          .in('user_id', friendIds).ilike('title', `%${q}%`).limit(5)
-      })()
-    ])
+    // Fetch people results
+    const { data: people = [] } = await supabase
+      .from('profiles')
+      .select('*')
+      .or(`username.ilike.%${q}%,full_name.ilike.%${q}%`)
+      .neq('id', session.user.id)
+      .limit(5)
 
-    const people = peopleRes.data || []
-    const recipes = recipesRes.data || []
+    // Fetch recipe results (from followed users only)
+    let recipes = []
+    const { data: follows } = await supabase
+      .from('follows')
+      .select('following_id')
+      .eq('follower_id', session.user.id)
+      .eq('status', 'approved')
+
+    if (follows && follows.length > 0) {
+      const friendIds = follows.map(f => f.following_id)
+      const { data: recipeRows } = await supabase
+        .from('recipes')
+        .select('*')
+        .in('user_id', friendIds)
+        .ilike('title', `%${q}%`)
+        .limit(5)
+
+      if (recipeRows && recipeRows.length > 0) {
+        const uids = [...new Set(recipeRows.map(r => r.user_id))]
+        const { data: profs } = await supabase
+          .from('profiles')
+          .select('id, full_name, username')
+          .in('id', uids)
+        recipes = recipeRows.map(r => ({
+          ...r,
+          profiles: profs?.find(p => p.id === r.user_id) || null
+        }))
+      }
+    }
 
     // Fetch follow states for people results
     if (people.length > 0) {
-      const { data: follows } = await supabase.from('follows')
+      const { data: followData } = await supabase
+        .from('follows')
         .select('following_id, status')
         .eq('follower_id', session.user.id)
         .in('following_id', people.map(p => p.id))
       const states = { ...followStates }
-      if (follows) follows.forEach(f => { states[f.following_id] = f.status })
+      if (followData) followData.forEach(f => { states[f.following_id] = f.status })
       setFollowStates(states)
     }
 
