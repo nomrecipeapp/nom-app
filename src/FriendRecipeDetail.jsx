@@ -72,7 +72,7 @@ export default function FriendRecipeDetail({ recipe, session, onBack, scrollToCo
     if (!follows || follows.length === 0) return
     const ids = follows.map(f => f.following_id)
     const { data: profiles } = await supabase.from('profiles')
-      .select('id, full_name, username').in('id', ids)
+    .select('id, full_name, username, avatar_url').in('id', userIds)
     setFollowingProfiles(profiles || [])
   }
 
@@ -495,12 +495,11 @@ export default function FriendRecipeDetail({ recipe, session, onBack, scrollToCo
 
                 return (
                   <div key={comment.id} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-                    <div style={{
-                      width: '30px', height: '30px', borderRadius: '50%', flexShrink: 0,
-                      background: 'linear-gradient(135deg, var(--clay), var(--ember))',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: '700', color: 'var(--cream)'
-                    }}>{name[0].toUpperCase()}</div>
+                    {comment.profiles?.avatar_url ? (
+                      <img src={comment.profiles.avatar_url} alt="" style={{ width: '30px', height: '30px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+                    ) : (
+                      <div style={{ width: '30px', height: '30px', borderRadius: '50%', flexShrink: 0, background: 'linear-gradient(135deg, var(--clay), var(--ember))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: '700', color: 'var(--cream)' }}>{name[0].toUpperCase()}</div>
+                    )}
 
                     <div style={{ flex: 1, position: 'relative' }}>
                       <div style={{ background: 'var(--warm-white)', borderRadius: 'var(--radius-md)', border: '1px solid var(--parchment)', padding: '10px 14px' }}>
