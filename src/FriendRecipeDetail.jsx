@@ -53,13 +53,14 @@ export default function FriendRecipeDetail({ recipe, session, onBack, scrollToCo
   const targetType = 'save'
   const targetId = recipe.id
 
-  useEffect(() => {
-    fetchLikes()
-    fetchComments()
-    checkIfSaved()
-    fetchFollowing()
-    fetchCircleFriends()
-  }, [recipe.id])
+useEffect(() => {
+  fetchMyProfile()
+  fetchLikes()
+  fetchComments()
+  checkIfSaved()
+  fetchFollowing()
+  fetchCircleFriends()
+}, [recipe.id])
 
   useEffect(() => {
     if (scrollToComments && commentsRef.current) {
