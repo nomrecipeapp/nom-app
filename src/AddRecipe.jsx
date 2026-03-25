@@ -33,6 +33,8 @@ export default function AddRecipe({ session, onSave, onCancel }) {
   const [duplicate, setDuplicate] = useState(null)
   const [photoPreview, setPhotoPreview] = useState(null)
   const photoInputRef = useRef(null)
+  const reviewPhotoInputRef = useRef(null)
+  const [reviewPhotoUploading, setReviewPhotoUploading] = useState(false)
 
   // Verdict state
   const [verdict, setVerdict] = useState(null)
@@ -325,9 +327,43 @@ export default function AddRecipe({ session, onSave, onCancel }) {
             </select>
           </div>
         </div>
-        <div>
-          <label style={labelStyle}>Image URL (optional)</label>
-          <input value={recipe?.image_url || ''} onChange={e => setRecipe({...recipe, image_url: e.target.value})} placeholder="https://..." style={inputStyle} />
+                <div>
+          <label style={labelStyle}>Image (optional)</label>
+          <input
+            ref={reviewPhotoInputRef}
+            type="file"
+            accept="image/*"
+            style={{ display: 'none' }}
+            onChange={async e => {
+              const file = e.target.files?.[0]
+              if (!file) return
+              setReviewPhotoUploading(true)
+              const ext = file.name.split('.').pop() || 'jpg'
+              const path = `${session.user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+              const { error } = await supabase.storage.from('recipe-images').upload(path, file, { upsert: false })
+              if (!error) {
+                const { data } = supabase.storage.from('recipe-images').getPublicUrl(path)
+                setRecipe({ ...recipe, image_url: data.publicUrl })
+              }
+              setReviewPhotoUploading(false)
+              e.target.value = ''
+            }}
+          />
+          {recipe?.image_url ? (
+            <div style={{ position: 'relative', height: '140px', borderRadius: 'var(--radius-md)', overflow: 'hidden', marginBottom: '8px' }}>
+              <img src={recipe.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <button onClick={() => setRecipe({ ...recipe, image_url: '' })} style={{ position: 'absolute', top: '8px', right: '8px', width: '28px', height: '28px', borderRadius: '50%', background: 'rgba(0,0,0,0.5)', border: 'none', color: 'white', fontSize: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+              <button onClick={() => reviewPhotoInputRef.current?.click()} style={{ position: 'absolute', top: '8px', right: '44px', width: '28px', height: '28px', borderRadius: '50%', background: 'rgba(0,0,0,0.5)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              </button>
+            </div>
+          ) : (
+            <button onClick={() => reviewPhotoInputRef.current?.click()} disabled={reviewPhotoUploading} style={{ width: '100%', padding: '14px', border: '1.5px dashed var(--tan)', borderRadius: 'var(--radius-md)', background: 'var(--parchment)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '8px' }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" stroke="var(--muted)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/><circle cx="12" cy="13" r="4" stroke="var(--muted)" strokeWidth="1.8"/></svg>
+              <span style={{ fontSize: '13px', fontWeight: '600', color: 'var(--muted)' }}>{reviewPhotoUploading ? 'Uploading...' : 'Upload photo'}</span>
+            </button>
+          )}
+          <input value={recipe?.image_url || ''} onChange={e => setRecipe({...recipe, image_url: e.target.value})} placeholder="Or paste a URL: https://..." style={inputStyle} />
         </div>
 
         {/* Tags */}
