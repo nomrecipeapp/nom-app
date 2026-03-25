@@ -90,7 +90,7 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
     if (!follows || follows.length === 0) return
     const ids = follows.map(f => f.following_id)
     const { data: profiles } = await supabase
-      .from('profiles').select('id, full_name, username').in('id', ids)
+      .from('profiles').select('id, full_name, username, avatar_url').in('id', ids)
     setFollowingProfiles(profiles || [])
   }
 
@@ -107,7 +107,7 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
     if (!matchingRecipes || matchingRecipes.length === 0) return
     const userIds = [...new Set(matchingRecipes.map(r => r.user_id))].filter(id => id !== cook.user_id)
     const { data: profiles } = await supabase
-      .from('profiles').select('id, full_name, username').in('id', userIds.slice(0, 3))
+      .from('profiles').select('id, full_name, username, avatar_url').in('id', userIds.slice(0, 3))
     setCircleFriendsCount(userIds.length)
     setCircleFriendAvatars(profiles || [])
   }
@@ -138,7 +138,7 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
     if (!data || data.length === 0) { setComments([]); setLoadingComments(false); return }
     const userIds = [...new Set(data.map(c => c.user_id))]
     const { data: profiles } = await supabase.from('profiles')
-      .select('id, full_name, username').in('id', userIds)
+      .select('id, full_name, username, avatar_url').in('id', userIds)
     const enriched = data.map(c => ({ ...c, profiles: profiles?.find(p => p.id === c.user_id) || null }))
     setComments(enriched)
     setAllCommenters(profiles || [])
@@ -266,7 +266,7 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
       .in('recipe_id', recipeIds).order('cooked_at', { ascending: false })
     if (!cooksData || cooksData.length === 0) return
     const userIds = [...new Set(cooksData.map(c => c.user_id))]
-    const { data: profiles } = await supabase.from('profiles').select('id, full_name, username').in('id', userIds)
+    const { data: profiles } = await supabase.from('profiles').select('id, full_name, username, avatar_url').in('id', userIds)
     const cooksWithProfiles = cooksData.map(c => ({ ...c, profiles: profiles?.find(p => p.id === c.user_id) || null }))
     const seen = new Set()
     const deduped = cooksWithProfiles.filter(c => {
@@ -395,13 +395,11 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
         <div style={{ height: '1px', background: 'var(--parchment)', marginBottom: '16px' }} />
 
         <div onClick={() => onSelectUser && onSelectUser(cook.user_id)} style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px', cursor: 'pointer' }}>
-          <div style={{
-            width: '36px', height: '36px', borderRadius: '50%',
-            background: 'linear-gradient(135deg, var(--clay), var(--ember))',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: '700',
-            color: 'var(--cream)', flexShrink: 0
-          }}>{(profile?.full_name || profile?.username || '?')[0].toUpperCase()}</div>
+          {profile?.avatar_url ? (
+            <img src={profile.avatar_url} alt="" style={{ width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+          ) : (
+            <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--clay), var(--ember))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: '700', color: 'var(--cream)', flexShrink: 0 }}>{(profile?.full_name || profile?.username || '?')[0].toUpperCase()}</div>
+          )}
           <div>
             <div style={{ fontSize: '10px', color: 'var(--muted)', marginBottom: '1px' }}>Cooked by</div>
             <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--ink)' }}>{profile?.full_name || profile?.username || 'Unknown'} →</div>

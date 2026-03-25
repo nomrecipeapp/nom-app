@@ -444,15 +444,14 @@ export default function FriendProfile({ userId, session, onBack, onSelectCook, o
 
         {/* Avatar + name + follow */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '24px 20px 20px' }}>
-          <div style={{
-            width: '72px', height: '72px', borderRadius: '50%',
-            background: 'linear-gradient(135deg, var(--clay), var(--ember))',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontFamily: 'var(--font-display)', fontSize: '28px', fontWeight: '700',
-            color: 'var(--cream)', marginBottom: '12px',
-            boxShadow: '0 0 0 3px var(--cream), 0 0 0 5px var(--tan)'
-          }}>
-            {(profile?.full_name || profile?.username || '?')[0].toUpperCase()}
+          <div style={{ position: 'relative', marginBottom: '12px' }}>
+            {profile?.avatar_url ? (
+              <img src={profile.avatar_url} alt="" style={{ width: '72px', height: '72px', borderRadius: '50%', objectFit: 'cover', boxShadow: '0 0 0 3px var(--cream), 0 0 0 5px var(--tan)', display: 'block' }} />
+            ) : (
+              <div style={{ width: '72px', height: '72px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--clay), var(--ember))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-display)', fontSize: '28px', fontWeight: '700', color: 'var(--cream)', boxShadow: '0 0 0 3px var(--cream), 0 0 0 5px var(--tan)' }}>
+                {(profile?.full_name || profile?.username || '?')[0].toUpperCase()}
+              </div>
+            )}
           </div>
 
           <div style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: '700', color: 'var(--ink)', marginBottom: '2px' }}>
