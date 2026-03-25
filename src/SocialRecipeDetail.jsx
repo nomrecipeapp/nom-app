@@ -328,9 +328,9 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
   return (
     <div style={{ maxWidth: '480px', margin: '0 auto', paddingBottom: '100px' }}>
 
-      {recipe.image_url ? (
+      {(cook.photo_urls?.[0] || recipe.image_url) ? (
         <div style={{ marginTop: '54px' }}>
-          <img src={recipe.image_url} alt="" style={{ width: '100%', height: '260px', objectFit: 'cover', display: 'block' }} />
+          <img src={cook.photo_urls?.[0] || recipe.image_url} alt="" style={{ width: '100%', height: '260px', objectFit: 'cover', display: 'block' }} />
         </div>
       ) : (
         <div style={{ height: '54px' }} />
@@ -411,6 +411,14 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
         {v && (
           <div style={{ marginBottom: '14px' }}>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: v.bg, border: '1px solid ' + v.border, borderRadius: 'var(--radius-pill)', padding: '6px 14px', fontSize: '12px', fontWeight: '600', color: v.color }}>{v.label}</div>
+          </div>
+        )}
+
+        {cook.photo_urls && cook.photo_urls.length > 1 && (
+          <div style={{ display: 'flex', gap: '6px', marginBottom: '12px', overflowX: 'auto' }}>
+            {cook.photo_urls.slice(1).map((url, i) => (
+              <img key={i} src={url} alt="" style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: 'var(--radius-md)', flexShrink: 0 }} />
+            ))}
           </div>
         )}
 
