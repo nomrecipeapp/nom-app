@@ -346,8 +346,8 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
                   </div>
                 </div>
 
-                {recipe.image_url && (
-                  <img src={recipe.image_url} alt="" style={{ width: '100%', height: '200px', objectFit: 'cover', display: 'block' }} />
+                {(item.photo_urls?.[0] || recipe.image_url) && (
+                  <img src={item.photo_urls?.[0] || recipe.image_url} alt="" style={{ width: '100%', height: '200px', objectFit: 'cover', display: 'block' }} />
                 )}
 
                 <div style={{ padding: '14px 16px' }}>
