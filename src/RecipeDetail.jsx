@@ -53,6 +53,15 @@ export default function RecipeDetail({ recipe: initialRecipe, session, onBack, o
   const [thumbnailUploading, setThumbnailUploading] = useState(false)
   const thumbnailInputRef = useRef(null)
 
+  // Photo overlay state
+  const [overlayPhotos, setOverlayPhotos] = useState(null)
+  const [overlayIndex, setOverlayIndex] = useState(0)
+  const touchStartX = useRef(null)
+
+  // Cook history menu state
+  const [openCookMenuId, setOpenCookMenuId] = useState(null)
+  const [deletingCookId, setDeletingCookId] = useState(null)
+
   useEffect(() => {
     fetchUserTags()
   }, [])
@@ -83,12 +92,18 @@ export default function RecipeDetail({ recipe: initialRecipe, session, onBack, o
     if (recipe.source_url) fetchCircleFriends()
   }, [recipe.id])
 
+  // Close cook menu on outside click
+  useEffect(() => {
+    if (!openCookMenuId) return
+    function handleClick() { setOpenCookMenuId(null) }
+    document.addEventListener('click', handleClick)
+    return () => document.removeEventListener('click', handleClick)
+  }, [openCookMenuId])
+
   async function fetchCooks() {
     setLoadingCooks(true)
     const { data } = await supabase
-      .from('cooks')
-      .select('*')
-      .eq('recipe_id', recipe.id)
+      .from('cooks').select('*').eq('recipe_id', recipe.id)
       .order('cooked_at', { ascending: false })
     if (data) setCooks(data)
     setLoadingCooks(false)
@@ -183,6 +198,50 @@ export default function RecipeDetail({ recipe: initialRecipe, session, onBack, o
     }
     setThumbnailUploading(false)
     e.target.value = ''
+  }
+
+  // ---- PHOTO OVERLAY ----
+
+  function openOverlay(photos, startIndex) {
+    setOverlayPhotos(photos)
+    setOverlayIndex(startIndex)
+  }
+
+  function closeOverlay() {
+    setOverlayPhotos(null)
+    setOverlayIndex(0)
+  }
+
+  function overlayNext() {
+    setOverlayIndex(i => (i + 1) % overlayPhotos.length)
+  }
+
+  function overlayPrev() {
+    setOverlayIndex(i => (i - 1 + overlayPhotos.length) % overlayPhotos.length)
+  }
+
+  function handleOverlayTouchStart(e) {
+    touchStartX.current = e.touches[0].clientX
+  }
+
+  function handleOverlayTouchEnd(e) {
+    if (touchStartX.current === null) return
+    const diff = touchStartX.current - e.changedTouches[0].clientX
+    if (Math.abs(diff) > 40) {
+      diff > 0 ? overlayNext() : overlayPrev()
+    }
+    touchStartX.current = null
+  }
+
+  // ---- DELETE COOK ----
+
+  async function deleteCook(cookId) {
+    setDeletingCookId(cookId)
+    setOpenCookMenuId(null)
+    await supabase.from('cooks').delete().eq('id', cookId)
+    await fetchCooks()
+    onUpdate()
+    setDeletingCookId(null)
   }
 
   // ---- LOG COOK ----
@@ -300,18 +359,11 @@ export default function RecipeDetail({ recipe: initialRecipe, session, onBack, o
     return (
       <div style={{ minHeight: '100vh', background: 'var(--cream)', paddingBottom: '40px' }}>
         <div style={{ maxWidth: '480px', margin: '0 auto' }}>
-          <div style={{
-            padding: '16px 20px', display: 'flex', alignItems: 'center',
-            justifyContent: 'space-between', borderBottom: '1px solid var(--parchment)', marginTop: '54px'
-          }}>
-            <button onClick={() => { setEditing(false); setEditError(null) }} style={{
-              background: 'none', border: 'none', cursor: 'pointer',
-              fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '600', color: 'var(--muted)', padding: 0
-            }}>Cancel</button>
+          <div style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--parchment)', marginTop: '54px' }}>
+            <button onClick={() => { setEditing(false); setEditError(null) }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '600', color: 'var(--muted)', padding: 0 }}>Cancel</button>
             <div style={{ fontFamily: 'var(--font-display)', fontSize: '17px', fontWeight: '700', color: 'var(--ink)' }}>Edit Recipe</div>
             <div style={{ width: '48px' }} />
           </div>
-
           <div style={{ padding: '24px 20px 120px 20px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
             <div>
               <label style={fieldLabel}>Title</label>
@@ -322,12 +374,7 @@ export default function RecipeDetail({ recipe: initialRecipe, session, onBack, o
               {editForm.image_url && (
                 <div style={{ marginBottom: '10px', position: 'relative', borderRadius: 'var(--radius-md)', overflow: 'hidden', height: '160px' }}>
                   <img src={editForm.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => e.target.style.display = 'none'} />
-                  <button onClick={() => setEditForm(f => ({ ...f, image_url: '' }))} style={{
-                    position: 'absolute', top: '8px', right: '8px', width: '28px', height: '28px',
-                    borderRadius: '50%', background: 'rgba(0,0,0,0.5)', border: 'none',
-                    color: 'white', fontSize: '14px', cursor: 'pointer',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center'
-                  }}>×</button>
+                  <button onClick={() => setEditForm(f => ({ ...f, image_url: '' }))} style={{ position: 'absolute', top: '8px', right: '8px', width: '28px', height: '28px', borderRadius: '50%', background: 'rgba(0,0,0,0.5)', border: 'none', color: 'white', fontSize: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
                 </div>
               )}
               <input value={editForm.image_url} onChange={e => setEditForm(f => ({ ...f, image_url: e.target.value }))} placeholder="https://..." style={inputStyle} />
@@ -369,14 +416,7 @@ export default function RecipeDetail({ recipe: initialRecipe, session, onBack, o
                     <button key={tag} onClick={() => {
                       const current = editForm.tags || []
                       setEditForm(f => ({ ...f, tags: selected ? current.filter(t => t !== tag) : [...current, tag] }))
-                    }} style={{
-                      padding: '5px 12px', border: '1.5px solid',
-                      borderColor: selected ? 'var(--clay)' : 'var(--tan)',
-                      borderRadius: 'var(--radius-pill)',
-                      background: selected ? 'var(--clay)' : 'transparent',
-                      color: selected ? 'var(--cream)' : 'var(--muted)',
-                      fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600', cursor: 'pointer'
-                    }}>{tag}</button>
+                    }} style={{ padding: '5px 12px', border: '1.5px solid', borderColor: selected ? 'var(--clay)' : 'var(--tan)', borderRadius: 'var(--radius-pill)', background: selected ? 'var(--clay)' : 'transparent', color: selected ? 'var(--cream)' : 'var(--muted)', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}>{tag}</button>
                   )
                 })}
               </div>
@@ -402,13 +442,7 @@ export default function RecipeDetail({ recipe: initialRecipe, session, onBack, o
             {editError && (
               <div style={{ background: '#FDE8E8', border: '1px solid #F5C0C0', borderRadius: 'var(--radius-md)', padding: '10px 14px', fontSize: '13px', color: '#B85252' }}>{editError}</div>
             )}
-            <button onClick={saveEdit} disabled={savingEdit} style={{
-              width: '100%', padding: '14px',
-              background: savingEdit ? 'var(--tan)' : 'var(--clay)', color: 'var(--cream)',
-              border: 'none', borderRadius: 'var(--radius-pill)',
-              fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: '600',
-              cursor: savingEdit ? 'not-allowed' : 'pointer'
-            }}>{savingEdit ? 'Saving...' : 'Save Changes'}</button>
+            <button onClick={saveEdit} disabled={savingEdit} style={{ width: '100%', padding: '14px', background: savingEdit ? 'var(--tan)' : 'var(--clay)', color: 'var(--cream)', border: 'none', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: '600', cursor: savingEdit ? 'not-allowed' : 'pointer' }}>{savingEdit ? 'Saving...' : 'Save Changes'}</button>
           </div>
         </div>
       </div>
@@ -419,6 +453,34 @@ export default function RecipeDetail({ recipe: initialRecipe, session, onBack, o
   return (
     <div style={{ minHeight: '100vh', background: 'var(--cream)', paddingBottom: '120px' }}>
 
+      {/* Photo overlay */}
+      {overlayPhotos && (
+        <div
+          onClick={closeOverlay}
+          onTouchStart={handleOverlayTouchStart}
+          onTouchEnd={handleOverlayTouchEnd}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.92)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <button onClick={closeOverlay} style={{ position: 'absolute', top: '20px', right: '20px', background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '50%', width: '36px', height: '36px', color: 'white', fontSize: '20px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+          <img
+            src={overlayPhotos[overlayIndex]}
+            alt=""
+            onClick={e => e.stopPropagation()}
+            style={{ maxWidth: '92vw', maxHeight: '82vh', objectFit: 'contain', borderRadius: '8px' }}
+          />
+          {overlayPhotos.length > 1 && (
+            <>
+              <button onClick={e => { e.stopPropagation(); overlayPrev() }} style={{ position: 'absolute', left: '12px', background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '50%', width: '40px', height: '40px', color: 'white', fontSize: '20px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</button>
+              <button onClick={e => { e.stopPropagation(); overlayNext() }} style={{ position: 'absolute', right: '12px', background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '50%', width: '40px', height: '40px', color: 'white', fontSize: '20px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
+              <div style={{ position: 'absolute', bottom: '24px', display: 'flex', gap: '6px' }}>
+                {overlayPhotos.map((_, i) => (
+                  <div key={i} style={{ width: '6px', height: '6px', borderRadius: '50%', background: i === overlayIndex ? 'white' : 'rgba(255,255,255,0.35)' }} />
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
       {/* Hidden file inputs */}
       <input ref={thumbnailInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleThumbnailChange} />
       <input ref={cookPhotoInputRef} type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={handleCookPhotoChange} />
@@ -427,55 +489,21 @@ export default function RecipeDetail({ recipe: initialRecipe, session, onBack, o
       {recipe.image_url ? (
         <div style={{ height: '220px', background: 'var(--parchment)', position: 'relative', overflow: 'hidden', marginTop: '54px' }}>
           <img src={recipe.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-          {/* Pencil edit button */}
-          <button
-            onClick={() => thumbnailInputRef.current?.click()}
-            disabled={thumbnailUploading}
-            style={{
-              position: 'absolute', top: '12px', right: '12px',
-              width: '32px', height: '32px', borderRadius: '50%',
-              background: 'rgba(28,26,23,0.55)', border: 'none',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              cursor: 'pointer', backdropFilter: 'blur(4px)'
-            }}>
+          <button onClick={() => thumbnailInputRef.current?.click()} disabled={thumbnailUploading} style={{ position: 'absolute', top: '12px', right: '12px', width: '32px', height: '32px', borderRadius: '50%', background: 'rgba(28,26,23,0.55)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', backdropFilter: 'blur(4px)' }}>
             {thumbnailUploading
               ? <div style={{ width: '14px', height: '14px', border: '2px solid rgba(255,255,255,0.4)', borderTop: '2px solid white', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
-              : <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                  <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
+              : <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
             }
           </button>
-          <div style={{
-            position: 'absolute', bottom: '16px', left: '16px',
-            background: status.bg, border: `1px solid ${status.border}`,
-            color: status.color, borderRadius: 'var(--radius-pill)',
-            padding: '5px 12px', fontSize: '11px', fontWeight: '600'
-          }}>{status.label}</div>
+          <div style={{ position: 'absolute', bottom: '16px', left: '16px', background: status.bg, border: `1px solid ${status.border}`, color: status.color, borderRadius: 'var(--radius-pill)', padding: '5px 12px', fontSize: '11px', fontWeight: '600' }}>{status.label}</div>
         </div>
       ) : (
         <div style={{ paddingTop: '70px', padding: '70px 24px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          {/* Add photo button when no image */}
-          <button
-            onClick={() => thumbnailInputRef.current?.click()}
-            disabled={thumbnailUploading}
-            style={{
-              display: 'flex', alignItems: 'center', gap: '6px',
-              background: 'var(--parchment)', border: '1.5px dashed var(--tan)',
-              borderRadius: 'var(--radius-pill)', padding: '7px 14px',
-              fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600',
-              color: 'var(--muted)', cursor: 'pointer'
-            }}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
-              <path d="M12 5v14M5 12h14" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round"/>
-            </svg>
+          <button onClick={() => thumbnailInputRef.current?.click()} disabled={thumbnailUploading} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--parchment)', border: '1.5px dashed var(--tan)', borderRadius: 'var(--radius-pill)', padding: '7px 14px', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600', color: 'var(--muted)', cursor: 'pointer' }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round"/></svg>
             {thumbnailUploading ? 'Uploading...' : 'Add photo'}
           </button>
-          <button onClick={() => { setEditForm({ title: recipe.title || '', source_name: recipe.source_name || '', source_url: recipe.source_url || '', image_url: recipe.image_url || '', cook_time: recipe.cook_time || '', difficulty: recipe.difficulty || '', ingredients: recipe.ingredients || '', instructions: recipe.instructions || '', notes: recipe.notes || '', tags: recipe.tags || [] }); setEditing(true) }} style={{
-            background: 'var(--parchment)', border: 'none', borderRadius: 'var(--radius-pill)',
-            padding: '6px 14px', fontFamily: 'var(--font-body)',
-            fontSize: '12px', fontWeight: '600', color: 'var(--charcoal)', cursor: 'pointer'
-          }}>Edit</button>
+          <button onClick={() => { setEditForm({ title: recipe.title || '', source_name: recipe.source_name || '', source_url: recipe.source_url || '', image_url: recipe.image_url || '', cook_time: recipe.cook_time || '', difficulty: recipe.difficulty || '', ingredients: recipe.ingredients || '', instructions: recipe.instructions || '', notes: recipe.notes || '', tags: recipe.tags || [] }); setEditing(true) }} style={{ background: 'var(--parchment)', border: 'none', borderRadius: 'var(--radius-pill)', padding: '6px 14px', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600', color: 'var(--charcoal)', cursor: 'pointer' }}>Edit</button>
         </div>
       )}
 
@@ -517,31 +545,18 @@ export default function RecipeDetail({ recipe: initialRecipe, session, onBack, o
           </a>
         )}
 
-        {/* Edit button (when image exists, edit is in the hero overlay — this covers the no-image case via the top row) */}
         {recipe.image_url && (
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '8px' }}>
-            <button onClick={() => { setEditForm({ title: recipe.title || '', source_name: recipe.source_name || '', source_url: recipe.source_url || '', image_url: recipe.image_url || '', cook_time: recipe.cook_time || '', difficulty: recipe.difficulty || '', ingredients: recipe.ingredients || '', instructions: recipe.instructions || '', notes: recipe.notes || '', tags: recipe.tags || [] }); setEditing(true) }} style={{
-              background: 'var(--parchment)', border: 'none', borderRadius: 'var(--radius-pill)',
-              padding: '6px 14px', fontFamily: 'var(--font-body)',
-              fontSize: '12px', fontWeight: '600', color: 'var(--charcoal)', cursor: 'pointer'
-            }}>Edit</button>
+            <button onClick={() => { setEditForm({ title: recipe.title || '', source_name: recipe.source_name || '', source_url: recipe.source_url || '', image_url: recipe.image_url || '', cook_time: recipe.cook_time || '', difficulty: recipe.difficulty || '', ingredients: recipe.ingredients || '', instructions: recipe.instructions || '', notes: recipe.notes || '', tags: recipe.tags || [] }); setEditing(true) }} style={{ background: 'var(--parchment)', border: 'none', borderRadius: 'var(--radius-pill)', padding: '6px 14px', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600', color: 'var(--charcoal)', cursor: 'pointer' }}>Edit</button>
           </div>
         )}
 
-        {/* Log a Cook button */}
         {!logging && (
-          <button onClick={() => setLogging(true)} style={{
-            width: '100%', padding: '14px', background: 'var(--clay)', color: 'var(--cream)',
-            border: 'none', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)',
-            fontSize: '14px', fontWeight: '600', cursor: 'pointer', marginBottom: '24px'
-          }}>Log a Cook</button>
+          <button onClick={() => setLogging(true)} style={{ width: '100%', padding: '14px', background: 'var(--clay)', color: 'var(--cream)', border: 'none', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: '600', cursor: 'pointer', marginBottom: '24px' }}>Log a Cook</button>
         )}
 
-        {/* Log a Cook form */}
         {logging && (
           <div style={{ background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--parchment)', padding: '24px', marginBottom: '24px' }}>
-
-            {/* Photo upload */}
             <div style={{ marginBottom: '24px' }}>
               <div style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '12px' }}>Photos</div>
               {cookPhotoPreviews.length > 0 ? (
@@ -549,57 +564,31 @@ export default function RecipeDetail({ recipe: initialRecipe, session, onBack, o
                   {cookPhotoPreviews.map((src, i) => (
                     <div key={i} style={{ position: 'relative', width: '80px', height: '80px', borderRadius: 'var(--radius-md)', overflow: 'hidden', flexShrink: 0 }}>
                       <img src={src} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                      <button onClick={() => removeCookPhoto(i)} style={{
-                        position: 'absolute', top: '4px', right: '4px', width: '20px', height: '20px',
-                        borderRadius: '50%', background: 'rgba(0,0,0,0.55)', border: 'none',
-                        color: 'white', fontSize: '12px', cursor: 'pointer',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1
-                      }}>×</button>
+                      <button onClick={() => removeCookPhoto(i)} style={{ position: 'absolute', top: '4px', right: '4px', width: '20px', height: '20px', borderRadius: '50%', background: 'rgba(0,0,0,0.55)', border: 'none', color: 'white', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>×</button>
                     </div>
                   ))}
-                  <button onClick={() => cookPhotoInputRef.current?.click()} style={{
-                    width: '80px', height: '80px', borderRadius: 'var(--radius-md)',
-                    border: '1.5px dashed var(--tan)', background: 'var(--parchment)',
-                    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    flexShrink: 0
-                  }}>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                      <path d="M12 5v14M5 12h14" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round"/>
-                    </svg>
+                  <button onClick={() => cookPhotoInputRef.current?.click()} style={{ width: '80px', height: '80px', borderRadius: 'var(--radius-md)', border: '1.5px dashed var(--tan)', background: 'var(--parchment)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round"/></svg>
                   </button>
                 </div>
               ) : (
-                <button onClick={() => cookPhotoInputRef.current?.click()} style={{
-                  width: '100%', padding: '16px', border: '1.5px dashed var(--tan)',
-                  borderRadius: 'var(--radius-md)', background: 'var(--parchment)',
-                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'
-                }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                    <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" stroke="var(--muted)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                    <circle cx="12" cy="13" r="4" stroke="var(--muted)" strokeWidth="1.8"/>
-                  </svg>
+                <button onClick={() => cookPhotoInputRef.current?.click()} style={{ width: '100%', padding: '16px', border: '1.5px dashed var(--tan)', borderRadius: 'var(--radius-md)', background: 'var(--parchment)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" stroke="var(--muted)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/><circle cx="12" cy="13" r="4" stroke="var(--muted)" strokeWidth="1.8"/></svg>
                   <span style={{ fontSize: '13px', fontWeight: '600', color: 'var(--muted)' }}>Add photos</span>
                 </button>
               )}
             </div>
 
-            {/* Verdict */}
             <div style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '16px' }}>The Verdict</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '24px' }}>
               {verdictOptions.map(v => (
-                <button key={v.value} onClick={() => setVerdict(v.value)} style={{
-                  padding: '14px 16px', borderRadius: 'var(--radius-md)',
-                  border: `2px solid ${verdict === v.value ? v.border : 'var(--parchment)'}`,
-                  background: verdict === v.value ? v.bg : 'var(--cream)',
-                  cursor: 'pointer', textAlign: 'left', transition: 'all 0.15s'
-                }}>
+                <button key={v.value} onClick={() => setVerdict(v.value)} style={{ padding: '14px 16px', borderRadius: 'var(--radius-md)', border: `2px solid ${verdict === v.value ? v.border : 'var(--parchment)'}`, background: verdict === v.value ? v.bg : 'var(--cream)', cursor: 'pointer', textAlign: 'left', transition: 'all 0.15s' }}>
                   <div style={{ fontFamily: 'var(--font-display)', fontSize: '15px', fontWeight: '500', color: verdict === v.value ? v.color : 'var(--ink)' }}>{v.label}</div>
                   <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '2px' }}>{v.sub}</div>
                 </button>
               ))}
             </div>
 
-            {/* Nuance scores */}
             <div style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '16px' }}>Nuance Scores</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '24px' }}>
               {nuanceCategories.map(cat => (
@@ -607,53 +596,28 @@ export default function RecipeDetail({ recipe: initialRecipe, session, onBack, o
                   <span style={{ fontSize: '13px', fontWeight: '500', color: 'var(--charcoal)', width: '130px', flexShrink: 0 }}>{cat.label}</span>
                   <div style={{ display: 'flex', gap: '6px', flex: 1 }}>
                     {[1,2,3,4,5].map(n => (
-                      <button key={n} onClick={() => setScores(s => ({...s, [cat.key]: n}))} style={{
-                        width: '32px', height: '32px', borderRadius: '50%',
-                        border: `2px solid ${scores[cat.key] >= n ? 'var(--clay)' : 'var(--tan)'}`,
-                        background: scores[cat.key] >= n ? 'var(--clay)' : 'transparent',
-                        color: scores[cat.key] >= n ? 'var(--cream)' : 'var(--muted)',
-                        fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: '600',
-                        cursor: 'pointer', transition: 'all 0.15s'
-                      }}>{n}</button>
+                      <button key={n} onClick={() => setScores(s => ({...s, [cat.key]: n}))} style={{ width: '32px', height: '32px', borderRadius: '50%', border: `2px solid ${scores[cat.key] >= n ? 'var(--clay)' : 'var(--tan)'}`, background: scores[cat.key] >= n ? 'var(--clay)' : 'transparent', color: scores[cat.key] >= n ? 'var(--cream)' : 'var(--muted)', fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: '600', cursor: 'pointer', transition: 'all 0.15s' }}>{n}</button>
                     ))}
                   </div>
-                  <span style={{ fontFamily: 'var(--font-display)', fontSize: '15px', fontWeight: '700', color: 'var(--clay)', width: '28px', textAlign: 'right' }}>
-                    {scores[cat.key] > 0 ? `${scores[cat.key]}/5` : '—'}
-                  </span>
+                  <span style={{ fontFamily: 'var(--font-display)', fontSize: '15px', fontWeight: '700', color: 'var(--clay)', width: '28px', textAlign: 'right' }}>{scores[cat.key] > 0 ? `${scores[cat.key]}/5` : '—'}</span>
                 </div>
               ))}
             </div>
 
-            {/* Notes */}
             <div style={{ marginBottom: '20px' }}>
               <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--charcoal)', marginBottom: '6px', letterSpacing: '0.04em' }}>Notes</label>
-              <textarea value={cookNotes} onChange={e => setCookNotes(e.target.value)}
-                placeholder="What did you tweak? Would you change anything?" rows={3}
-                style={{ width: '100%', padding: '10px 14px', border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-md)', background: 'var(--cream)', fontFamily: 'var(--font-body)', fontSize: '14px', color: 'var(--ink)', outline: 'none', resize: 'vertical' }} />
+              <textarea value={cookNotes} onChange={e => setCookNotes(e.target.value)} placeholder="What did you tweak? Would you change anything?" rows={3} style={{ width: '100%', padding: '10px 14px', border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-md)', background: 'var(--cream)', fontFamily: 'var(--font-body)', fontSize: '14px', color: 'var(--ink)', outline: 'none', resize: 'vertical' }} />
             </div>
 
-            {error && (
-              <div style={{ background: '#FDE8E8', border: '1px solid #F5C0C0', borderRadius: 'var(--radius-md)', padding: '10px 14px', fontSize: '13px', color: '#B85252', marginBottom: '16px' }}>{error}</div>
-            )}
+            {error && <div style={{ background: '#FDE8E8', border: '1px solid #F5C0C0', borderRadius: 'var(--radius-md)', padding: '10px 14px', fontSize: '13px', color: '#B85252', marginBottom: '16px' }}>{error}</div>}
 
             <div style={{ display: 'flex', gap: '10px' }}>
-              <button onClick={logCook} disabled={saving} style={{
-                flex: 1, padding: '13px',
-                background: saving ? 'var(--tan)' : 'var(--clay)', color: 'var(--cream)',
-                border: 'none', borderRadius: 'var(--radius-pill)',
-                fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '600',
-                cursor: saving ? 'not-allowed' : 'pointer'
-              }}>{uploadingPhotos ? 'Uploading photos...' : saving ? 'Saving...' : 'Save Cook'}</button>
-              <button onClick={() => { setLogging(false); setError(null); setCookPhotoFiles([]); setCookPhotoPreviews([]) }} style={{
-                padding: '13px 20px', background: 'transparent', color: 'var(--muted)',
-                border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-pill)',
-                fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '600', cursor: 'pointer'
-              }}>Cancel</button>
+              <button onClick={logCook} disabled={saving} style={{ flex: 1, padding: '13px', background: saving ? 'var(--tan)' : 'var(--clay)', color: 'var(--cream)', border: 'none', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '600', cursor: saving ? 'not-allowed' : 'pointer' }}>{uploadingPhotos ? 'Uploading photos...' : saving ? 'Saving...' : 'Save Cook'}</button>
+              <button onClick={() => { setLogging(false); setError(null); setCookPhotoFiles([]); setCookPhotoPreviews([]) }} style={{ padding: '13px 20px', background: 'transparent', color: 'var(--muted)', border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>Cancel</button>
             </div>
           </div>
         )}
 
-        {/* Ingredients */}
         {recipe.ingredients && (
           <div style={{ background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--parchment)', padding: '20px', marginBottom: '16px' }}>
             <div style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '14px' }}>Ingredients</div>
@@ -668,7 +632,6 @@ export default function RecipeDetail({ recipe: initialRecipe, session, onBack, o
           </div>
         )}
 
-        {/* Instructions */}
         {recipe.instructions && (
           <div style={{ background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--parchment)', padding: '20px', marginBottom: '16px' }}>
             <div style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '14px' }}>Instructions</div>
@@ -683,14 +646,11 @@ export default function RecipeDetail({ recipe: initialRecipe, session, onBack, o
           </div>
         )}
 
-        {/* Circle cooks */}
         {circleCooks.length > 0 && (
           <div style={{ background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--parchment)', padding: '20px', marginBottom: '16px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
               <div style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--muted)' }}>From Your Circle</div>
-              {circleCooks.length > 3 && (
-                <button onClick={() => setShowCircleModal(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: '600', color: 'var(--clay)', padding: 0 }}>See all {circleCooks.length} →</button>
-              )}
+              {circleCooks.length > 3 && <button onClick={() => setShowCircleModal(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: '600', color: 'var(--clay)', padding: 0 }}>See all {circleCooks.length} →</button>}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               {circleCooks.slice(0, 3).map((c, i) => {
@@ -714,7 +674,6 @@ export default function RecipeDetail({ recipe: initialRecipe, session, onBack, o
           </div>
         )}
 
-        {/* Recipe notes */}
         {recipe.notes && (
           <div style={{ background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--parchment)', padding: '20px', marginBottom: '16px' }}>
             <div style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '10px' }}>Notes</div>
@@ -729,17 +688,42 @@ export default function RecipeDetail({ recipe: initialRecipe, session, onBack, o
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {cooks.map((cook, i) => {
                 const v = verdictOptions.find(v => v.value === cook.verdict)
+                const isDeleting = deletingCookId === cook.id
                 return (
-                  <div key={cook.id} style={{ paddingBottom: i < cooks.length - 1 ? '12px' : '0', borderBottom: i < cooks.length - 1 ? '1px solid var(--parchment)' : 'none' }}>
+                  <div key={cook.id} style={{ paddingBottom: i < cooks.length - 1 ? '12px' : '0', borderBottom: i < cooks.length - 1 ? '1px solid var(--parchment)' : 'none', opacity: isDeleting ? 0.4 : 1 }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
                       <div style={{ display: 'inline-flex', padding: '4px 10px', borderRadius: 'var(--radius-pill)', background: v?.bg || 'var(--parchment)', border: `1px solid ${v?.border || 'var(--tan)'}`, fontSize: '11px', fontWeight: '600', color: v?.color || 'var(--charcoal)' }}>{v?.label || cook.verdict}</div>
-                      <span style={{ fontSize: '11px', color: 'var(--muted)' }}>{new Date(cook.cooked_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <span style={{ fontSize: '11px', color: 'var(--muted)' }}>{new Date(cook.cooked_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                        {/* ⋯ menu */}
+                        <div style={{ position: 'relative' }}>
+                          <button
+                            onClick={e => { e.stopPropagation(); setOpenCookMenuId(openCookMenuId === cook.id ? null : cook.id) }}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', fontSize: '16px', padding: '0 2px', lineHeight: 1, fontWeight: '700' }}>⋯</button>
+                          {openCookMenuId === cook.id && (
+                            <div onClick={e => e.stopPropagation()} style={{ position: 'absolute', top: '100%', right: 0, background: 'var(--warm-white)', border: '1px solid var(--parchment)', borderRadius: 'var(--radius-md)', marginTop: '4px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 50, minWidth: '120px', overflow: 'hidden' }}>
+                              <button
+                                onClick={() => deleteCook(cook.id)}
+                                style={{ width: '100%', padding: '10px 16px', background: 'none', border: 'none', textAlign: 'left', fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '500', color: '#B85252', cursor: 'pointer' }}
+                                onMouseEnter={e => e.currentTarget.style.background = '#FDE8E8'}
+                                onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                              >Delete</button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </div>
                     {/* Cook photos */}
                     {cook.photo_urls && cook.photo_urls.length > 0 && (
                       <div style={{ display: 'flex', gap: '6px', marginBottom: '8px', flexWrap: 'wrap' }}>
                         {cook.photo_urls.map((url, pi) => (
-                          <img key={pi} src={url} alt="" style={{ width: '72px', height: '72px', objectFit: 'cover', borderRadius: 'var(--radius-md)' }} />
+                          <img
+                            key={pi}
+                            src={url}
+                            alt=""
+                            onClick={() => openOverlay(cook.photo_urls, pi)}
+                            style={{ width: '72px', height: '72px', objectFit: 'cover', borderRadius: 'var(--radius-md)', cursor: 'pointer' }}
+                          />
                         ))}
                       </div>
                     )}
@@ -758,15 +742,9 @@ export default function RecipeDetail({ recipe: initialRecipe, session, onBack, o
           </div>
         )}
 
-        <button onClick={deleteRecipe} disabled={deleting} style={{
-          width: '100%', padding: '12px', background: 'transparent', color: 'var(--muted)',
-          border: '1.5px solid var(--parchment)', borderRadius: 'var(--radius-pill)',
-          fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '600',
-          cursor: deleting ? 'not-allowed' : 'pointer', marginTop: '8px'
-        }}>{deleting ? 'Removing...' : 'Remove from Cookbook'}</button>
+        <button onClick={deleteRecipe} disabled={deleting} style={{ width: '100%', padding: '12px', background: 'transparent', color: 'var(--muted)', border: '1.5px solid var(--parchment)', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '600', cursor: deleting ? 'not-allowed' : 'pointer', marginTop: '8px' }}>{deleting ? 'Removing...' : 'Remove from Cookbook'}</button>
 
       </div>
-
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   )
