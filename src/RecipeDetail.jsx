@@ -52,6 +52,8 @@ export default function RecipeDetail({ recipe: initialRecipe, session, onBack, o
   // Recipe thumbnail edit state
   const [thumbnailUploading, setThumbnailUploading] = useState(false)
   const thumbnailInputRef = useRef(null)
+  const editPhotoInputRef = useRef(null)
+  const [editPhotoUploading, setEditPhotoUploading] = useState(false)
 
   // Photo overlay state
   const [overlayPhotos, setOverlayPhotos] = useState(null)
@@ -369,16 +371,44 @@ export default function RecipeDetail({ recipe: initialRecipe, session, onBack, o
               <label style={fieldLabel}>Title</label>
               <input value={editForm.title} onChange={e => setEditForm(f => ({ ...f, title: e.target.value }))} style={inputStyle} />
             </div>
-            <div>
-              <label style={fieldLabel}>Image URL</label>
-              {editForm.image_url && (
-                <div style={{ marginBottom: '10px', position: 'relative', borderRadius: 'var(--radius-md)', overflow: 'hidden', height: '160px' }}>
-                  <img src={editForm.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => e.target.style.display = 'none'} />
-                  <button onClick={() => setEditForm(f => ({ ...f, image_url: '' }))} style={{ position: 'absolute', top: '8px', right: '8px', width: '28px', height: '28px', borderRadius: '50%', background: 'rgba(0,0,0,0.5)', border: 'none', color: 'white', fontSize: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
-                </div>
-              )}
-              <input value={editForm.image_url} onChange={e => setEditForm(f => ({ ...f, image_url: e.target.value }))} placeholder="https://..." style={inputStyle} />
-            </div>
+          <div>
+            <label style={fieldLabel}>Image</label>
+            <input
+              ref={editPhotoInputRef}
+              type="file"
+              accept="image/*"
+              style={{ display: 'none' }}
+              onChange={async e => {
+                const file = e.target.files?.[0]
+                if (!file) return
+                setEditPhotoUploading(true)
+                const ext = file.name.split('.').pop() || 'jpg'
+                const path = `${session.user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+                const { error } = await supabase.storage.from('recipe-images').upload(path, file, { upsert: false })
+                if (!error) {
+                  const { data } = supabase.storage.from('recipe-images').getPublicUrl(path)
+                  setEditForm(f => ({ ...f, image_url: data.publicUrl }))
+                }
+                setEditPhotoUploading(false)
+                e.target.value = ''
+              }}
+            />
+            {editForm.image_url ? (
+              <div style={{ position: 'relative', height: '160px', borderRadius: 'var(--radius-md)', overflow: 'hidden', marginBottom: '8px' }}>
+                <img src={editForm.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => e.target.style.display = 'none'} />
+                <button onClick={() => setEditForm(f => ({ ...f, image_url: '' }))} style={{ position: 'absolute', top: '8px', right: '8px', width: '28px', height: '28px', borderRadius: '50%', background: 'rgba(0,0,0,0.5)', border: 'none', color: 'white', fontSize: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+                <button onClick={() => editPhotoInputRef.current?.click()} style={{ position: 'absolute', top: '8px', right: '44px', width: '28px', height: '28px', borderRadius: '50%', background: 'rgba(0,0,0,0.5)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                </button>
+              </div>
+            ) : (
+              <button onClick={() => editPhotoInputRef.current?.click()} disabled={editPhotoUploading} style={{ width: '100%', padding: '14px', border: '1.5px dashed var(--tan)', borderRadius: 'var(--radius-md)', background: 'var(--parchment)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '8px' }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" stroke="var(--muted)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/><circle cx="12" cy="13" r="4" stroke="var(--muted)" strokeWidth="1.8"/></svg>
+                <span style={{ fontSize: '13px', fontWeight: '600', color: 'var(--muted)' }}>{editPhotoUploading ? 'Uploading...' : 'Upload photo'}</span>
+              </button>
+            )}
+            <input value={editForm.image_url} onChange={e => setEditForm(f => ({ ...f, image_url: e.target.value }))} placeholder="Or paste a URL: https://..." style={inputStyle} />
+          </div>
             <div style={{ display: 'flex', gap: '12px' }}>
               <div style={{ flex: 1 }}>
                 <label style={fieldLabel}>Source name</label>
