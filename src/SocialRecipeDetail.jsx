@@ -53,6 +53,7 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
   const [openMenuId, setOpenMenuId] = useState(null)
   const [editingCommentId, setEditingCommentId] = useState(null)
   const [editingBody, setEditingBody] = useState('')
+  const [myProfile, setMyProfile] = useState(null)
 
   // Mention state
   const [mentionQuery, setMentionQuery] = useState(null)
@@ -110,6 +111,12 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
       .from('profiles').select('id, full_name, username, avatar_url').in('id', userIds.slice(0, 3))
     setCircleFriendsCount(userIds.length)
     setCircleFriendAvatars(profiles || [])
+  }
+
+  async function fetchMyProfile() {
+  const { data } = await supabase.from('profiles')
+    .select('avatar_url').eq('id', session.user.id).single()
+  if (data) setMyProfile(data)
   }
 
   async function checkIfSaved() {
@@ -743,12 +750,11 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
             )}
 
             <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
-              <div style={{
-                width: '30px', height: '30px', borderRadius: '50%', flexShrink: 0,
-                background: 'linear-gradient(135deg, var(--clay), var(--ember))',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: '700', color: 'var(--cream)'
-              }}>{(session.user.email || '?')[0].toUpperCase()}</div>
+              {myProfile?.avatar_url ? (
+                <img src={myProfile.avatar_url} alt="" style={{ width: '30px', height: '30px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+              ) : (
+                <div style={{ width: '30px', height: '30px', borderRadius: '50%', flexShrink: 0, background: 'linear-gradient(135deg, var(--clay), var(--ember))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: '700', color: 'var(--cream)' }}>{(session.user.email || '?')[0].toUpperCase()}</div>
+              )}
               <div style={{ flex: 1, display: 'flex', gap: '8px', alignItems: 'flex-end' }}>
                 <textarea
                   ref={textareaRef}

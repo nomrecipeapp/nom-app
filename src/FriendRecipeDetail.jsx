@@ -40,6 +40,7 @@ export default function FriendRecipeDetail({ recipe, session, onBack, scrollToCo
   const [openMenuId, setOpenMenuId] = useState(null)
   const [editingCommentId, setEditingCommentId] = useState(null)
   const [editingBody, setEditingBody] = useState('')
+  const [myProfile, setMyProfile] = useState(null)
 
   // Mention state
   const [mentionQuery, setMentionQuery] = useState(null)
@@ -72,7 +73,7 @@ export default function FriendRecipeDetail({ recipe, session, onBack, scrollToCo
     if (!follows || follows.length === 0) return
     const ids = follows.map(f => f.following_id)
     const { data: profiles } = await supabase.from('profiles')
-    .select('id, full_name, username, avatar_url').in('id', userIds)
+    .select('id, full_name, username, avatar_url').in('id', ids)
     setFollowingProfiles(profiles || [])
   }
 
@@ -95,6 +96,12 @@ export default function FriendRecipeDetail({ recipe, session, onBack, scrollToCo
     setCircleFriendsCount(userIds.length)
     setCircleFriendAvatars(profiles || [])
   }
+
+  async function fetchMyProfile() {
+  const { data } = await supabase.from('profiles')
+    .select('avatar_url').eq('id', session.user.id).single()
+  if (data) setMyProfile(data)
+}
 
   async function checkIfSaved() {
     if (!recipe?.source_url) return
@@ -122,7 +129,7 @@ export default function FriendRecipeDetail({ recipe, session, onBack, scrollToCo
     if (!data || data.length === 0) { setComments([]); setLoadingComments(false); return }
     const userIds = [...new Set(data.map(c => c.user_id))]
     const { data: profiles } = await supabase.from('profiles')
-      .select('id, full_name, username').in('id', userIds)
+      .select('id, full_name, username, avatar_url').in('id', userIds)
     setComments(data.map(c => ({ ...c, profiles: profiles?.find(p => p.id === c.user_id) || null })))
     setAllCommenters(profiles || [])
     setLoadingComments(false)
@@ -624,12 +631,11 @@ export default function FriendRecipeDetail({ recipe, session, onBack, scrollToCo
             )}
 
             <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
-              <div style={{
-                width: '30px', height: '30px', borderRadius: '50%', flexShrink: 0,
-                background: 'linear-gradient(135deg, var(--clay), var(--ember))',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: '700', color: 'var(--cream)'
-              }}>{(session.user.email || '?')[0].toUpperCase()}</div>
+              {myProfile?.avatar_url ? (
+                  <img src={myProfile.avatar_url} alt="" style={{ width: '30px', height: '30px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+                ) : (
+                  <div style={{ width: '30px', height: '30px', borderRadius: '50%', flexShrink: 0, background: 'linear-gradient(135deg, var(--clay), var(--ember))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: '700', color: 'var(--cream)' }}>{(session.user.email || '?')[0].toUpperCase()}</div>
+                )}
               <div style={{ flex: 1, display: 'flex', gap: '8px', alignItems: 'flex-end' }}>
                 <textarea
                   ref={textareaRef}
