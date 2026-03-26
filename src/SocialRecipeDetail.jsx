@@ -76,6 +76,7 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
   checkIfSaved()
   fetchFollowing()
   fetchCircleFriends()
+  upsertView()
 }, [cook.id])
 
   useEffect(() => {
@@ -96,7 +97,7 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
   }
 
   async function fetchCircleFriends() {
-    if (!recipe?.source_url) return
+    if (!recipe?.canonical_id) return
     const { data: following } = await supabase
       .from('follows').select('following_id')
       .eq('follower_id', session.user.id).eq('status', 'approved')
@@ -117,6 +118,14 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
   const { data } = await supabase.from('profiles')
     .select('avatar_url').eq('id', session.user.id).single()
   if (data) setMyProfile(data)
+  }
+
+  async function upsertView() {
+    if (!recipe?.id) return
+    await supabase.from('recipe_views').upsert(
+      { user_id: session.user.id, recipe_id: recipe.id, viewed_at: new Date().toISOString() },
+      { onConflict: 'user_id,recipe_id' }
+    )
   }
 
   async function checkIfSaved() {

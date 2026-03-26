@@ -60,6 +60,7 @@ useEffect(() => {
   checkIfSaved()
   fetchFollowing()
   fetchCircleFriends()
+  upsertView()
 }, [recipe.id])
 
   useEffect(() => {
@@ -102,6 +103,13 @@ useEffect(() => {
   const { data } = await supabase.from('profiles')
     .select('avatar_url').eq('id', session.user.id).single()
   if (data) setMyProfile(data)
+}
+  async function upsertView() {
+  if (!recipe?.id) return
+  await supabase.from('recipe_views').upsert(
+    { user_id: session.user.id, recipe_id: recipe.id, viewed_at: new Date().toISOString() },
+    { onConflict: 'user_id,recipe_id' }
+  )
 }
 
   async function checkIfSaved() {

@@ -89,9 +89,10 @@ export default function RecipeDetail({ recipe: initialRecipe, session, onBack, o
   })
 
   useEffect(() => {
-    fetchCooks()
+      fetchCooks()
     if (recipe.canonical_id) fetchCircleCooks()
     if (recipe.canonical_id) fetchCircleFriends()
+    upsertView()
   }, [recipe.id])
 
   // Close cook menu on outside click
@@ -161,6 +162,13 @@ export default function RecipeDetail({ recipe: initialRecipe, session, onBack, o
       .from('profiles').select('id, full_name, username').in('id', userIds.slice(0, 3))
     setCircleFriendsCount(userIds.length)
     setCircleFriendAvatars(profiles || [])
+  }
+
+  async function upsertView() {
+    await supabase.from('recipe_views').upsert(
+      { user_id: session.user.id, recipe_id: recipe.id, viewed_at: new Date().toISOString() },
+      { onConflict: 'user_id,recipe_id' }
+    )
   }
 
   // ---- PHOTO UPLOAD HELPERS ----

@@ -28,14 +28,13 @@ export default function Search({ session, onSelectUser, onSelectSave, onSelectCo
   const [loading, setLoading] = useState(false)
   const [followStates, setFollowStates] = useState({})
   const [recentSearches, setRecentSearches] = useState(getRecentSearches())
-  const [circleCooks, setCircleCooks] = useState([])
-  const [circleLikes, setCircleLikes] = useState({})
-  const [loadingCircle, setLoadingCircle] = useState(true)
+  const [recentlyViewed, setRecentlyViewed] = useState([])
+  const [loadingViewed, setLoadingViewed] = useState(true)
   const searchRef = useRef(null)
   const debounceRef = useRef(null)
 
   useEffect(() => {
-    fetchCircleCooks()
+    fetchRecentlyViewed()
   }, [])
 
   useEffect(() => {
@@ -51,62 +50,22 @@ export default function Search({ session, onSelectUser, onSelectSave, onSelectCo
     return () => clearTimeout(debounceRef.current)
   }, [query])
 
-  async function fetchCircleCooks() {
-    setLoadingCircle(true)
-    const { data: follows } = await supabase
-      .from('follows').select('following_id')
-      .eq('follower_id', session.user.id).eq('status', 'approved')
+  async function fetchRecentlyViewed() {
+    setLoadingViewed(true)
+    const { data } = await supabase
+      .from('recipe_views')
+      .select('recipe_id, viewed_at, recipes(id, title, image_url, source_name, user_id)')
+      .eq('user_id', session.user.id)
+      .order('viewed_at', { ascending: false })
+      .limit(6)
 
-    if (!follows || follows.length === 0) { setLoadingCircle(false); return }
-
-    const friendIds = follows.map(f => f.following_id)
-
-    const { data: cooks } = await supabase
-      .from('cooks').select('*, recipes(*)')
-      .in('user_id', friendIds)
-      .order('cooked_at', { ascending: false })
-      .limit(40)
-
-    if (!cooks || cooks.length === 0) { setLoadingCircle(false); return }
-
-    const userIds = [...new Set(cooks.map(c => c.user_id))]
-    const { data: profiles } = await supabase
-      .from('profiles').select('id, full_name, username').in('id', userIds)
-
-    // Fetch like counts
-    const cookIds = cooks.map(c => c.id)
-    const likeCounts = {}
-    for (const id of cookIds) {
-      const { count } = await supabase.from('likes')
-        .select('*', { count: 'exact', head: true })
-        .eq('target_type', 'cook').eq('target_id', id)
-      likeCounts[id] = count || 0
-    }
-    setCircleLikes(likeCounts)
-
-    const withProfiles = cooks
-      .filter(c => c.recipes)
-      .map(c => ({ ...c, profiles: profiles?.find(p => p.id === c.user_id) || null }))
-
-    // Score: recency 60% + likes 40%
-    const now = Date.now()
-    const maxAge = 30 * 24 * 60 * 60 * 1000
-    const scored = withProfiles.map(c => {
-      const age = now - new Date(c.cooked_at).getTime()
-      const recencyScore = Math.max(0, 1 - age / maxAge)
-      const likeScore = Math.min(1, (likeCounts[c.id] || 0) / 10)
-      return { ...c, _score: recencyScore * 0.6 + likeScore * 0.4 }
-    })
-
-    scored.sort((a, b) => b._score - a._score)
-    setCircleCooks(scored.slice(0, 12))
-    setLoadingCircle(false)
+    if (data) setRecentlyViewed(data.filter(v => v.recipes))
+    setLoadingViewed(false)
   }
 
   async function runSearch(q) {
     setLoading(true)
 
-    // Fetch people results
     const { data: people = [] } = await supabase
       .from('profiles')
       .select('*')
@@ -114,7 +73,6 @@ export default function Search({ session, onSelectUser, onSelectSave, onSelectCo
       .neq('id', session.user.id)
       .limit(5)
 
-    // Fetch recipe results (from followed users only)
     let recipes = []
     const { data: follows } = await supabase
       .from('follows')
@@ -144,7 +102,6 @@ export default function Search({ session, onSelectUser, onSelectSave, onSelectCo
       }
     }
 
-    // Fetch follow states for people results
     if (people.length > 0) {
       const { data: followData } = await supabase
         .from('follows')
@@ -201,6 +158,13 @@ export default function Search({ session, onSelectUser, onSelectSave, onSelectCo
     await supabase.from('follows').delete()
       .eq('follower_id', session.user.id).eq('following_id', userId)
     setFollowStates(s => ({ ...s, [userId]: null }))
+  }
+
+  function handleSelectViewed(view) {
+    const recipe = view.recipes
+    if (!recipe) return
+    // Navigate — if it's your own recipe use onSelectSave, otherwise same
+    onSelectSave && onSelectSave(recipe)
   }
 
   const hasDropdownResults = dropdownResults.people.length > 0 || dropdownResults.recipes.length > 0
@@ -324,7 +288,7 @@ export default function Search({ session, onSelectUser, onSelectSave, onSelectCo
         )}
       </div>
 
-      {/* Empty state — recent searches + circle feed */}
+      {/* Empty state — recent searches + recently viewed */}
       {!showDropdown && query.length < 2 && (
         <>
           {/* Recent searches */}
@@ -354,42 +318,48 @@ export default function Search({ session, onSelectUser, onSelectSave, onSelectCo
             </div>
           )}
 
-          {/* What your circle is cooking */}
+          {/* Recently Viewed */}
           <div>
-            <div style={{ fontSize: '11px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '16px' }}>What Your Circle Is Cooking</div>
-            {loadingCircle ? (
+            <div style={{ fontSize: '11px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '16px' }}>Recently Viewed</div>
+            {loadingViewed ? (
               <div style={{ textAlign: 'center', padding: '40px 0', fontSize: '13px', color: 'var(--muted)' }}>Loading...</div>
-            ) : circleCooks.length === 0 ? (
+            ) : recentlyViewed.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '40px 20px' }}>
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: '16px', fontWeight: '500', color: 'var(--ink)', marginBottom: '6px' }}>Nothing here yet</div>
-                <div style={{ fontSize: '13px', color: 'var(--muted)' }}>Follow some cooks to see what they're making.</div>
+                <div style={{ fontSize: '13px', color: 'var(--muted)' }}>Recipes you view will appear here.</div>
               </div>
             ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                {circleCooks.map(cook => {
-                  const recipe = cook.recipes
-                  const name = cook.profiles?.full_name || cook.profiles?.username || 'Someone'
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {recentlyViewed.map(view => {
+                  const recipe = view.recipes
                   return (
-                    <div key={cook.id} onClick={() => onSelectCook && onSelectCook(cook)} style={{
-                      background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)',
-                      border: '1px solid var(--parchment)', overflow: 'hidden', cursor: 'pointer'
-                    }}>
+                    <div key={view.recipe_id} onClick={() => handleSelectViewed(view)} style={{
+                      display: 'flex', alignItems: 'center', gap: '12px',
+                      background: 'var(--warm-white)', borderRadius: 'var(--radius-md)',
+                      border: '1px solid var(--parchment)', padding: '12px 14px',
+                      cursor: 'pointer'
+                    }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'var(--parchment)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'var(--warm-white)'}
+                    >
                       <div style={{
-                        height: '110px', background: recipe.image_url ? 'var(--parchment)' : 'linear-gradient(135deg, var(--clay), var(--ember))',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden'
+                        width: '44px', height: '44px', borderRadius: 'var(--radius-md)',
+                        overflow: 'hidden', flexShrink: 0,
+                        background: recipe.image_url ? 'var(--parchment)' : 'linear-gradient(135deg, var(--clay), var(--ember))',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center'
                       }}>
                         {recipe.image_url
                           ? <img src={recipe.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                          : <span style={{ fontFamily: 'var(--font-display)', fontSize: '32px', fontWeight: '700', color: 'var(--cream)' }}>{(recipe.title || '?')[0].toUpperCase()}</span>
+                          : <span style={{ fontFamily: 'var(--font-display)', fontSize: '16px', fontWeight: '700', color: 'var(--cream)' }}>{(recipe.title || '?')[0].toUpperCase()}</span>
                         }
                       </div>
-                      <div style={{ padding: '10px 12px' }}>
-                        <div style={{ fontFamily: 'var(--font-display)', fontSize: '13px', fontWeight: '600', color: 'var(--ink)', marginBottom: '3px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{recipe.title}</div>
-                        <div style={{ fontSize: '11px', color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>by {name}</div>
-                        {circleLikes[cook.id] > 0 && (
-                          <div style={{ fontSize: '10px', color: 'var(--clay)', marginTop: '3px', fontWeight: '600' }}>♥ {circleLikes[cook.id]}</div>
-                        )}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: '600', color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{recipe.title}</div>
+                        {recipe.source_name && <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '2px' }}>{recipe.source_name}</div>}
                       </div>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}>
+                        <path d="M9 18l6-6-6-6" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
                     </div>
                   )
                 })}
