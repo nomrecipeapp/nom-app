@@ -21,7 +21,7 @@ function removeRecentSearch(term) {
   localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(updated))
 }
 
-export default function Search({ session, onSelectUser, onSelectSave, onSelectCook }) {
+export default function Search({ session, onSelectUser, onSelectSave, onSelectCook, onSelectRecipe }) {
   const [query, setQuery] = useState('')
   const [dropdownResults, setDropdownResults] = useState({ people: [], recipes: [] })
   const [showDropdown, setShowDropdown] = useState(false)
@@ -163,8 +163,11 @@ export default function Search({ session, onSelectUser, onSelectSave, onSelectCo
   function handleSelectViewed(view) {
     const recipe = view.recipes
     if (!recipe) return
-    // Navigate — if it's your own recipe use onSelectSave, otherwise same
-    onSelectSave && onSelectSave(recipe)
+    if (recipe.user_id === session.user.id) {
+      onSelectRecipe && onSelectRecipe(recipe)
+    } else {
+      onSelectSave && onSelectSave(recipe)
+    }
   }
 
   const hasDropdownResults = dropdownResults.people.length > 0 || dropdownResults.recipes.length > 0

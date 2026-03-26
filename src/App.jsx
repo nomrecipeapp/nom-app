@@ -366,6 +366,11 @@ if (showLogin) return <Auth />
           onSelectUser={goToFriendProfile}
           onSelectSave={goToFriendRecipeDetail}
           onSelectCook={goToSocialRecipe}
+          onSelectRecipe={(recipe) => {
+            setRecipeBackScreen('search')
+            setSelectedRecipe(recipe)
+            setScreen('recipe')
+          }}
         />
       )}
 
