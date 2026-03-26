@@ -160,14 +160,16 @@ export default function Search({ session, onSelectUser, onSelectSave, onSelectCo
     setFollowStates(s => ({ ...s, [userId]: null }))
   }
 
-  function handleSelectViewed(view) {
+  async function handleSelectViewed(view) {
     const recipe = view.recipes
     if (!recipe) return
-    console.log('recipe.user_id:', recipe.user_id, 'session.user.id:', session.user.id, 'match:', recipe.user_id === session.user.id)
-    if (recipe.user_id === session.user.id) {
-      onSelectRecipe && onSelectRecipe(recipe)
+    const { data: fullRecipe } = await supabase
+      .from('recipes').select('*').eq('id', recipe.id).single()
+    if (!fullRecipe) return
+    if (fullRecipe.user_id === session.user.id) {
+      onSelectRecipe && onSelectRecipe(fullRecipe)
     } else {
-      onSelectSave && onSelectSave(recipe)
+      onSelectSave && onSelectSave(fullRecipe)
     }
   }
 
