@@ -367,6 +367,7 @@ if (showLogin) return <Auth />
           onSelectSave={goToFriendRecipeDetail}
           onSelectCook={goToSocialRecipe}
           onSelectRecipe={(recipe) => {
+            console.log('onSelectRecipe called, recipe:', recipe.title)
             setRecipeBackScreen('search')
             setSelectedRecipe(recipe)
             setScreen('recipe')
