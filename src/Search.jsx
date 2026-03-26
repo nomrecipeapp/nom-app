@@ -163,6 +163,7 @@ export default function Search({ session, onSelectUser, onSelectSave, onSelectCo
   function handleSelectViewed(view) {
     const recipe = view.recipes
     if (!recipe) return
+    console.log('recipe.user_id:', recipe.user_id, 'session.user.id:', session.user.id, 'match:', recipe.user_id === session.user.id)
     if (recipe.user_id === session.user.id) {
       onSelectRecipe && onSelectRecipe(recipe)
     } else {
