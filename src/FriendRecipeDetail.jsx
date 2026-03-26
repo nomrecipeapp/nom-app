@@ -79,7 +79,7 @@ useEffect(() => {
   }
 
   async function fetchCircleFriends() {
-    if (!recipe?.source_url) return
+    if (!recipe?.canonical_id) return
     const { data: following } = await supabase
       .from('follows').select('following_id')
       .eq('follower_id', session.user.id).eq('status', 'approved')
@@ -87,7 +87,7 @@ useEffect(() => {
     const followingIds = following.map(f => f.following_id)
     const { data: matchingRecipes } = await supabase
       .from('recipes').select('id, user_id')
-      .eq('source_url', recipe.source_url).in('user_id', followingIds)
+      .eq('canonical_id', recipe.canonical_id).in('user_id', followingIds)
     if (!matchingRecipes || matchingRecipes.length === 0) return
     const userIds = [...new Set(matchingRecipes.map(r => r.user_id))]
     const otherIds = userIds.filter(id => id !== recipe.user_id)
@@ -105,9 +105,9 @@ useEffect(() => {
 }
 
   async function checkIfSaved() {
-    if (!recipe?.source_url) return
+    if (!recipe?.canonical_id) return
     const { data } = await supabase.from('recipes').select('id')
-      .eq('user_id', session.user.id).eq('source_url', recipe.source_url).maybeSingle()
+      .eq('user_id', session.user.id).eq('canonical_id', recipe.canonical_id).maybeSingle()
     if (data) setMyRecipeId(data.id)
   }
 
@@ -248,13 +248,19 @@ useEffect(() => {
     if (saved || saving) return
     setSaving(true)
     const { data: existing } = await supabase.from('recipes').select('id, title')
-      .eq('user_id', session.user.id).eq('source_url', recipe.source_url).maybeSingle()
+      .eq('user_id', session.user.id).eq('canonical_id', recipe.canonical_id).maybeSingle()
     if (existing) { setDuplicate(existing); setSaving(false); return }
+    const { data: canonicalData } = await supabase
+      .from('recipes').select('canonical_id')
+      .eq('id', recipe.id).single()
+
     await supabase.from('recipes').insert({
       user_id: session.user.id, title: recipe.title, source_url: recipe.source_url,
       source_name: recipe.source_name, image_url: recipe.image_url, cook_time: recipe.cook_time,
       difficulty: recipe.difficulty, ingredients: recipe.ingredients,
-      instructions: recipe.instructions, notes: recipe.notes, status: 'want_to_make'
+      instructions: recipe.instructions, status: 'want_to_make',
+      canonical_id: canonicalData?.canonical_id || crypto.randomUUID(),
+      saved_from_recipe_id: recipe.id
     })
     if (recipe.user_id && recipe.user_id !== session.user.id) {
       await supabase.from('notifications').insert({
@@ -267,17 +273,23 @@ useEffect(() => {
     console.log('saved set to true, duplicate:', duplicate, 'myRecipeId:', myRecipeId)
     const { data: newRecipe } = await supabase
       .from('recipes').select('id')
-      .eq('user_id', session.user.id).eq('source_url', recipe.source_url).maybeSingle()
+      .eq('user_id', session.user.id).eq('canonical_id', recipe.canonical_id).maybeSingle()
     if (newRecipe) setMyRecipeId(newRecipe.id)
   }
 
   async function addAnyway() {
     setDuplicate(null); setSaving(true)
+    const { data: canonicalData } = await supabase
+      .from('recipes').select('canonical_id')
+      .eq('id', recipe.id).single()
+
     await supabase.from('recipes').insert({
       user_id: session.user.id, title: recipe.title, source_url: recipe.source_url,
       source_name: recipe.source_name, image_url: recipe.image_url, cook_time: recipe.cook_time,
       difficulty: recipe.difficulty, ingredients: recipe.ingredients,
-      instructions: recipe.instructions, notes: recipe.notes, status: 'want_to_make'
+      instructions: recipe.instructions, status: 'want_to_make',
+      canonical_id: canonicalData?.canonical_id || crypto.randomUUID(),
+      saved_from_recipe_id: recipe.id
     })
     if (recipe.user_id && recipe.user_id !== session.user.id) {
       await supabase.from('notifications').insert({
@@ -289,7 +301,7 @@ useEffect(() => {
     setSaved(true)
     const { data: newRecipe } = await supabase
       .from('recipes').select('id')
-      .eq('user_id', session.user.id).eq('source_url', recipe.source_url).maybeSingle()
+      .eq('user_id', session.user.id).eq('canonical_id', recipe.canonical_id).maybeSingle()
     if (newRecipe) setMyRecipeId(newRecipe.id)
   }
 

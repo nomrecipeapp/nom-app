@@ -183,13 +183,29 @@ export default function AddRecipe({ session, onSave, onCancel }) {
     }
     setLoading(true)
     const { logCookNow, ...cleanRecipe } = recipeData
+    // Look up existing canonical_id for this source_url, or generate a new one
+    let canonicalId = null
+    if (cleanRecipe.source_url) {
+      const { data: existing } = await supabase
+        .from('recipes')
+        .select('canonical_id')
+        .eq('source_url', cleanRecipe.source_url)
+        .not('canonical_id', 'is', null)
+        .limit(1)
+        .maybeSingle()
+      canonicalId = existing?.canonical_id || crypto.randomUUID()
+    } else {
+      canonicalId = crypto.randomUUID()
+    }
+
     const { data: saved, error: saveError } = await supabase
       .from('recipes')
       .insert({
         user_id: session.user.id,
         ...cleanRecipe,
         tags: cleanRecipe.tags || [],
-        status: logCookNow ? (verdict === 'never_again' ? 'never_again' : 'cooked') : 'want_to_make'
+        status: logCookNow ? (verdict === 'never_again' ? 'never_again' : 'cooked') : 'want_to_make',
+        canonical_id: canonicalId
       })
       .select().single()
 

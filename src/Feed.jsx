@@ -88,12 +88,14 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
     if (!following || following.length === 0) return
     const followingIds = following.map(f => f.following_id)
 
-    const sourceUrls = items.filter(i => i.source_url).map(i => i.source_url)
-    if (sourceUrls.length === 0) return
+    const canonicalIds = items
+      .map(i => i._type === 'cook' ? i.recipes?.canonical_id : i.canonical_id)
+      .filter(Boolean)
+    if (canonicalIds.length === 0) return
 
     const { data: matchingRecipes } = await supabase
-      .from('recipes').select('id, user_id, source_url')
-      .in('source_url', sourceUrls).in('user_id', followingIds)
+      .from('recipes').select('id, user_id, canonical_id')
+      .in('canonical_id', canonicalIds).in('user_id', followingIds)
 
     if (!matchingRecipes || matchingRecipes.length === 0) return
 
@@ -103,14 +105,14 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
 
     const map = {}
     for (const item of items) {
-      const url = item._type === 'cook' ? item.recipes?.source_url : item.source_url
-      if (!url) continue
-      const matches = matchingRecipes.filter(m => m.source_url === url)
+      const canonicalId = item._type === 'cook' ? item.recipes?.canonical_id : item.canonical_id
+      if (!canonicalId) continue
+      const matches = matchingRecipes.filter(m => m.canonical_id === canonicalId)
         .filter(m => m.user_id !== item.user_id)
       if (matches.length === 0) continue
       const userIds = [...new Set(matches.map(m => m.user_id))]
       const avatars = userIds.slice(0, 3).map(id => profiles?.find(p => p.id === id)).filter(Boolean)
-      map[`${item._type}-${item.id}`] = { count: userIds.length, avatars, sourceUrl: url }
+      map[`${item._type}-${item.id}`] = { count: userIds.length, avatars, canonicalId }
     }
     setCircleFriendsMap(map)
   }

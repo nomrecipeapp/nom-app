@@ -90,8 +90,8 @@ export default function RecipeDetail({ recipe: initialRecipe, session, onBack, o
 
   useEffect(() => {
     fetchCooks()
-    if (recipe.source_url) fetchCircleCooks()
-    if (recipe.source_url) fetchCircleFriends()
+    if (recipe.canonical_id) fetchCircleCooks()
+    if (recipe.canonical_id) fetchCircleFriends()
   }, [recipe.id])
 
   // Close cook menu on outside click
@@ -119,7 +119,7 @@ export default function RecipeDetail({ recipe: initialRecipe, session, onBack, o
     const followingIds = following.map(f => f.following_id)
     const { data: matchingRecipes } = await supabase
       .from('recipes').select('id, user_id')
-      .eq('source_url', recipe.source_url).in('user_id', followingIds)
+      .eq('canonical_id', recipe.canonical_id).in('user_id', followingIds)
     if (!matchingRecipes || matchingRecipes.length === 0) return
     const recipeIds = matchingRecipes.map(r => r.id)
     const { data: cooksData } = await supabase
@@ -146,7 +146,7 @@ export default function RecipeDetail({ recipe: initialRecipe, session, onBack, o
   }
 
   async function fetchCircleFriends() {
-    if (!recipe.source_url) return
+    if (!recipe.canonical_id) return
     const { data: following } = await supabase
       .from('follows').select('following_id')
       .eq('follower_id', session.user.id).eq('status', 'approved')
@@ -154,7 +154,7 @@ export default function RecipeDetail({ recipe: initialRecipe, session, onBack, o
     const followingIds = following.map(f => f.following_id)
     const { data: matchingRecipes } = await supabase
       .from('recipes').select('id, user_id')
-      .eq('source_url', recipe.source_url).in('user_id', followingIds)
+      .eq('canonical_id', recipe.canonical_id).in('user_id', followingIds)
     if (!matchingRecipes || matchingRecipes.length === 0) return
     const userIds = [...new Set(matchingRecipes.map(r => r.user_id))]
     const { data: profiles } = await supabase
