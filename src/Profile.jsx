@@ -56,15 +56,13 @@ export default function Profile({ session, onBack, onSelectRecipe, onViewFollowL
   const [avatarUploading, setAvatarUploading] = useState(false)
 
   useEffect(() => {
-  Promise.all([
-    fetchProfile(),
-    fetchStats(),
-    fetchFollowCounts(),
-    fetchRecentCooks(),
-    fetchTopRated(),
+    // Load header data first — shows profile immediately
+    Promise.all([fetchProfile(), fetchStats(), fetchFollowCounts()])
+    // Load recipe lists in background
+    fetchRecentCooks()
+    fetchTopRated()
     fetchWantToMake()
-  ])
-}, [])
+  }, [])
 
   useEffect(() => {
     if (externalEditing) setEditing(true)
@@ -83,18 +81,18 @@ export default function Profile({ session, onBack, onSelectRecipe, onViewFollowL
   }
 
   async function fetchStats() {
-    const { count: saved } = await supabase
-      .from('recipes').select('*', { count: 'exact', head: true }).eq('user_id', session.user.id)
-    const { count: cooked } = await supabase
-      .from('recipes').select('*', { count: 'exact', head: true }).eq('user_id', session.user.id).eq('status', 'cooked')
+    const [{ count: saved }, { count: cooked }] = await Promise.all([
+      supabase.from('recipes').select('*', { count: 'exact', head: true }).eq('user_id', session.user.id),
+      supabase.from('recipes').select('*', { count: 'exact', head: true }).eq('user_id', session.user.id).eq('status', 'cooked')
+    ])
     setStats({ saved: saved || 0, cooked: cooked || 0 })
   }
 
   async function fetchFollowCounts() {
-    const { count: followingCount } = await supabase
-      .from('follows').select('*', { count: 'exact', head: true }).eq('follower_id', session.user.id).eq('status', 'approved')
-    const { count: followersCount } = await supabase
-      .from('follows').select('*', { count: 'exact', head: true }).eq('following_id', session.user.id).eq('status', 'approved')
+    const [{ count: followingCount }, { count: followersCount }] = await Promise.all([
+      supabase.from('follows').select('*', { count: 'exact', head: true }).eq('follower_id', session.user.id).eq('status', 'approved'),
+      supabase.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', session.user.id).eq('status', 'approved')
+    ])
     setFollowing(followingCount || 0)
     setFollowers(followersCount || 0)
   }
