@@ -56,13 +56,15 @@ export default function Profile({ session, onBack, onSelectRecipe, onViewFollowL
   const [avatarUploading, setAvatarUploading] = useState(false)
 
   useEffect(() => {
-    fetchProfile()
-    fetchStats()
-    fetchFollowCounts()
-    fetchRecentCooks()
-    fetchTopRated()
+  Promise.all([
+    fetchProfile(),
+    fetchStats(),
+    fetchFollowCounts(),
+    fetchRecentCooks(),
+    fetchTopRated(),
     fetchWantToMake()
-  }, [])
+  ])
+}, [])
 
   useEffect(() => {
     if (externalEditing) setEditing(true)
