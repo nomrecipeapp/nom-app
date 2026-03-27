@@ -37,25 +37,11 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
 
     const ids = [...follows.map(f => f.following_id), session.user.id]
 
-    const { data: cooks } = await supabase
-      .from('cooks')
-      .select('*, recipes(*)')
-      .in('user_id', ids)
-      .order('cooked_at', { ascending: false })
-      .limit(40)
-
-    const { data: saves } = await supabase
-      .from('recipes')
-      .select('*')
-      .in('user_id', ids)
-      .eq('status', 'want_to_make')
-      .order('created_at', { ascending: false })
-      .limit(40)
-
-    const { data: profiles } = await supabase
-      .from('profiles')
-      .select('*')
-      .in('id', ids)
+    const [{ data: cooks }, { data: saves }, { data: profiles }] = await Promise.all([
+      supabase.from('cooks').select('*, recipes(*)').in('user_id', ids).order('cooked_at', { ascending: false }).limit(40),
+      supabase.from('recipes').select('*').in('user_id', ids).eq('status', 'want_to_make').order('created_at', { ascending: false }).limit(40),
+      supabase.from('profiles').select('*').in('id', ids)
+    ])
 
     const cookItems = (cooks || []).map(c => ({
       ...c,
@@ -77,7 +63,8 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
 
     setFeed(merged)
     setLoading(false)
-    await fetchFeedEngagement(merged)
+    // Load engagement and circle data in background — cards show immediately
+    fetchFeedEngagement(merged)
     fetchCircleFriendsForFeed(merged)
   }
 
