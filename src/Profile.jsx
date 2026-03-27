@@ -45,9 +45,9 @@ export default function Profile({ session, onBack, onSelectRecipe, onViewFollowL
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
-  const [stats, setStats] = useState({ saved: 0, cooked: 0 })
-  const [following, setFollowing] = useState(0)
-  const [followers, setFollowers] = useState(0)
+  const [stats, setStats] = useState(null)
+  const [following, setFollowing] = useState(null)
+  const [followers, setFollowers] = useState(null)
   const [recentCooks, setRecentCooks] = useState([])
   const [topRated, setTopRated] = useState([])
   const [wantToMake, setWantToMake] = useState([])
@@ -282,11 +282,11 @@ export default function Profile({ session, onBack, onSelectRecipe, onViewFollowL
           )}
           <div style={{ display: 'flex', gap: '32px', textAlign: 'center' }}>
             <button onClick={() => onViewFollowList('following')} style={{ background: 'none', border: 'none', cursor: 'pointer', textAlign: 'center', padding: 0 }}>
-              <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: '700', color: 'var(--ink)' }}>{following}</div>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: '700', color: 'var(--ink)' }}>{following === null ? '—' : following}</div>
               <div style={{ fontSize: '11px', color: 'var(--muted)' }}>Following</div>
             </button>
             <button onClick={() => onViewFollowList('followers')} style={{ background: 'none', border: 'none', cursor: 'pointer', textAlign: 'center', padding: 0 }}>
-              <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: '700', color: 'var(--ink)' }}>{followers}</div>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: '700', color: 'var(--ink)' }}>{followers === null ? '—' : followers}</div>
               <div style={{ fontSize: '11px', color: 'var(--muted)' }}>Followers</div>
             </button>
           </div>
@@ -295,11 +295,11 @@ export default function Profile({ session, onBack, onSelectRecipe, onViewFollowL
         {/* Stats strip */}
         <div style={{ display: 'flex', borderTop: '1px solid var(--parchment)', borderBottom: '1px solid var(--parchment)', margin: '0 0 20px' }}>
           <button onClick={() => onViewCookbook && onViewCookbook('All')} style={{ flex: 1, padding: '12px 0', textAlign: 'center', background: 'none', border: 'none', borderRight: '1px solid var(--parchment)', cursor: 'pointer' }}>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: '700', color: 'var(--ink)' }}>{stats.saved}</div>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: '700', color: 'var(--ink)' }}>{stats === null ? '—' : stats.saved}</div>
             <div style={{ fontSize: '10px', color: 'var(--muted)', marginTop: '2px' }}>Saved</div>
           </button>
           <button onClick={() => onViewCookbook && onViewCookbook('Cooked')} style={{ flex: 1, padding: '12px 0', textAlign: 'center', background: 'none', border: 'none', borderRight: '1px solid var(--parchment)', cursor: 'pointer' }}>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: '700', color: 'var(--ink)' }}>{stats.cooked}</div>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: '700', color: 'var(--ink)' }}>{stats === null ? '—' : stats.cooked}</div>
             <div style={{ fontSize: '10px', color: 'var(--muted)', marginTop: '2px' }}>Cooked</div>
           </button>
           <div style={{ flex: 1, padding: '12px 0', textAlign: 'center' }}>
