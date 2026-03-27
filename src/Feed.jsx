@@ -127,27 +127,52 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
     const likeCountsMap = {}
     const commentCountsMap = {}
 
-    if (cookIds.length > 0) {
-      const { data: cookLikes } = await supabase.from('likes').select('target_id').eq('target_type', 'cook').eq('user_id', session.user.id).in('target_id', cookIds)
-      cookLikes?.forEach(l => { likesMap[`cook-${l.target_id}`] = true })
-      for (const id of cookIds) {
-        const { count } = await supabase.from('likes').select('*', { count: 'exact', head: true }).eq('target_type', 'cook').eq('target_id', id)
-        likeCountsMap[`cook-${id}`] = count || 0
-        const { count: cc } = await supabase.from('comments').select('*', { count: 'exact', head: true }).eq('target_type', 'cook').eq('target_id', id)
-        commentCountsMap[`cook-${id}`] = cc || 0
-      }
-    }
+    // Fetch all likes, like counts, and comment counts in 6 queries total
+    // instead of 2 queries per item
+    const [
+      cookLikesRes, saveLikesRes,
+      allCookLikesRes, allSaveLikesRes,
+      allCookCommentsRes, allSaveCommentsRes
+    ] = await Promise.all([
+      cookIds.length > 0
+        ? supabase.from('likes').select('target_id').eq('target_type', 'cook').eq('user_id', session.user.id).in('target_id', cookIds)
+        : { data: [] },
+      saveIds.length > 0
+        ? supabase.from('likes').select('target_id').eq('target_type', 'save').eq('user_id', session.user.id).in('target_id', saveIds)
+        : { data: [] },
+      cookIds.length > 0
+        ? supabase.from('likes').select('target_id').eq('target_type', 'cook').in('target_id', cookIds)
+        : { data: [] },
+      saveIds.length > 0
+        ? supabase.from('likes').select('target_id').eq('target_type', 'save').in('target_id', saveIds)
+        : { data: [] },
+      cookIds.length > 0
+        ? supabase.from('comments').select('target_id').eq('target_type', 'cook').in('target_id', cookIds)
+        : { data: [] },
+      saveIds.length > 0
+        ? supabase.from('comments').select('target_id').eq('target_type', 'save').in('target_id', saveIds)
+        : { data: [] },
+    ])
 
-    if (saveIds.length > 0) {
-      const { data: saveLikes } = await supabase.from('likes').select('target_id').eq('target_type', 'save').eq('user_id', session.user.id).in('target_id', saveIds)
-      saveLikes?.forEach(l => { likesMap[`save-${l.target_id}`] = true })
-      for (const id of saveIds) {
-        const { count } = await supabase.from('likes').select('*', { count: 'exact', head: true }).eq('target_type', 'save').eq('target_id', id)
-        likeCountsMap[`save-${id}`] = count || 0
-        const { count: cc } = await supabase.from('comments').select('*', { count: 'exact', head: true }).eq('target_type', 'save').eq('target_id', id)
-        commentCountsMap[`save-${id}`] = cc || 0
-      }
-    }
+    // My likes
+    cookLikesRes.data?.forEach(l => { likesMap[`cook-${l.target_id}`] = true })
+    saveLikesRes.data?.forEach(l => { likesMap[`save-${l.target_id}`] = true })
+
+    // Like counts — count occurrences per target_id
+    cookIds.forEach(id => {
+      likeCountsMap[`cook-${id}`] = allCookLikesRes.data?.filter(l => l.target_id === id).length || 0
+    })
+    saveIds.forEach(id => {
+      likeCountsMap[`save-${id}`] = allSaveLikesRes.data?.filter(l => l.target_id === id).length || 0
+    })
+
+    // Comment counts
+    cookIds.forEach(id => {
+      commentCountsMap[`cook-${id}`] = allCookCommentsRes.data?.filter(c => c.target_id === id).length || 0
+    })
+    saveIds.forEach(id => {
+      commentCountsMap[`save-${id}`] = allSaveCommentsRes.data?.filter(c => c.target_id === id).length || 0
+    })
 
     setFeedLikes(likesMap)
     setFeedLikeCounts(likeCountsMap)
