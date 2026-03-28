@@ -312,13 +312,6 @@ export default function AddRecipe({ session, onSave, onCancel }) {
   const reviewScreen = (
     <div style={{ background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--parchment)', padding: '28px' }}>
       <div style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '20px' }}>Review & Save</div>
-
-      {recipe?.image_url && (
-        <div style={{ height: '160px', borderRadius: 'var(--radius-md)', overflow: 'hidden', marginBottom: '16px', background: 'var(--parchment)' }}>
-          <img src={recipe.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-        </div>
-      )}
-
       <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
         <div>
           <label style={labelStyle}>Title</label>
