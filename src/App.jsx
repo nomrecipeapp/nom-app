@@ -36,6 +36,7 @@ export default function App() {
   const [followListType, setFollowListType] = useState('following')
   const [profileEditing, setProfileEditing] = useState(false)
   const [cookbookDefaultFilter, setCookbookDefaultFilter] = useState('All')
+  const [feedScrollY, setFeedScrollY] = useState(0)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -357,6 +358,10 @@ if (showLogin) return <Auth />
           onSelectUser={goToFriendProfile}
           onSelectPost={goToPost}
           onSelectSave={goToFriendRecipeDetail}
+          onGoToSearch={() => setScreen('search')}
+          onGoToCookbook={() => setScreen('cookbook')}
+          savedScrollY={feedScrollY}
+          onScrollChange={setFeedScrollY}
         />
       )}
 

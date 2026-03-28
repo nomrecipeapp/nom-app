@@ -9,9 +9,30 @@ const verdictStyles = {
   never_again: { bg: '#F4E8E8', border: '#C47070', color: '#9B4040', label: 'Never Again' },
 }
 
-import FriendRecipeDetail from './FriendRecipeDetail'
+function SkeletonCard() {
+  return (
+    <div style={{
+      background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)',
+      border: '1px solid var(--parchment)', overflow: 'hidden'
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 16px' }}>
+        <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'var(--parchment)', flexShrink: 0 }} className="skel" />
+        <div style={{ flex: 1 }}>
+          <div style={{ height: '12px', width: '40%', background: 'var(--parchment)', borderRadius: '6px', marginBottom: '6px' }} className="skel" />
+          <div style={{ height: '10px', width: '25%', background: 'var(--parchment)', borderRadius: '6px' }} className="skel" />
+        </div>
+      </div>
+      <div style={{ height: '180px', background: 'var(--parchment)' }} className="skel" />
+      <div style={{ padding: '14px 16px' }}>
+        <div style={{ height: '12px', width: '30%', background: 'var(--parchment)', borderRadius: '6px', marginBottom: '10px' }} className="skel" />
+        <div style={{ height: '18px', width: '75%', background: 'var(--parchment)', borderRadius: '6px', marginBottom: '8px' }} className="skel" />
+        <div style={{ height: '13px', width: '60%', background: 'var(--parchment)', borderRadius: '6px' }} className="skel" />
+      </div>
+    </div>
+  )
+}
 
-export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave }) {
+export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave, onGoToSearch, onGoToCookbook, savedScrollY, onScrollChange }) {
   const [feed, setFeed] = useState([])
   const [loading, setLoading] = useState(true)
   const [feedLikes, setFeedLikes] = useState({})
@@ -20,10 +41,44 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
   const [likesModal, setLikesModal] = useState(null)
   const [circleModal, setCircleModal] = useState(null)
   const [circleFriendsMap, setCircleFriendsMap] = useState({})
+  const [lastUpdated, setLastUpdated] = useState(null)
+  const [updatedLabel, setUpdatedLabel] = useState('')
+  const scrollRef = useRef(null)
 
   useEffect(() => {
     fetchFeed()
   }, [session.user.id])
+
+  // Restore scroll position after feed loads
+  useEffect(() => {
+    if (!loading && savedScrollY && scrollRef.current) {
+      window.scrollTo(0, savedScrollY)
+    }
+  }, [loading])
+
+  // Save scroll position on scroll
+  useEffect(() => {
+    function handleScroll() {
+      onScrollChange && onScrollChange(window.scrollY)
+    }
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [onScrollChange])
+
+  // Tick the "last updated" label every 30s
+  useEffect(() => {
+    if (!lastUpdated) return
+    function updateLabel() {
+      const diff = Math.floor((Date.now() - lastUpdated) / 1000)
+      if (diff < 10) setUpdatedLabel('Updated just now')
+      else if (diff < 60) setUpdatedLabel(`Updated ${diff}s ago`)
+      else if (diff < 3600) setUpdatedLabel(`Updated ${Math.floor(diff / 60)}m ago`)
+      else setUpdatedLabel(`Updated ${Math.floor(diff / 3600)}h ago`)
+    }
+    updateLabel()
+    const interval = setInterval(updateLabel, 30000)
+    return () => clearInterval(interval)
+  }, [lastUpdated])
 
   async function fetchFeed() {
     setLoading(true)
@@ -33,7 +88,11 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
       .eq('follower_id', session.user.id)
       .eq('status', 'approved')
 
-    if (!follows || follows.length === 0) { setLoading(false); return }
+    if (!follows || follows.length === 0) {
+      setLoading(false)
+      setLastUpdated(Date.now())
+      return
+    }
 
     const ids = [...follows.map(f => f.following_id), session.user.id]
 
@@ -44,16 +103,12 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
     ])
 
     const cookItems = (cooks || []).map(c => ({
-      ...c,
-      _type: 'cook',
-      _date: c.cooked_at,
+      ...c, _type: 'cook', _date: c.cooked_at,
       profiles: profiles?.find(p => p.id === c.user_id) || null
     }))
 
     const saveItems = (saves || []).map(r => ({
-      ...r,
-      _type: 'save',
-      _date: r.created_at,
+      ...r, _type: 'save', _date: r.created_at,
       profiles: profiles?.find(p => p.id === r.user_id) || null
     }))
 
@@ -63,7 +118,7 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
 
     setFeed(merged)
     setLoading(false)
-    // Load engagement and circle data in background — cards show immediately
+    setLastUpdated(Date.now())
     fetchFeedEngagement(merged)
     fetchCircleFriendsForFeed(merged)
   }
@@ -103,10 +158,9 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
     }
     setCircleFriendsMap(map)
   }
-  
+
   async function fetchFeedEngagement(items) {
     if (!items || items.length === 0) return
-
     const cookIds = items.filter(i => i._type === 'cook').map(i => i.id)
     const saveIds = items.filter(i => i._type === 'save').map(i => i.id)
 
@@ -114,52 +168,26 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
     const likeCountsMap = {}
     const commentCountsMap = {}
 
-    // Fetch all likes, like counts, and comment counts in 6 queries total
-    // instead of 2 queries per item
     const [
       cookLikesRes, saveLikesRes,
       allCookLikesRes, allSaveLikesRes,
       allCookCommentsRes, allSaveCommentsRes
     ] = await Promise.all([
-      cookIds.length > 0
-        ? supabase.from('likes').select('target_id').eq('target_type', 'cook').eq('user_id', session.user.id).in('target_id', cookIds)
-        : { data: [] },
-      saveIds.length > 0
-        ? supabase.from('likes').select('target_id').eq('target_type', 'save').eq('user_id', session.user.id).in('target_id', saveIds)
-        : { data: [] },
-      cookIds.length > 0
-        ? supabase.from('likes').select('target_id').eq('target_type', 'cook').in('target_id', cookIds)
-        : { data: [] },
-      saveIds.length > 0
-        ? supabase.from('likes').select('target_id').eq('target_type', 'save').in('target_id', saveIds)
-        : { data: [] },
-      cookIds.length > 0
-        ? supabase.from('comments').select('target_id').eq('target_type', 'cook').in('target_id', cookIds)
-        : { data: [] },
-      saveIds.length > 0
-        ? supabase.from('comments').select('target_id').eq('target_type', 'save').in('target_id', saveIds)
-        : { data: [] },
+      cookIds.length > 0 ? supabase.from('likes').select('target_id').eq('target_type', 'cook').eq('user_id', session.user.id).in('target_id', cookIds) : { data: [] },
+      saveIds.length > 0 ? supabase.from('likes').select('target_id').eq('target_type', 'save').eq('user_id', session.user.id).in('target_id', saveIds) : { data: [] },
+      cookIds.length > 0 ? supabase.from('likes').select('target_id').eq('target_type', 'cook').in('target_id', cookIds) : { data: [] },
+      saveIds.length > 0 ? supabase.from('likes').select('target_id').eq('target_type', 'save').in('target_id', saveIds) : { data: [] },
+      cookIds.length > 0 ? supabase.from('comments').select('target_id').eq('target_type', 'cook').in('target_id', cookIds) : { data: [] },
+      saveIds.length > 0 ? supabase.from('comments').select('target_id').eq('target_type', 'save').in('target_id', saveIds) : { data: [] },
     ])
 
-    // My likes
     cookLikesRes.data?.forEach(l => { likesMap[`cook-${l.target_id}`] = true })
     saveLikesRes.data?.forEach(l => { likesMap[`save-${l.target_id}`] = true })
 
-    // Like counts — count occurrences per target_id
-    cookIds.forEach(id => {
-      likeCountsMap[`cook-${id}`] = allCookLikesRes.data?.filter(l => l.target_id === id).length || 0
-    })
-    saveIds.forEach(id => {
-      likeCountsMap[`save-${id}`] = allSaveLikesRes.data?.filter(l => l.target_id === id).length || 0
-    })
-
-    // Comment counts
-    cookIds.forEach(id => {
-      commentCountsMap[`cook-${id}`] = allCookCommentsRes.data?.filter(c => c.target_id === id).length || 0
-    })
-    saveIds.forEach(id => {
-      commentCountsMap[`save-${id}`] = allSaveCommentsRes.data?.filter(c => c.target_id === id).length || 0
-    })
+    cookIds.forEach(id => { likeCountsMap[`cook-${id}`] = allCookLikesRes.data?.filter(l => l.target_id === id).length || 0 })
+    saveIds.forEach(id => { likeCountsMap[`save-${id}`] = allSaveLikesRes.data?.filter(l => l.target_id === id).length || 0 })
+    cookIds.forEach(id => { commentCountsMap[`cook-${id}`] = allCookCommentsRes.data?.filter(c => c.target_id === id).length || 0 })
+    saveIds.forEach(id => { commentCountsMap[`save-${id}`] = allSaveCommentsRes.data?.filter(c => c.target_id === id).length || 0 })
 
     setFeedLikes(likesMap)
     setFeedLikeCounts(likeCountsMap)
@@ -191,31 +219,149 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
     }
   }
 
+  const engagementBar = (item, type) => (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '10px 16px 12px', borderTop: '1px solid var(--parchment)' }}
+      onClick={e => e.stopPropagation()}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+        <button onClick={e => toggleFeedLike(e, item)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center' }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill={feedLikes[`${type}-${item.id}`] ? 'var(--clay)' : 'none'}>
+            <path d="M12 21C12 21 3 14.5 3 8.5C3 5.42 5.42 3 8.5 3C10.24 3 11.91 3.81 13 5.08C14.09 3.81 15.76 3 17.5 3C20.58 3 23 5.42 23 8.5C23 14.5 12 21 12 21Z"
+              stroke={feedLikes[`${type}-${item.id}`] ? 'var(--clay)' : 'var(--muted)'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </button>
+        {feedLikeCounts[`${type}-${item.id}`] > 0 ? (
+          <button onClick={e => { e.stopPropagation(); setLikesModal({ targetType: type, targetId: item.id }) }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+            <span style={{ fontSize: '12px', fontWeight: '600', color: feedLikes[`${type}-${item.id}`] ? 'var(--clay)' : 'var(--muted)' }}>
+              {feedLikeCounts[`${type}-${item.id}`]} {feedLikes[`${type}-${item.id}`] ? 'Liked' : 'Like'}
+            </span>
+          </button>
+        ) : (
+          <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--muted)' }}>Like</span>
+        )}
+      </div>
+      <button
+        onClick={e => { e.stopPropagation(); type === 'cook' ? onSelectCook(item, true) : onSelectSave(item, true) }}
+        style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+          <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"
+            stroke="var(--muted)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+        <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--muted)' }}>
+          {feedCommentCounts[`${type}-${item.id}`] > 0 ? `${feedCommentCounts[`${type}-${item.id}`]} ` : ''}Comment
+        </span>
+      </button>
+    </div>
+  )
+
+  const circleBadge = (key) => circleFriendsMap[key] && (
+    <div onClick={e => { e.stopPropagation(); setCircleModal(circleFriendsMap[key].sourceUrl) }} style={{
+      display: 'flex', alignItems: 'center', gap: '6px',
+      padding: '8px 16px', borderTop: '1px solid var(--parchment)', cursor: 'pointer'
+    }}>
+      <div style={{ display: 'flex' }}>
+        {circleFriendsMap[key].avatars.map((p, i) => (
+          <div key={p.id} style={{
+            width: '18px', height: '18px', borderRadius: '50%',
+            background: 'linear-gradient(135deg, var(--clay), var(--ember))',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontFamily: 'var(--font-display)', fontSize: '7px', fontWeight: '700', color: 'var(--cream)',
+            marginLeft: i === 0 ? '0' : '-4px', border: '1.5px solid var(--warm-white)', flexShrink: 0
+          }}>{(p.full_name || p.username || '?')[0].toUpperCase()}</div>
+        ))}
+      </div>
+      <span style={{ fontSize: '11px', color: 'var(--muted)' }}>
+        <span style={{ fontWeight: '600', color: 'var(--clay)' }}>
+          {circleFriendsMap[key].count} {circleFriendsMap[key].count === 1 ? 'friend' : 'friends'}
+        </span> made this too
+      </span>
+    </div>
+  )
+
   return (
     <div style={{ maxWidth: '480px', margin: '0 auto', padding: '70px 16px 100px' }}>
+      <style>{`
+        @keyframes shimmer {
+          0% { opacity: 1; }
+          50% { opacity: 0.4; }
+          100% { opacity: 1; }
+        }
+        .skel { animation: shimmer 1.4s ease-in-out infinite; }
+      `}</style>
+
       {likesModal && (
-        <LikesModal
-          targetType={likesModal.targetType}
-          targetId={likesModal.targetId}
-          onClose={() => setLikesModal(null)}
-          onSelectUser={onSelectUser}
-        />
+        <LikesModal targetType={likesModal.targetType} targetId={likesModal.targetId}
+          onClose={() => setLikesModal(null)} onSelectUser={onSelectUser} />
       )}
       {circleModal && (
-        <CircleFriendsModal
-          sourceUrl={circleModal}
-          session={session}
-          onClose={() => setCircleModal(null)}
-          onSelectUser={onSelectUser}
-        />
+        <CircleFriendsModal sourceUrl={circleModal} session={session}
+          onClose={() => setCircleModal(null)} onSelectUser={onSelectUser} />
+      )}
+
+      {/* Last updated label */}
+      {!loading && feed.length > 0 && updatedLabel && (
+        <div style={{ textAlign: 'center', fontSize: '11px', color: 'var(--muted)', marginBottom: '16px', marginTop: '-8px' }}>
+          {updatedLabel}
+        </div>
       )}
 
       {loading ? (
-        <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--muted)', fontSize: '14px' }}>Loading...</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <SkeletonCard />
+          <SkeletonCard />
+          <SkeletonCard />
+        </div>
       ) : feed.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--muted)' }}>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: '500', color: 'var(--ink)', marginBottom: '8px' }}>No activity yet</div>
-          <div style={{ fontSize: '13px', lineHeight: '1.6' }}>Follow some cooks to see what they're making.</div>
+        // ── EMPTY STATE ──
+        <div style={{ textAlign: 'center', padding: '40px 16px 0' }}>
+          <svg width="100%" viewBox="0 0 680 420" style={{ maxWidth: '360px', margin: '0 auto 8px', display: 'block' }}>
+            <rect x="140" y="270" width="400" height="12" rx="6" fill="#D9C9B0" opacity="0.5"/>
+            <g transform="rotate(-8, 230, 230)">
+              <ellipse cx="230" cy="252" rx="52" ry="14" fill="#C4713A" opacity="0.18"/>
+              <path d="M178 238 Q178 268 230 274 Q282 268 282 238" fill="#F0E8D8" stroke="#D9C9B0" strokeWidth="1.5"/>
+              <ellipse cx="230" cy="238" rx="52" ry="13" fill="#F8F2EA" stroke="#D9C9B0" strokeWidth="1.5"/>
+              <path d="M218 228 Q215 220 218 212" stroke="#D9C9B0" strokeWidth="1.5" strokeLinecap="round" fill="none" opacity="0.6"/>
+              <path d="M230 225 Q227 217 230 209" stroke="#D9C9B0" strokeWidth="1.5" strokeLinecap="round" fill="none" opacity="0.7"/>
+              <path d="M242 228 Q239 220 242 212" stroke="#D9C9B0" strokeWidth="1.5" strokeLinecap="round" fill="none" opacity="0.6"/>
+            </g>
+            <g transform="rotate(5, 450, 225)">
+              <ellipse cx="450" cy="252" rx="58" ry="15" fill="#C4713A" opacity="0.2"/>
+              <path d="M392 236 Q392 268 450 275 Q508 268 508 236" fill="#F0E8D8" stroke="#D9C9B0" strokeWidth="1.5"/>
+              <ellipse cx="450" cy="236" rx="58" ry="14" fill="#F8F2EA" stroke="#D9C9B0" strokeWidth="1.5"/>
+              <path d="M436 225 Q433 216 436 207" stroke="#D9C9B0" strokeWidth="1.5" strokeLinecap="round" fill="none" opacity="0.6"/>
+              <path d="M450 222 Q447 213 450 204" stroke="#D9C9B0" strokeWidth="1.5" strokeLinecap="round" fill="none" opacity="0.75"/>
+              <path d="M464 225 Q461 216 464 207" stroke="#D9C9B0" strokeWidth="1.5" strokeLinecap="round" fill="none" opacity="0.6"/>
+            </g>
+            <g opacity="0.35">
+              <line x1="160" y1="245" x2="160" y2="272" stroke="#8A8070" strokeWidth="1.8" strokeLinecap="round"/>
+              <line x1="156" y1="245" x2="156" y2="258" stroke="#8A8070" strokeWidth="1.2" strokeLinecap="round"/>
+              <line x1="160" y1="245" x2="160" y2="258" stroke="#8A8070" strokeWidth="1.2" strokeLinecap="round"/>
+              <line x1="164" y1="245" x2="164" y2="258" stroke="#8A8070" strokeWidth="1.2" strokeLinecap="round"/>
+            </g>
+            <g opacity="0.35">
+              <ellipse cx="522" cy="244" rx="7" ry="9" fill="none" stroke="#8A8070" strokeWidth="1.5"/>
+              <line x1="522" y1="253" x2="522" y2="272" stroke="#8A8070" strokeWidth="1.5" strokeLinecap="round"/>
+            </g>
+          </svg>
+
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: '700', color: 'var(--ink)', lineHeight: '1.2', marginBottom: '8px' }}>
+            Your feed fills up<br />as friends join.
+          </div>
+          <div style={{ fontSize: '13px', color: 'var(--muted)', lineHeight: '1.6', marginBottom: '28px' }}>
+            Follow a cook to see what they're making.<br />Until then, your Cookbook is waiting.
+          </div>
+
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+            <button onClick={() => onGoToSearch && onGoToSearch()} style={{
+              padding: '13px 24px', background: 'var(--clay)', color: 'var(--cream)',
+              border: 'none', borderRadius: 'var(--radius-pill)',
+              fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '700', cursor: 'pointer'
+            }}>Find Cooks</button>
+            <button onClick={() => onGoToCookbook && onGoToCookbook()} style={{
+              padding: '13px 24px', background: 'none', color: 'var(--muted)',
+              border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-pill)',
+              fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '700', cursor: 'pointer'
+            }}>Go to Cookbook</button>
+          </div>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -229,18 +375,17 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
                   background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)',
                   border: '1px solid var(--parchment)', overflow: 'hidden', cursor: 'pointer'
                 }}>
-                  <div onClick={e => { e.stopPropagation(); onSelectUser && onSelectUser(item.user_id) }} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 16px', cursor: 'pointer' }}>
-                    {profile?.avatar_url ? (
-                        <img src={profile.avatar_url} alt="" style={{ width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0, pointerEvents: 'none' }} />
-                      ) : (
-                        <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--clay), var(--ember))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: '700', color: 'var(--cream)', flexShrink: 0, pointerEvents: 'none' }}>{(profile?.full_name || profile?.username || '?')[0].toUpperCase()}</div>
-                      )}
-                    <div style={{ flex: 1, minWidth: 0, pointerEvents: 'none' }}>
+                  <div onClick={e => { e.stopPropagation(); onSelectUser && onSelectUser(item.user_id) }}
+                    style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 16px', cursor: 'pointer' }}>
+                    {profile?.avatar_url
+                      ? <img src={profile.avatar_url} alt="" style={{ width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+                      : <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--clay), var(--ember))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: '700', color: 'var(--cream)', flexShrink: 0 }}>{(profile?.full_name || profile?.username || '?')[0].toUpperCase()}</div>
+                    }
+                    <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: '13px', color: 'var(--muted)' }}>
                         <span style={{ fontWeight: '600', color: 'var(--ink)' }}>
                           {item.user_id === session.user.id ? 'You' : (profile?.full_name || profile?.username || 'Unknown')}
-                        </span>
-                        {' '}saved a recipe
+                        </span>{' '}saved a recipe
                       </div>
                       <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '1px' }}>
                         {new Date(item.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · {new Date(item.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
@@ -250,8 +395,7 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '0 16px 14px' }}>
                     <div style={{
-                      width: '48px', height: '48px', borderRadius: 'var(--radius-md)',
-                      overflow: 'hidden', flexShrink: 0,
+                      width: '48px', height: '48px', borderRadius: 'var(--radius-md)', overflow: 'hidden', flexShrink: 0,
                       background: item.image_url ? 'var(--parchment)' : 'linear-gradient(135deg, var(--clay), var(--ember))',
                       display: 'flex', alignItems: 'center', justifyContent: 'center'
                     }}>
@@ -266,58 +410,8 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
                     </div>
                   </div>
 
-                      {circleFriendsMap[`save-${item.id}`] && (
-                    <div onClick={e => { e.stopPropagation(); setCircleModal(circleFriendsMap[`save-${item.id}`].sourceUrl) }} style={{
-                      display: 'flex', alignItems: 'center', gap: '6px',
-                      padding: '8px 16px', borderTop: '1px solid var(--parchment)', cursor: 'pointer'
-                    }}>
-                      <div style={{ display: 'flex' }}>
-                        {circleFriendsMap[`save-${item.id}`].avatars.map((p, i) => (
-                          <div key={p.id} style={{
-                            width: '18px', height: '18px', borderRadius: '50%',
-                            background: 'linear-gradient(135deg, var(--clay), var(--ember))',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            fontFamily: 'var(--font-display)', fontSize: '7px', fontWeight: '700', color: 'var(--cream)',
-                            marginLeft: i === 0 ? '0' : '-4px', border: '1.5px solid var(--warm-white)', flexShrink: 0
-                          }}>{(p.full_name || p.username || '?')[0].toUpperCase()}</div>
-                        ))}
-                      </div>
-                      <span style={{ fontSize: '11px', color: 'var(--muted)' }}>
-                        <span style={{ fontWeight: '600', color: 'var(--clay)' }}>{circleFriendsMap[`save-${item.id}`].count} {circleFriendsMap[`save-${item.id}`].count === 1 ? 'friend' : 'friends'}</span> also {circleFriendsMap[`save-${item.id}`].count === 1 ? 'has' : 'have'} this
-                      </span>
-                    </div>
-                  )}
-
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '10px 16px 12px', borderTop: '1px solid var(--parchment)' }}
-                    onClick={e => e.stopPropagation()}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                      <button onClick={e => toggleFeedLike(e, item)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center' }}>
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill={feedLikes[`save-${item.id}`] ? 'var(--clay)' : 'none'}>
-                          <path d="M12 21C12 21 3 14.5 3 8.5C3 5.42 5.42 3 8.5 3C10.24 3 11.91 3.81 13 5.08C14.09 3.81 15.76 3 17.5 3C20.58 3 23 5.42 23 8.5C23 14.5 12 21 12 21Z"
-                            stroke={feedLikes[`save-${item.id}`] ? 'var(--clay)' : 'var(--muted)'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                      </button>
-                      {feedLikeCounts[`save-${item.id}`] > 0 ? (
-                        <button onClick={e => { e.stopPropagation(); setLikesModal({ targetType: 'save', targetId: item.id }) }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-                          <span style={{ fontSize: '12px', fontWeight: '600', color: feedLikes[`save-${item.id}`] ? 'var(--clay)' : 'var(--muted)' }}>{feedLikeCounts[`save-${item.id}`]} {feedLikes[`save-${item.id}`] ? 'Liked' : 'Like'}</span>
-                        </button>
-                      ) : (
-                        <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--muted)' }}>Like</span>
-                      )}
-                    </div>
-                    <button onClick={e => { e.stopPropagation(); onSelectSave(item, true) }} style={{
-                      display: 'flex', alignItems: 'center', gap: '5px',
-                      background: 'none', border: 'none', cursor: 'pointer', padding: 0
-                    }}>
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                        <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"
-                          stroke="var(--muted)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                      <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--muted)' }}>
-                        {feedCommentCounts[`save-${item.id}`] > 0 ? feedCommentCounts[`save-${item.id}`] : ''} Comment
-                      </span>
-                    </button>
-                  </div>
+                  {circleBadge(`save-${item.id}`)}
+                  {engagementBar(item, 'save')}
                 </div>
               )
             }
@@ -329,20 +423,16 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
 
             return (
               <div key={`cook-${item.id}`} onClick={() => onSelectCook(item)} style={{
-                cursor: 'pointer',
-                background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)',
+                cursor: 'pointer', background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)',
                 border: '1px solid var(--parchment)', overflow: 'hidden'
               }}>
-                <div
-                  onClick={e => { e.stopPropagation(); onSelectUser && onSelectUser(item.user_id) }}
-                  style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '14px 16px', cursor: 'pointer', pointerEvents: 'all' }}
-                >
-                  {profile?.avatar_url ? (
-                    <img src={profile.avatar_url} alt="" style={{ width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0, pointerEvents: 'none' }} />
-                  ) : (
-                    <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--clay), var(--ember))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: '700', color: 'var(--cream)', flexShrink: 0, pointerEvents: 'none' }}>{(profile?.full_name || profile?.username || '?')[0].toUpperCase()}</div>
-                  )}
-                  <div style={{ pointerEvents: 'none' }}>
+                <div onClick={e => { e.stopPropagation(); onSelectUser && onSelectUser(item.user_id) }}
+                  style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '14px 16px', cursor: 'pointer' }}>
+                  {profile?.avatar_url
+                    ? <img src={profile.avatar_url} alt="" style={{ width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+                    : <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--clay), var(--ember))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: '700', color: 'var(--cream)', flexShrink: 0 }}>{(profile?.full_name || profile?.username || '?')[0].toUpperCase()}</div>
+                  }
+                  <div>
                     <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--ink)' }}>
                       {item.user_id === session.user.id ? 'You' : (profile?.full_name || profile?.username || 'Unknown')}
                     </div>
@@ -371,58 +461,8 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
                   )}
                 </div>
 
-                 {circleFriendsMap[`cook-${item.id}`] && (
-                    <div onClick={e => { e.stopPropagation(); setCircleModal(circleFriendsMap[`cook-${item.id}`].sourceUrl) }} style={{
-                      display: 'flex', alignItems: 'center', gap: '6px',
-                      padding: '8px 16px', borderTop: '1px solid var(--parchment)', cursor: 'pointer'
-                    }}>
-                      <div style={{ display: 'flex' }}>
-                        {circleFriendsMap[`cook-${item.id}`].avatars.map((p, i) => (
-                          <div key={p.id} style={{
-                            width: '18px', height: '18px', borderRadius: '50%',
-                            background: 'linear-gradient(135deg, var(--clay), var(--ember))',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            fontFamily: 'var(--font-display)', fontSize: '7px', fontWeight: '700', color: 'var(--cream)',
-                            marginLeft: i === 0 ? '0' : '-4px', border: '1.5px solid var(--warm-white)', flexShrink: 0
-                          }}>{(p.full_name || p.username || '?')[0].toUpperCase()}</div>
-                        ))}
-                      </div>
-                      <span style={{ fontSize: '11px', color: 'var(--muted)' }}>
-                        <span style={{ fontWeight: '600', color: 'var(--clay)' }}>{circleFriendsMap[`cook-${item.id}`].count} {circleFriendsMap[`cook-${item.id}`].count === 1 ? 'friend' : 'friends'}</span> also {circleFriendsMap[`cook-${item.id}`].count === 1 ? 'has' : 'have'} this
-                      </span>
-                    </div>
-                  )}
-
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '10px 16px 12px', borderTop: '1px solid var(--parchment)' }}
-                    onClick={e => e.stopPropagation()}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                      <button onClick={e => toggleFeedLike(e, item)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center' }}>
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill={feedLikes[`cook-${item.id}`] ? 'var(--clay)' : 'none'}>
-                          <path d="M12 21C12 21 3 14.5 3 8.5C3 5.42 5.42 3 8.5 3C10.24 3 11.91 3.81 13 5.08C14.09 3.81 15.76 3 17.5 3C20.58 3 23 5.42 23 8.5C23 14.5 12 21 12 21Z"
-                            stroke={feedLikes[`cook-${item.id}`] ? 'var(--clay)' : 'var(--muted)'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                      </button>
-                      {feedLikeCounts[`cook-${item.id}`] > 0 ? (
-                        <button onClick={e => { e.stopPropagation(); setLikesModal({ targetType: 'cook', targetId: item.id }) }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-                          <span style={{ fontSize: '12px', fontWeight: '600', color: feedLikes[`cook-${item.id}`] ? 'var(--clay)' : 'var(--muted)' }}>{feedLikeCounts[`cook-${item.id}`]} {feedLikes[`cook-${item.id}`] ? 'Liked' : 'Like'}</span>
-                        </button>
-                      ) : (
-                        <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--muted)' }}>Like</span>
-                      )}
-                    </div>
-                    <button onClick={e => { e.stopPropagation(); onSelectCook(item, true) }} style={{
-                      display: 'flex', alignItems: 'center', gap: '5px',
-                      background: 'none', border: 'none', cursor: 'pointer', padding: 0
-                    }}>
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                        <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"
-                          stroke="var(--muted)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                      <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--muted)' }}>
-                        {feedCommentCounts[`cook-${item.id}`] > 0 ? feedCommentCounts[`cook-${item.id}`] : ''} Comment
-                      </span>
-                    </button>
-                  </div>
+                {circleBadge(`cook-${item.id}`)}
+                {engagementBar(item, 'cook')}
               </div>
             )
           })}
