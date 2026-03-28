@@ -37,6 +37,7 @@ export default function App() {
   const [profileEditing, setProfileEditing] = useState(false)
   const [cookbookDefaultFilter, setCookbookDefaultFilter] = useState('All')
   const [feedScrollY, setFeedScrollY] = useState(0)
+  const [cookbookScrollY, setCookbookScrollY] = useState(0)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -383,19 +384,22 @@ if (showLogin) return <Auth />
         />
       )}
 
-      {screen === 'cookbook' && (
+      <div style={{ display: screen === 'cookbook' ? 'block' : 'none', height: '100vh', overflowY: 'auto' }} id="cookbook-scroll-container">
         <Cookbook
           session={session}
           onAddRecipe={() => setScreen('add')}
           defaultFilter={cookbookDefaultFilter}
           onSelectRecipe={(recipe) => {
+            window.scrollTo(0, 0)
             setRecipeBackScreen('cookbook')
             setSelectedRecipe(recipe)
             setScreen('recipe')
           }}
           onSelectUser={goToFriendProfile}
+          savedScrollY={cookbookScrollY}
+          onScrollChange={setCookbookScrollY}
         />
-      )}
+      </div>
 
       {screen === 'resetPassword' && (
         <ResetPassword
