@@ -99,7 +99,24 @@ export default function App() {
     }
   }
 
+  function goToFriendRecipeDetail(recipe, toComments = false) {
+    window.scrollTo(0, 0)
+    setPrevScreen(screen)
+    setSelectedSaveRecipe(recipe)
+    setSelectedSaveScrollToComments(toComments)
+    setScreen('friendRecipeDetail')
+  }
+
+  function goToSocialRecipe(cook, toComments = false) {
+    window.scrollTo(0, 0)
+    setPrevScreen(screen)
+    setSelectedCook(cook)
+    setScrollToComments(toComments)
+    setScreen('socialRecipe')
+  }
+
   function goToFriendProfile(userId) {
+    window.scrollTo(0, 0)
     if (session && userId === session.user.id) {
       setPrevScreen(screen)
       setScreen('profile')
@@ -108,20 +125,6 @@ export default function App() {
     setPrevScreen(screen)
     setSelectedUserId(userId)
     setScreen('friendProfile')
-  }
-
-  function goToSocialRecipe(cook, toComments = false) {
-    setPrevScreen(screen)
-    setSelectedCook(cook)
-    setScrollToComments(toComments)
-    setScreen('socialRecipe')
-  }
-
-  function goToFriendRecipeDetail(recipe, toComments = false) {
-    setPrevScreen(screen)
-    setSelectedSaveRecipe(recipe)
-    setSelectedSaveScrollToComments(toComments)
-    setScreen('friendRecipeDetail')
   }
 
   async function goToRecipeFromId(recipeId) {
