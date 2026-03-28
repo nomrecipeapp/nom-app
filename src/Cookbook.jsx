@@ -186,19 +186,17 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
     <div style={{ minHeight: '100vh', background: 'var(--cream)', paddingTop: '54px' }}>
       <div style={{ maxWidth: '480px', margin: '0 auto' }}>
 
-        {/* Sticky header */}
+        {/* Sticky search only */}
         <div ref={headerRef} style={{
           position: 'sticky', top: '54px', zIndex: 100,
-          background: 'var(--cream)', paddingTop: '16px',
+          background: 'var(--cream)', paddingTop: '12px',
           borderBottom: '1px solid var(--parchment)',
           paddingBottom: '12px', paddingLeft: '24px', paddingRight: '24px'
         }}>
-
-          {/* Search */}
           <div style={{
             display: 'flex', alignItems: 'center', gap: '10px',
             background: 'var(--warm-white)', borderRadius: 'var(--radius-md)',
-            padding: '10px 14px', marginBottom: '14px', border: '1.5px solid var(--tan)'
+            padding: '10px 14px', border: '1.5px solid var(--tan)'
           }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
               <circle cx="11" cy="11" r="7" stroke="var(--muted)" strokeWidth="1.8"/>
@@ -213,6 +211,10 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
               <button onClick={() => setSearch('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', fontSize: '16px', padding: 0, lineHeight: 1 }}>×</button>
             )}
           </div>
+        </div>
+
+        {/* Scrollable filters + list */}
+        <div style={{ padding: '16px 24px 0' }}>
 
           {/* Status label */}
           <div style={{ fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '8px' }}>Status</div>
@@ -259,7 +261,7 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
 
           {/* Active filters bar */}
           {hasActiveFilters && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
                 <path d="M3 6h18M6 12h12M9 18h6" stroke="var(--clay)" strokeWidth="2" strokeLinecap="round"/>
               </svg>
