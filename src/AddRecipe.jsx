@@ -535,7 +535,19 @@ export default function AddRecipe({ session, onSave, onCancel }) {
             {error && <div style={{ background: '#FDE8E8', border: '1px solid #F5C0C0', borderRadius: 'var(--radius-md)', padding: '10px 14px', fontSize: '13px', color: '#B85252', marginBottom: '16px' }}>{error}</div>}
 
             {!duplicate && (
-              <button onClick={importFromUrl} disabled={loading || !url} style={{
+              <button onClick={async () => {
+                const { data: existingList } = await supabase
+                  .from('recipes')
+                  .select('id, title')
+                  .eq('user_id', session.user.id)
+                  .eq('source_url', url.trim())
+                  .limit(1)
+                if (existingList && existingList.length > 0) {
+                  setDuplicate(existingList[0])
+                  return
+                }
+                importFromUrl(true)
+              }} disabled={loading || !url} style={{
                 width: '100%', padding: '13px',
                 background: loading || !url ? 'var(--tan)' : 'var(--clay)',
                 color: 'var(--cream)', border: 'none', borderRadius: 'var(--radius-pill)',
