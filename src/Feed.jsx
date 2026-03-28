@@ -51,8 +51,10 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
 
   // Restore scroll position after feed loads
   useEffect(() => {
-    if (!loading && savedScrollY && scrollRef.current) {
-      window.scrollTo(0, savedScrollY)
+    if (!loading && savedScrollY) {
+      requestAnimationFrame(() => {
+        window.scrollTo(0, savedScrollY)
+      })
     }
   }, [loading])
 
@@ -246,7 +248,7 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
           <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"
             stroke="var(--muted)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
         </svg>
-        <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--muted)' }}>
+        <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--muted)', fontFamily: 'var(--font-body)' }}>
           {feedCommentCounts[`${type}-${item.id}`] > 0 ? `${feedCommentCounts[`${type}-${item.id}`]} ` : ''}Comment
         </span>
       </button>
