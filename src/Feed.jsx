@@ -52,19 +52,20 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
   // Restore scroll position after feed loads
   useEffect(() => {
     if (!loading && savedScrollY) {
-      requestAnimationFrame(() => {
-        window.scrollTo(0, savedScrollY)
-      })
+      const container = document.getElementById('feed-scroll-container')
+      if (container) container.scrollTop = savedScrollY
     }
   }, [loading])
 
   // Save scroll position on scroll
   useEffect(() => {
+    const container = document.getElementById('feed-scroll-container')
+    if (!container) return
     function handleScroll() {
-      onScrollChange && onScrollChange(window.scrollY)
+      onScrollChange && onScrollChange(container.scrollTop)
     }
-    window.addEventListener('scroll', handleScroll, { passive: true })
-    return () => window.removeEventListener('scroll', handleScroll)
+    container.addEventListener('scroll', handleScroll, { passive: true })
+    return () => container.removeEventListener('scroll', handleScroll)
   }, [onScrollChange])
 
   // Tick the "last updated" label every 30s

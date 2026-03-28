@@ -354,7 +354,7 @@ if (showLogin) return <Auth />
         />
       )}
 
-      <div style={{ display: screen === 'feed' ? 'block' : 'none' }}>
+      <div style={{ display: screen === 'feed' ? 'block' : 'none', height: '100vh', overflowY: 'auto' }} id="feed-scroll-container">
       <Feed
         session={session}
         onSelectCook={goToSocialRecipe}
