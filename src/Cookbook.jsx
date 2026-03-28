@@ -104,7 +104,7 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
     })
     .filter(r => {
       if (tagFilters.length === 0) return true
-      return tagFilters.every(tag => (r.tags || []).includes(tag))
+      return tagFilters.some(tag => (r.tags || []).includes(tag))
     })
     .filter(r => {
       if (!search.trim()) return true
@@ -201,18 +201,18 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
           <div style={{ fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--muted)' }}>
             Tags <span style={{ fontWeight: '400', textTransform: 'none', letterSpacing: 0, fontSize: '10px', color: '#B0A090' }}>(select multiple)</span>
           </div>
-          <button onClick={cycleSort} style={{
-            padding: '5px 10px', borderRadius: 'var(--radius-md)',
-            border: '1.5px solid var(--tan)', background: 'var(--warm-white)',
-            color: 'var(--muted)', fontFamily: 'var(--font-body)',
-            fontSize: '11px', fontWeight: '600', cursor: 'pointer',
-            display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0
-          }}>
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
-              <path d="M3 6h18M6 12h12M9 18h6" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round"/>
-            </svg>
-            {SORT_OPTIONS[sortIndex]}
-          </button>
+          <select
+            value={SORT_OPTIONS[sortIndex]}
+            onChange={e => setSortIndex(SORT_OPTIONS.indexOf(e.target.value))}
+            style={{
+              padding: '5px 10px', borderRadius: 'var(--radius-md)',
+              border: '1.5px solid var(--tan)', background: 'var(--warm-white)',
+              color: 'var(--muted)', fontFamily: 'var(--font-body)',
+              fontSize: '11px', fontWeight: '600', cursor: 'pointer',
+              outline: 'none', flexShrink: 0
+            }}>
+            {SORT_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+          </select>
         </div>
 
         {/* Tag chips */}
