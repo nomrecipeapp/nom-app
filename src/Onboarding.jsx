@@ -21,6 +21,7 @@ function ProgressDots({ step }) {
 
 export default function Onboarding({ onComplete, session }) {
   const [step, setStep] = useState(session ? 3 : 1)
+  const [accountCreated, setAccountCreated] = useState(!!session)
 
   // Step 2 — account
   const [fullName, setFullName] = useState('')
@@ -42,11 +43,22 @@ export default function Onboarding({ onComplete, session }) {
   const [importedRecipe, setImportedRecipe] = useState(null)
   const [importError, setImportError] = useState(null)
 
+  // ── VALIDATION ──
+  function validateStep2() {
+    if (!fullName.trim()) return 'Please enter your name.'
+    if (!username.trim()) return 'Please choose a username.'
+    if (!email.trim()) return 'Please enter your email.'
+    if (password.length < 8) return 'Password must be at least 8 characters.'
+    return null
+  }
+
   async function handleCreateAccount() {
+    const validationError = validateStep2()
+    if (validationError) { setAuthError(validationError); return }
+
     setAuthLoading(true)
     setAuthError(null)
 
-    // Check username availability
     const { data: existingUsername } = await supabase
       .from('profiles')
       .select('id')
@@ -59,7 +71,6 @@ export default function Onboarding({ onComplete, session }) {
       return
     }
 
-    // Check email availability
     const { data: existingEmail } = await supabase
       .from('profiles')
       .select('id')
@@ -95,6 +106,7 @@ export default function Onboarding({ onComplete, session }) {
     })
 
     setUserId(user.id)
+    setAccountCreated(true)
     setAuthLoading(false)
     setStep(3)
   }
@@ -140,7 +152,7 @@ export default function Onboarding({ onComplete, session }) {
         image_url: meta?.image?.url || null,
       })
     } catch {
-      setImportError('Couldn\'t fetch that URL. Try another link.')
+      setImportError("Couldn't fetch that URL. Try another link.")
     }
     setImporting(false)
   }
@@ -170,23 +182,30 @@ export default function Onboarding({ onComplete, session }) {
     onComplete()
   }
 
+  const inputStyle = {
+    width: '100%', padding: '13px 16px', border: '1.5px solid var(--tan)',
+    borderRadius: 'var(--radius-md)', background: 'var(--parchment)',
+    fontFamily: 'var(--font-body)', fontSize: '14px', color: 'var(--ink)',
+    outline: 'none', boxSizing: 'border-box'
+  }
+
+  const labelStyle = {
+    display: 'block', fontSize: '11px', fontWeight: '700',
+    color: 'var(--charcoal)', letterSpacing: '0.08em',
+    textTransform: 'uppercase', marginBottom: '6px'
+  }
+
   // ── STEP 1: WELCOME ──
   if (step === 1) return (
     <div style={{
-      minHeight: '100vh',
-      background: 'var(--cream)',
-      display: 'flex',
-      flexDirection: 'column',
-      maxWidth: '480px',
-      margin: '0 auto'
+      minHeight: '100vh', background: 'var(--cream)',
+      display: 'flex', flexDirection: 'column',
+      maxWidth: '480px', margin: '0 auto'
     }}>
       <div style={{
         background: 'linear-gradient(160deg, var(--clay) 0%, var(--ember) 60%, var(--parchment) 100%)',
-        height: '45vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        flexShrink: 0
+        height: '45vh', display: 'flex', alignItems: 'center',
+        justifyContent: 'center', flexShrink: 0
       }}>
         <svg width="140" height="140" viewBox="0 0 140 140" fill="none">
           <ellipse cx="70" cy="95" rx="48" ry="14" fill="rgba(0,0,0,0.15)"/>
@@ -204,33 +223,20 @@ export default function Onboarding({ onComplete, session }) {
 
       <div style={{ flex: 1, padding: '32px 28px 40px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
         <div>
-          <div style={{
-            fontFamily: 'var(--font-display)', fontSize: '40px', fontWeight: '700',
-            color: 'var(--clay)', letterSpacing: '-1.5px', marginBottom: '12px'
-          }}>Nom</div>
-          <div style={{
-            fontFamily: 'var(--font-display)', fontSize: '26px', fontWeight: '700',
-            color: 'var(--ink)', lineHeight: '1.2', marginBottom: '12px'
-          }}>What's cookin'<br />good lookin'?</div>
-          <div style={{ fontSize: '14px', color: 'var(--muted)', lineHeight: '1.6' }}>
-            Finally, a place for all the recipes you've been meaning to cook.
-          </div>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: '40px', fontWeight: '700', color: 'var(--clay)', letterSpacing: '-1.5px', marginBottom: '12px' }}>Nom</div>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: '26px', fontWeight: '700', color: 'var(--ink)', lineHeight: '1.2', marginBottom: '12px' }}>What's cookin'<br />good lookin'?</div>
+          <div style={{ fontSize: '14px', color: 'var(--muted)', lineHeight: '1.6' }}>Finally, a place for all the recipes you've been meaning to cook.</div>
         </div>
-
         <div>
           <ProgressDots step={1} />
           <button onClick={() => setStep(2)} style={{
-            width: '100%', padding: '15px',
-            background: 'var(--clay)', color: 'var(--cream)',
-            border: 'none', borderRadius: 'var(--radius-pill)',
-            fontFamily: 'var(--font-body)', fontSize: '15px', fontWeight: '700',
-            cursor: 'pointer', marginBottom: '10px'
+            width: '100%', padding: '15px', background: 'var(--clay)', color: 'var(--cream)',
+            border: 'none', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)',
+            fontSize: '15px', fontWeight: '700', cursor: 'pointer', marginBottom: '10px'
           }}>Let's go</button>
-          <button onClick={() => { console.log('login clicked'); onComplete('login') }} style={{
-            width: '100%', padding: '10px',
-            background: 'none', border: 'none',
-            fontFamily: 'var(--font-body)', fontSize: '13px',
-            color: 'var(--muted)', cursor: 'pointer'
+          <button onClick={() => onComplete('login')} style={{
+            width: '100%', padding: '10px', background: 'none', border: 'none',
+            fontFamily: 'var(--font-body)', fontSize: '13px', color: 'var(--muted)', cursor: 'pointer'
           }}>I already have an account</button>
         </div>
       </div>
@@ -240,9 +246,9 @@ export default function Onboarding({ onComplete, session }) {
   // ── STEP 2: CREATE ACCOUNT ──
   if (step === 2) return (
     <div style={{
-      minHeight: '100vh', background: 'var(--cream)',
-      display: 'flex', flexDirection: 'column',
-      maxWidth: '480px', margin: '0 auto', padding: '48px 28px 40px'
+      minHeight: '100vh', background: 'var(--cream)', display: 'flex',
+      flexDirection: 'column', maxWidth: '480px', margin: '0 auto',
+      padding: '48px 28px 120px'
     }}>
       <button onClick={() => setStep(1)} style={{
         background: 'none', border: 'none', cursor: 'pointer',
@@ -256,84 +262,58 @@ export default function Onboarding({ onComplete, session }) {
         Back
       </button>
 
-      <div style={{ flex: 1 }}>
-        <div style={{ fontFamily: 'var(--font-display)', fontSize: '24px', fontWeight: '700', color: 'var(--ink)', marginBottom: '4px' }}>Create your account</div>
-        <div style={{ fontSize: '13px', color: 'var(--muted)', marginBottom: '28px' }}>Your Cookbook starts here.</div>
+      <div style={{ fontFamily: 'var(--font-display)', fontSize: '24px', fontWeight: '700', color: 'var(--ink)', marginBottom: '4px' }}>Create your account</div>
+      <div style={{ fontSize: '13px', color: 'var(--muted)', marginBottom: '28px' }}>Your Cookbook starts here.</div>
 
-        <div style={{ marginBottom: '14px' }}>
-          <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--charcoal)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '6px' }}>Your name</label>
-          <input type="text" value={fullName} onChange={e => setFullName(e.target.value)} placeholder="Alex" style={{
-            width: '100%', padding: '13px 16px', border: '1.5px solid var(--tan)',
-            borderRadius: 'var(--radius-md)', background: 'var(--parchment)',
-            fontFamily: 'var(--font-body)', fontSize: '14px', color: 'var(--ink)',
-            outline: 'none', boxSizing: 'border-box'
-          }}/>
-        </div>
-
-        <div style={{ marginBottom: '14px' }}>
-          <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--charcoal)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '6px' }}>Username</label>
-          <div style={{ position: 'relative' }}>
-            <span style={{
-              position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)',
-              fontSize: '14px', color: 'var(--muted)', fontFamily: 'var(--font-body)'
-            }}>@</span>
-            <input type="text" value={username}
-              onChange={e => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
-              placeholder="alexcooks" style={{
-                width: '100%', padding: '13px 16px 13px 28px',
-                border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-md)',
-                background: 'var(--parchment)', fontFamily: 'var(--font-body)',
-                fontSize: '14px', color: 'var(--ink)', outline: 'none', boxSizing: 'border-box'
-              }}/>
-          </div>
-          <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '4px' }}>Letters, numbers, and underscores only</div>
-        </div>
-
-        <div style={{ marginBottom: '14px' }}>
-          <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--charcoal)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '6px' }}>Email</label>
-          <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" style={{
-            width: '100%', padding: '13px 16px', border: '1.5px solid var(--tan)',
-            borderRadius: 'var(--radius-md)', background: 'var(--parchment)',
-            fontFamily: 'var(--font-body)', fontSize: '14px', color: 'var(--ink)',
-            outline: 'none', boxSizing: 'border-box'
-          }}/>
-        </div>
-
-        <div style={{ marginBottom: '24px' }}>
-          <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--charcoal)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '6px' }}>Password</label>
-          <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" style={{
-            width: '100%', padding: '13px 16px', border: '1.5px solid var(--tan)',
-            borderRadius: 'var(--radius-md)', background: 'var(--parchment)',
-            fontFamily: 'var(--font-body)', fontSize: '14px', color: 'var(--ink)',
-            outline: 'none', boxSizing: 'border-box'
-          }}/>
-        </div>
-
-        {authError && (
-          <div style={{
-            background: '#FDE8E8', border: '1px solid #F5C0C0',
-            borderRadius: 'var(--radius-md)', padding: '12px 16px',
-            fontSize: '13px', color: '#B85252', marginBottom: '16px'
-          }}>{authError}</div>
-        )}
+      <div style={{ marginBottom: '14px' }}>
+        <label style={labelStyle}>Your name</label>
+        <input type="text" value={fullName} onChange={e => setFullName(e.target.value)} placeholder="Alex" style={inputStyle} />
       </div>
 
-      <div>
-        <ProgressDots step={2} />
-        <button onClick={handleCreateAccount}
-          disabled={authLoading || !fullName || !username || !email || !password}
-          style={{
-            width: '100%', padding: '15px',
-            background: (authLoading || !fullName || !username || !email || !password) ? 'var(--tan)' : 'var(--clay)',
-            color: 'var(--cream)', border: 'none', borderRadius: 'var(--radius-pill)',
-            fontFamily: 'var(--font-body)', fontSize: '15px', fontWeight: '700',
-            cursor: (authLoading || !fullName || !username || !email || !password) ? 'not-allowed' : 'pointer',
-            marginBottom: '10px'
-          }}
-        >{authLoading ? 'Creating account...' : 'Create Account'}</button>
-        <div style={{ fontSize: '11px', color: 'var(--muted)', textAlign: 'center', lineHeight: '1.5' }}>
-          By continuing you agree to our Terms & Privacy Policy
+      <div style={{ marginBottom: '14px' }}>
+        <label style={labelStyle}>Username</label>
+        <div style={{ position: 'relative' }}>
+          <span style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', fontSize: '14px', color: 'var(--muted)', fontFamily: 'var(--font-body)' }}>@</span>
+          <input type="text" value={username}
+            onChange={e => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+            placeholder="alexcooks"
+            style={{ ...inputStyle, paddingLeft: '28px' }} />
         </div>
+        <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '4px' }}>Letters, numbers, and underscores only</div>
+      </div>
+
+      <div style={{ marginBottom: '14px' }}>
+        <label style={labelStyle}>Email</label>
+        <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" style={inputStyle} />
+      </div>
+
+      <div style={{ marginBottom: '8px' }}>
+        <label style={labelStyle}>Password</label>
+        <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" style={inputStyle} />
+      </div>
+      <div style={{ fontSize: '11px', color: 'var(--muted)', marginBottom: '24px' }}>Must be at least 8 characters</div>
+
+      {authError && (
+        <div style={{
+          background: '#FDE8E8', border: '1px solid #F5C0C0', borderRadius: 'var(--radius-md)',
+          padding: '12px 16px', fontSize: '13px', color: '#B85252', marginBottom: '16px'
+        }}>{authError}</div>
+      )}
+
+      <ProgressDots step={2} />
+      <button onClick={handleCreateAccount}
+        disabled={authLoading || !fullName || !username || !email || !password}
+        style={{
+          width: '100%', padding: '15px',
+          background: (authLoading || !fullName || !username || !email || !password) ? 'var(--tan)' : 'var(--clay)',
+          color: 'var(--cream)', border: 'none', borderRadius: 'var(--radius-pill)',
+          fontFamily: 'var(--font-body)', fontSize: '15px', fontWeight: '700',
+          cursor: (authLoading || !fullName || !username || !email || !password) ? 'not-allowed' : 'pointer',
+          marginBottom: '10px'
+        }}
+      >{authLoading ? 'Creating account...' : 'Create Account'}</button>
+      <div style={{ fontSize: '11px', color: 'var(--muted)', textAlign: 'center', lineHeight: '1.5' }}>
+        By continuing you agree to our Terms & Privacy Policy
       </div>
     </div>
   )
@@ -341,30 +321,32 @@ export default function Onboarding({ onComplete, session }) {
   // ── STEP 3: FIND FELLOW COOKS ──
   if (step === 3) return (
     <div style={{
-      minHeight: '100vh', background: 'var(--cream)',
-      display: 'flex', flexDirection: 'column',
-      maxWidth: '480px', margin: '0 auto', padding: '48px 28px 40px'
+      minHeight: '100vh', background: 'var(--cream)', display: 'flex',
+      flexDirection: 'column', maxWidth: '480px', margin: '0 auto', padding: '48px 28px 40px'
     }}>
-      <button onClick={() => setStep(2)} style={{
-        background: 'none', border: 'none', cursor: 'pointer',
-        display: 'flex', alignItems: 'center', gap: '6px',
-        color: 'var(--muted)', fontFamily: 'var(--font-body)',
-        fontSize: '13px', fontWeight: '600', padding: '0 0 24px'
-      }}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-          <path d="M19 12H5M5 12l7-7M5 12l7 7" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-        </svg>
-        Back
-      </button>
+      {/* Only show back if account hasn't been created yet */}
+      {!accountCreated && (
+        <button onClick={() => setStep(2)} style={{
+          background: 'none', border: 'none', cursor: 'pointer',
+          display: 'flex', alignItems: 'center', gap: '6px',
+          color: 'var(--muted)', fontFamily: 'var(--font-body)',
+          fontSize: '13px', fontWeight: '600', padding: '0 0 24px'
+        }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+            <path d="M19 12H5M5 12l7-7M5 12l7 7" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+          Back
+        </button>
+      )}
+      {accountCreated && <div style={{ paddingBottom: '24px' }} />}
 
       <div style={{ flex: 1 }}>
         <div style={{ fontFamily: 'var(--font-display)', fontSize: '24px', fontWeight: '700', color: 'var(--ink)', lineHeight: '1.2', marginBottom: '4px' }}>Find fellow<br />friendly cooks.</div>
         <div style={{ fontSize: '13px', color: 'var(--muted)', marginBottom: '24px' }}>Nom is private by default — send a request to cook together.</div>
 
         <div style={{
-          display: 'flex', alignItems: 'center', gap: '10px',
-          background: 'var(--parchment)', borderRadius: 'var(--radius-md)',
-          padding: '12px 16px', marginBottom: '16px', border: '1.5px solid var(--tan)'
+          display: 'flex', alignItems: 'center', gap: '10px', background: 'var(--parchment)',
+          borderRadius: 'var(--radius-md)', padding: '12px 16px', marginBottom: '16px', border: '1.5px solid var(--tan)'
         }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
             <circle cx="11" cy="11" r="7" stroke="var(--muted)" strokeWidth="1.8"/>
@@ -373,9 +355,8 @@ export default function Onboarding({ onComplete, session }) {
           <input type="text" value={searchQuery} onChange={e => searchUsers(e.target.value)}
             placeholder="Search by name or username" style={{
               flex: 1, border: 'none', background: 'none',
-              fontFamily: 'var(--font-body)', fontSize: '14px',
-              color: 'var(--ink)', outline: 'none'
-            }}/>
+              fontFamily: 'var(--font-body)', fontSize: '14px', color: 'var(--ink)', outline: 'none'
+            }} />
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -411,11 +392,9 @@ export default function Onboarding({ onComplete, session }) {
       <div>
         <ProgressDots step={3} />
         <button onClick={() => setStep(4)} style={{
-          width: '100%', padding: '15px',
-          background: 'var(--clay)', color: 'var(--cream)',
-          border: 'none', borderRadius: 'var(--radius-pill)',
-          fontFamily: 'var(--font-body)', fontSize: '15px', fontWeight: '700',
-          cursor: 'pointer', marginBottom: '10px'
+          width: '100%', padding: '15px', background: 'var(--clay)', color: 'var(--cream)',
+          border: 'none', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)',
+          fontSize: '15px', fontWeight: '700', cursor: 'pointer', marginBottom: '10px'
         }}>Continue</button>
         <button onClick={() => setStep(4)} style={{
           width: '100%', padding: '10px', background: 'none', border: 'none',
@@ -428,9 +407,8 @@ export default function Onboarding({ onComplete, session }) {
   // ── STEP 4: FIRST RECIPE ──
   if (step === 4) return (
     <div style={{
-      minHeight: '100vh', background: 'var(--cream)',
-      display: 'flex', flexDirection: 'column',
-      maxWidth: '480px', margin: '0 auto', padding: '48px 28px 40px'
+      minHeight: '100vh', background: 'var(--cream)', display: 'flex',
+      flexDirection: 'column', maxWidth: '480px', margin: '0 auto', padding: '48px 28px 40px'
     }}>
       <button onClick={() => setStep(3)} style={{
         background: 'none', border: 'none', cursor: 'pointer',
@@ -453,19 +431,14 @@ export default function Onboarding({ onComplete, session }) {
           <div style={{ display: 'flex', gap: '8px' }}>
             <input type="url" value={recipeUrl}
               onChange={e => { setRecipeUrl(e.target.value); setImportedRecipe(null); setImportError(null) }}
-              placeholder="https://nytcooking.com/recipe..." style={{
-                flex: 1, padding: '13px 16px', border: '1.5px solid var(--tan)',
-                borderRadius: 'var(--radius-md)', background: 'var(--parchment)',
-                fontFamily: 'var(--font-body)', fontSize: '13px', color: 'var(--ink)',
-                outline: 'none', boxSizing: 'border-box'
-              }}/>
+              placeholder="https://nytcooking.com/recipe..."
+              style={{ ...inputStyle, flex: 1 }} />
             <button onClick={importRecipe} disabled={importing || !recipeUrl.trim()} style={{
               padding: '13px 16px',
               background: importing || !recipeUrl.trim() ? 'var(--tan)' : 'var(--clay)',
               color: 'var(--cream)', border: 'none', borderRadius: 'var(--radius-md)',
               fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '600',
-              cursor: importing || !recipeUrl.trim() ? 'not-allowed' : 'pointer',
-              whiteSpace: 'nowrap'
+              cursor: importing || !recipeUrl.trim() ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap'
             }}>{importing ? '...' : 'Import'}</button>
           </div>
         </div>
@@ -475,10 +448,10 @@ export default function Onboarding({ onComplete, session }) {
         {importedRecipe && (
           <div style={{
             background: 'var(--warm-white)', border: '1px solid var(--parchment)',
-            borderRadius: 'var(--radius-md)', padding: '14px', marginBottom: '16px', marginTop: '12px'
+            borderRadius: 'var(--radius-md)', padding: '14px', marginTop: '12px'
           }}>
             {importedRecipe.image_url && (
-              <img src={importedRecipe.image_url} alt="" style={{ width: '100%', height: '140px', objectFit: 'cover', borderRadius: '8px', marginBottom: '10px' }}/>
+              <img src={importedRecipe.image_url} alt="" style={{ width: '100%', height: '140px', objectFit: 'cover', borderRadius: '8px', marginBottom: '10px' }} />
             )}
             <div style={{ fontFamily: 'var(--font-display)', fontSize: '15px', fontWeight: '600', color: 'var(--ink)', marginBottom: '4px' }}>{importedRecipe.title}</div>
             {importedRecipe.source_name && <div style={{ fontSize: '11px', color: 'var(--muted)' }}>{importedRecipe.source_name}</div>}
@@ -486,29 +459,22 @@ export default function Onboarding({ onComplete, session }) {
         )}
       </div>
 
-      <div>
+      <div style={{ paddingTop: '24px' }}>
         <ProgressDots step={4} />
-        {importedRecipe ? (
-          <button onClick={saveFirstRecipe} style={{
-            width: '100%', padding: '15px',
-            background: 'var(--clay)', color: 'var(--cream)',
-            border: 'none', borderRadius: 'var(--radius-pill)',
-            fontFamily: 'var(--font-body)', fontSize: '15px', fontWeight: '700',
-            cursor: 'pointer', marginBottom: '10px'
-          }}>Save Recipe</button>
-        ) : (
+        <button
+          onClick={importedRecipe ? saveFirstRecipe : () => setStep(5)}
+          style={{
+            width: '100%', padding: '15px', background: 'var(--clay)', color: 'var(--cream)',
+            border: 'none', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)',
+            fontSize: '15px', fontWeight: '700', cursor: 'pointer', marginBottom: '12px'
+          }}
+        >{importedRecipe ? 'Save to Cookbook' : 'Skip for now'}</button>
+        {importedRecipe && (
           <button onClick={() => setStep(5)} style={{
-            width: '100%', padding: '15px',
-            background: 'var(--clay)', color: 'var(--cream)',
-            border: 'none', borderRadius: 'var(--radius-pill)',
-            fontFamily: 'var(--font-body)', fontSize: '15px', fontWeight: '700',
-            cursor: 'pointer', marginBottom: '10px'
-          }}>Skip for now</button>
+            width: '100%', padding: '8px', background: 'none', border: 'none',
+            fontFamily: 'var(--font-body)', fontSize: '13px', color: 'var(--muted)', cursor: 'pointer'
+          }}>I'll do this later</button>
         )}
-        <button onClick={() => setStep(5)} style={{
-          width: '100%', padding: '10px', background: 'none', border: 'none',
-          fontFamily: 'var(--font-body)', fontSize: '13px', color: 'var(--muted)', cursor: 'pointer'
-        }}>I'll do it later</button>
       </div>
     </div>
   )
@@ -516,47 +482,81 @@ export default function Onboarding({ onComplete, session }) {
   // ── STEP 5: YOU'RE IN ──
   return (
     <div style={{
-      minHeight: '100vh',
-      background: 'linear-gradient(160deg, var(--clay) 0%, var(--rust) 50%, var(--ink) 100%)',
-      display: 'flex', flexDirection: 'column',
-      maxWidth: '480px', margin: '0 auto', padding: '60px 28px 40px'
+      minHeight: '100vh', background: 'var(--cream)', display: 'flex',
+      flexDirection: 'column', maxWidth: '480px', margin: '0 auto'
     }}>
-      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <svg width="240" height="180" viewBox="0 0 240 180" fill="none">
-          <rect x="0" y="120" width="240" height="60" fill="rgba(255,255,255,0.1)"/>
-          <line x1="0" y1="120" x2="240" y2="120" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5"/>
-          <rect x="25" y="100" width="75" height="45" rx="4" fill="rgba(255,255,255,0.15)" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5"/>
-          <line x1="35" y1="112" x2="90" y2="112" stroke="rgba(255,255,255,0.3)" strokeWidth="1.5"/>
-          <line x1="35" y1="120" x2="80" y2="120" stroke="rgba(255,255,255,0.3)" strokeWidth="1.5"/>
-          <line x1="35" y1="128" x2="85" y2="128" stroke="rgba(255,255,255,0.3)" strokeWidth="1.5"/>
-          <ellipse cx="168" cy="108" rx="32" ry="9" fill="rgba(255,255,255,0.18)"/>
-          <path d="M136 105 Q136 138 168 143 Q200 138 200 105" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.3)" strokeWidth="1.5"/>
-          <ellipse cx="168" cy="105" rx="32" ry="8" fill="rgba(255,255,255,0.18)" stroke="rgba(255,255,255,0.35)" strokeWidth="1.5"/>
-          <path d="M136 105 Q125 105 125 112 Q125 119 136 119" stroke="rgba(255,255,255,0.4)" strokeWidth="2" fill="none"/>
-          <path d="M200 105 Q211 105 211 112 Q211 119 200 119" stroke="rgba(255,255,255,0.4)" strokeWidth="2" fill="none"/>
-          <path d="M153 97 Q149 88 153 79" stroke="rgba(255,255,255,0.45)" strokeWidth="2" strokeLinecap="round" fill="none"/>
-          <path d="M168 95 Q164 86 168 77" stroke="rgba(255,255,255,0.55)" strokeWidth="2" strokeLinecap="round" fill="none"/>
-          <path d="M183 97 Q179 88 183 79" stroke="rgba(255,255,255,0.45)" strokeWidth="2" strokeLinecap="round" fill="none"/>
-          <text x="95" y="75" fontFamily="serif" fontSize="26" fontWeight="bold" fill="rgba(255,255,255,0.85)" letterSpacing="-1">nom</text>
+      {/* Illustration area — warm kitchen scene */}
+      <div style={{
+        background: 'linear-gradient(160deg, var(--clay) 0%, var(--ember) 55%, var(--parchment) 100%)',
+        height: '52vh', display: 'flex', alignItems: 'center',
+        justifyContent: 'center', flexShrink: 0, position: 'relative', overflow: 'hidden'
+      }}>
+        <svg width="280" height="220" viewBox="0 0 280 220" fill="none">
+          {/* Counter surface */}
+          <rect x="0" y="158" width="280" height="62" fill="rgba(255,255,255,0.12)" />
+          <line x1="0" y1="158" x2="280" y2="158" stroke="rgba(255,255,255,0.28)" strokeWidth="1.5" />
+
+          {/* Cutting board */}
+          <rect x="28" y="136" width="82" height="44" rx="5" fill="rgba(255,255,255,0.18)" stroke="rgba(255,255,255,0.3)" strokeWidth="1.5" />
+          {/* Knife on board */}
+          <path d="M42 148 L96 156" stroke="rgba(255,255,255,0.5)" strokeWidth="2" strokeLinecap="round" />
+          <path d="M41 148 Q39 145 41 143 L96 150 L96 156 Z" fill="rgba(255,255,255,0.28)" />
+          {/* Herbs on board */}
+          <path d="M60 148 Q63 139 61 132" stroke="#7A8C6E" strokeWidth="2.2" strokeLinecap="round" fill="none" opacity="0.85" />
+          <ellipse cx="61" cy="131" rx="7" ry="4.5" fill="#7A8C6E" opacity="0.75" transform="rotate(-15 61 131)" />
+          <path d="M72 150 Q75 141 73 134" stroke="#7A8C6E" strokeWidth="2.2" strokeLinecap="round" fill="none" opacity="0.85" />
+          <ellipse cx="73" cy="133" rx="7" ry="4.5" fill="#7A8C6E" opacity="0.75" transform="rotate(-10 73 133)" />
+
+          {/* Small jar */}
+          <rect x="116" y="142" width="22" height="26" rx="4" fill="rgba(255,255,255,0.18)" stroke="rgba(255,255,255,0.28)" strokeWidth="1.5" />
+          <rect x="113" y="138" width="28" height="6" rx="3" fill="rgba(255,255,255,0.28)" />
+
+          {/* Pot */}
+          <ellipse cx="196" cy="145" rx="36" ry="10" fill="rgba(255,255,255,0.2)" />
+          <path d="M160 142 Q160 176 196 182 Q232 176 232 142" fill="rgba(255,255,255,0.13)" stroke="rgba(255,255,255,0.28)" strokeWidth="1.5" />
+          <ellipse cx="196" cy="142" rx="36" ry="9" fill="rgba(255,255,255,0.2)" stroke="rgba(255,255,255,0.35)" strokeWidth="1.5" />
+          {/* Pot handles */}
+          <path d="M160 142 Q150 142 150 148 Q150 154 160 154" stroke="rgba(255,255,255,0.4)" strokeWidth="2" fill="none" />
+          <path d="M232 142 Q242 142 242 148 Q242 154 232 154" stroke="rgba(255,255,255,0.4)" strokeWidth="2" fill="none" />
+
+          {/* Steam — animated via CSS */}
+          <path className="steam1" d="M178 134 Q174 124 178 114" stroke="rgba(255,255,255,0.45)" strokeWidth="2.2" strokeLinecap="round" fill="none">
+            <animateTransform attributeName="transform" type="translate" values="0,0; 2,-8; 0,0" dur="2.4s" repeatCount="indefinite" />
+            <animate attributeName="opacity" values="0.45;0.15;0.45" dur="2.4s" repeatCount="indefinite" />
+          </path>
+          <path d="M196 131 Q192 121 196 111" stroke="rgba(255,255,255,0.55)" strokeWidth="2.2" strokeLinecap="round" fill="none">
+            <animateTransform attributeName="transform" type="translate" values="0,0; -2,-8; 0,0" dur="2s" repeatCount="indefinite" />
+            <animate attributeName="opacity" values="0.55;0.2;0.55" dur="2s" repeatCount="indefinite" />
+          </path>
+          <path d="M214 134 Q210 124 214 114" stroke="rgba(255,255,255,0.45)" strokeWidth="2.2" strokeLinecap="round" fill="none">
+            <animateTransform attributeName="transform" type="translate" values="0,0; 1,-8; 0,0" dur="2.8s" repeatCount="indefinite" />
+            <animate attributeName="opacity" values="0.45;0.15;0.45" dur="2.8s" repeatCount="indefinite" />
+          </path>
+
+          {/* Nom wordmark */}
+          <text x="28" y="108" fontFamily="serif" fontSize="36" fontWeight="bold" fill="rgba(255,255,255,0.88)" letterSpacing="-1.5">nom</text>
         </svg>
       </div>
 
-      <div>
-        <div style={{
-          fontFamily: 'var(--font-display)', fontSize: '32px', fontWeight: '700',
-          color: 'rgba(255,255,255,0.95)', lineHeight: '1.15', marginBottom: '10px'
-        }}>Your Cookbook<br />is open.</div>
-        <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.65)', marginBottom: '32px' }}>
-          Now go find something delicious.
+      {/* Text + CTA */}
+      <div style={{ flex: 1, padding: '32px 28px 40px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+        <div>
+          <div style={{
+            fontFamily: 'var(--font-display)', fontSize: '32px', fontWeight: '700',
+            color: 'var(--ink)', lineHeight: '1.15', marginBottom: '10px'
+          }}>Your Cookbook<br />is open.</div>
+          <div style={{ fontSize: '14px', color: 'var(--muted)', lineHeight: '1.6' }}>
+            Now go find something delicious.
+          </div>
         </div>
-        <ProgressDots step={5} />
-        <button onClick={finishOnboarding} style={{
-          width: '100%', padding: '15px',
-          background: 'rgba(255,255,255,0.95)', color: 'var(--clay)',
-          border: 'none', borderRadius: 'var(--radius-pill)',
-          fontFamily: 'var(--font-body)', fontSize: '15px', fontWeight: '700',
-          cursor: 'pointer'
-        }}>Take me in</button>
+        <div>
+          <ProgressDots step={5} />
+          <button onClick={finishOnboarding} style={{
+            width: '100%', padding: '15px', background: 'var(--clay)', color: 'var(--cream)',
+            border: 'none', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)',
+            fontSize: '15px', fontWeight: '700', cursor: 'pointer'
+          }}>Take me in</button>
+        </div>
       </div>
     </div>
   )
