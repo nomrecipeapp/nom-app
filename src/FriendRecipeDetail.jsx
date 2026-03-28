@@ -41,6 +41,7 @@ export default function FriendRecipeDetail({ recipe, session, onBack, scrollToCo
   const [editingCommentId, setEditingCommentId] = useState(null)
   const [editingBody, setEditingBody] = useState('')
   const [myProfile, setMyProfile] = useState(null)
+  const [savedByProfile, setSavedByProfile] = useState(null)
 
   // Mention state
   const [mentionQuery, setMentionQuery] = useState(null)
@@ -61,6 +62,7 @@ useEffect(() => {
   fetchFollowing()
   fetchCircleFriends()
   upsertView()
+  fetchSavedByProfile()
 }, [recipe.id])
 
   useEffect(() => {
@@ -104,6 +106,17 @@ useEffect(() => {
     .select('avatar_url').eq('id', session.user.id).single()
   if (data) setMyProfile(data)
 }
+
+async function fetchSavedByProfile() {
+    if (!recipe.user_id) return
+    const { data } = await supabase
+      .from('profiles')
+      .select('id, full_name, username, avatar_url')
+      .eq('id', recipe.user_id)
+      .single()
+    if (data) setSavedByProfile(data)
+  }
+
   async function upsertView() {
   if (!recipe?.id) return
   await supabase.from('recipe_views').upsert(
@@ -319,22 +332,38 @@ useEffect(() => {
   return (
     <div style={{ maxWidth: '480px', margin: '0 auto', paddingBottom: '100px' }}>
 
-      {recipe.image_url ? (
+  {recipe.image_url ? (
         <div style={{ marginTop: '54px' }}>
           <img src={recipe.image_url} alt="" style={{ width: '100%', height: '260px', objectFit: 'cover', display: 'block' }} />
         </div>
       ) : (
-        <div style={{ height: '54px' }} />
+        <div style={{ marginTop: '54px', height: '160px', background: 'linear-gradient(160deg, var(--clay) 0%, var(--ember) 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <span style={{ fontFamily: 'var(--font-display)', fontSize: '64px', fontWeight: '700', color: 'rgba(255,255,255,0.5)' }}>
+            {(recipe.title || '?')[0].toUpperCase()}
+          </span>
+        </div>
       )}
 
       <div style={{ padding: '20px 20px 0' }}>
         <div style={{ marginBottom: '14px' }}>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: '24px', fontWeight: '700', color: 'var(--ink)', lineHeight: '1.2', marginBottom: '10px' }}>{recipe.title}</div>
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center', marginBottom: '12px' }}>
             {recipe.source_name && <div style={{ background: 'var(--parchment)', borderRadius: 'var(--radius-pill)', padding: '3px 10px', fontSize: '11px', fontWeight: '500', color: 'var(--charcoal)' }}>{recipe.source_name}</div>}
             {recipe.cook_time && <div style={{ fontSize: '11px', color: 'var(--muted)' }}>{recipe.cook_time}</div>}
             {recipe.difficulty && <div style={{ fontSize: '11px', color: 'var(--muted)' }}>· {recipe.difficulty}</div>}
           </div>
+          {savedByProfile && recipe.user_id !== session.user.id && (
+            <div onClick={() => onSelectUser && onSelectUser(savedByProfile.id)} style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
+              {savedByProfile.avatar_url
+                ? <img src={savedByProfile.avatar_url} alt="" style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+                : <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--clay), var(--ember))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: '700', color: 'var(--cream)', flexShrink: 0 }}>{(savedByProfile.full_name || savedByProfile.username || '?')[0].toUpperCase()}</div>
+              }
+              <div>
+                <div style={{ fontSize: '10px', color: 'var(--muted)', marginBottom: '1px' }}>Saved by</div>
+                <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--ink)' }}>{savedByProfile.full_name || savedByProfile.username} →</div>
+              </div>
+            </div>
+          )}
         </div>
 
         {showCircleModal && (
