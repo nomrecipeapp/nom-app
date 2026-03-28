@@ -351,19 +351,19 @@ if (showLogin) return <Auth />
         />
       )}
 
-      {screen === 'feed' && (
-        <Feed
-          session={session}
-          onSelectCook={goToSocialRecipe}
-          onSelectUser={goToFriendProfile}
-          onSelectPost={goToPost}
-          onSelectSave={goToFriendRecipeDetail}
-          onGoToSearch={() => setScreen('search')}
-          onGoToCookbook={() => setScreen('cookbook')}
-          savedScrollY={feedScrollY}
-          onScrollChange={setFeedScrollY}
-        />
-      )}
+      <div style={{ display: screen === 'feed' ? 'block' : 'none' }}>
+      <Feed
+        session={session}
+        onSelectCook={goToSocialRecipe}
+        onSelectUser={goToFriendProfile}
+        onSelectPost={goToPost}
+        onSelectSave={goToFriendRecipeDetail}
+        onGoToSearch={() => setScreen('search')}
+        onGoToCookbook={() => setScreen('cookbook')}
+        savedScrollY={feedScrollY}
+        onScrollChange={setFeedScrollY}
+      />
+    </div>
 
       {screen === 'search' && (
         <Search
