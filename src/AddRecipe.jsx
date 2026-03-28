@@ -63,17 +63,19 @@ export default function AddRecipe({ session, onSave, onCancel }) {
     if (customTags.length > 0) setAvailableTags([...PRESET_TAGS, ...customTags])
   }
 
-  async function importFromUrl() {
+  async function importFromUrl(skipDuplicateCheck = false) {
     if (!url) return
     setLoading(true)
     setError(null)
     setDuplicate(null)
 
-    const { data: existing } = await supabase
-      .from('recipes').select('id, title')
-      .eq('user_id', session.user.id).eq('source_url', url).single()
+    if (!skipDuplicateCheck) {
+      const { data: existing } = await supabase
+        .from('recipes').select('id, title')
+        .eq('user_id', session.user.id).eq('source_url', url).single()
 
-    if (existing) { setDuplicate(existing); setLoading(false); return }
+      if (existing) { setDuplicate(existing); setLoading(false); return }
+    }
 
     try {
       const apiKey = import.meta.env.VITE_SPOONACULAR_KEY
@@ -512,7 +514,7 @@ export default function AddRecipe({ session, onSave, onCancel }) {
                 <div style={{ fontSize: '12px', color: 'var(--charcoal)', marginBottom: '10px' }}>"{duplicate.title}" is already saved.</div>
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <button onClick={onCancel} style={{ flex: 1, padding: '8px', background: 'var(--clay)', color: 'var(--cream)', border: 'none', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}>Go to Cookbook</button>
-                  <button onClick={() => { setDuplicate(null); importFromUrl() }} style={{ flex: 1, padding: '8px', background: 'transparent', color: 'var(--muted)', border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}>Add Anyway</button>
+                  <button onClick={() => { setDuplicate(null); importFromUrl(true) }} style={{ flex: 1, padding: '8px', background: 'transparent', color: 'var(--muted)', border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}>Add Anyway</button>
                 </div>
               </div>
             )}
