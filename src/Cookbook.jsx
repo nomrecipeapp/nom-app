@@ -4,6 +4,7 @@ import CircleFriendsModal from './CircleFriendsModal'
 
 const FILTERS = ['All', 'Want to Make', 'Cooked', 'Never Again']
 const PRESET_TAGS = ['Breakfast', 'Lunch', 'Dinner', 'Appetizer', 'Dessert', 'Baking', 'Cocktail']
+
 const statusLabel = {
   want_to_make: 'Want to Make',
   cooked: 'Cooked',
@@ -16,13 +17,15 @@ const verdictStyle = {
   never_again: { background: '#F4E8E8', color: '#9B4040', border: '1px solid #C47070' }
 }
 
+const SORT_OPTIONS = ['Newest', 'Oldest', 'A→Z']
+
 export default function Cookbook({ session, onAddRecipe, onSelectRecipe, defaultFilter, onSelectUser }) {
   const [recipes, setRecipes] = useState([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState(defaultFilter || 'All')
-  const [tagFilter, setTagFilter] = useState(null)
+  const [tagFilters, setTagFilters] = useState([])
   const [search, setSearch] = useState('')
-  const [sort, setSort] = useState('date')
+  const [sortIndex, setSortIndex] = useState(0)
   const [circleFriendsMap, setCircleFriendsMap] = useState({})
   const [circleModal, setCircleModal] = useState(null)
 
@@ -50,20 +53,15 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
       .eq('follower_id', session.user.id).eq('status', 'approved')
     if (!following || following.length === 0) return
     const followingIds = following.map(f => f.following_id)
-
     const sourceUrls = recipeList.filter(r => r.source_url).map(r => r.source_url)
     if (sourceUrls.length === 0) return
-
     const { data: matchingRecipes } = await supabase
       .from('recipes').select('id, user_id, source_url')
       .in('source_url', sourceUrls).in('user_id', followingIds)
-
     if (!matchingRecipes || matchingRecipes.length === 0) return
-
     const allUserIds = [...new Set(matchingRecipes.map(r => r.user_id))]
     const { data: profiles } = await supabase
       .from('profiles').select('id, full_name, username').in('id', allUserIds)
-
     const map = {}
     for (const r of recipeList) {
       if (!r.source_url) continue
@@ -76,10 +74,26 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
     setCircleFriendsMap(map)
   }
 
-const allTags = [...new Set([
+  const allTags = [...new Set([
     ...PRESET_TAGS,
     ...recipes.flatMap(r => r.tags || [])
   ])]
+
+  // Count per status for badges
+  const statusCounts = {
+    All: recipes.length,
+    'Want to Make': recipes.filter(r => r.status === 'want_to_make').length,
+    Cooked: recipes.filter(r => r.status === 'cooked').length,
+    'Never Again': recipes.filter(r => r.status === 'never_again').length,
+  }
+
+  const toggleTag = (tag) => {
+    setTagFilters(prev =>
+      prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
+    )
+  }
+
+  const cycleSort = () => setSortIndex(i => (i + 1) % SORT_OPTIONS.length)
 
   const filtered = recipes
     .filter(r => {
@@ -89,8 +103,8 @@ const allTags = [...new Set([
       return true
     })
     .filter(r => {
-      if (!tagFilter) return true
-      return (r.tags || []).includes(tagFilter)
+      if (tagFilters.length === 0) return true
+      return tagFilters.every(tag => (r.tags || []).includes(tag))
     })
     .filter(r => {
       if (!search.trim()) return true
@@ -101,9 +115,47 @@ const allTags = [...new Set([
       )
     })
     .sort((a, b) => {
-      if (sort === 'alpha') return a.title.localeCompare(b.title)
-      return 0
+      if (SORT_OPTIONS[sortIndex] === 'A→Z') return a.title.localeCompare(b.title)
+      if (SORT_OPTIONS[sortIndex] === 'Oldest') return new Date(a.created_at) - new Date(b.created_at)
+      return new Date(b.created_at) - new Date(a.created_at)
     })
+
+  const hasActiveFilters = tagFilters.length > 0
+
+  const emptyMessage = () => {
+    if (search) return { title: `No results for "${search}"`, sub: 'Try a different search.', cta: false }
+    if (tagFilters.length > 0) return { title: `No recipes match those tags`, sub: 'Try removing a tag filter.', cta: false }
+    if (filter === 'Want to Make') return { title: 'No recipes saved yet', sub: 'Save recipes you want to try.', cta: false }
+    if (filter === 'Cooked') return { title: 'No cooks logged yet', sub: 'Log a cook from any recipe in your Cookbook.', cta: false }
+    if (filter === 'Never Again') return { title: 'No recipes here', sub: 'Hopefully it stays that way.', cta: false }
+    return { title: 'Your Cookbook is empty', sub: 'Add your first recipe to get started.', cta: true }
+  }
+
+  const chipStyle = (active) => ({
+    padding: '6px 14px', borderRadius: 'var(--radius-pill)',
+    border: active ? 'none' : '1.5px solid var(--tan)',
+    background: active ? 'var(--clay)' : 'transparent',
+    color: active ? 'var(--cream)' : 'var(--muted)',
+    fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600',
+    cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.15s',
+    display: 'inline-flex', alignItems: 'center', gap: '5px'
+  })
+
+  const tagChipStyle = (active) => ({
+    padding: '4px 10px', borderRadius: 'var(--radius-pill)',
+    border: `1.5px solid ${active ? 'var(--clay)' : 'var(--tan)'}`,
+    background: active ? '#F0E0D0' : 'transparent',
+    color: active ? '#8A3A10' : 'var(--muted)',
+    fontFamily: 'var(--font-body)', fontSize: '11px', fontWeight: '600',
+    cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.15s', flexShrink: 0
+  })
+
+  const badgeStyle = (active) => ({
+    background: active ? 'rgba(255,255,255,0.25)' : '#E8DFD0',
+    color: active ? 'rgba(255,255,255,0.9)' : 'var(--muted)',
+    borderRadius: '100px', padding: '1px 6px',
+    fontSize: '10px', fontWeight: '700'
+  })
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--cream)', padding: '24px', paddingTop: '70px', paddingBottom: '100px' }}>
@@ -113,91 +165,95 @@ const allTags = [...new Set([
         <div style={{
           display: 'flex', alignItems: 'center', gap: '10px',
           background: 'var(--warm-white)', borderRadius: 'var(--radius-md)',
-          padding: '10px 14px', marginBottom: '16px',
-          border: '1.5px solid var(--tan)'
+          padding: '10px 14px', marginBottom: '16px', border: '1.5px solid var(--tan)'
         }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
             <circle cx="11" cy="11" r="7" stroke="var(--muted)" strokeWidth="1.8"/>
             <path d="M16.5 16.5L21 21" stroke="var(--muted)" strokeWidth="1.8" strokeLinecap="round"/>
           </svg>
           <input
-            type="text"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
+            type="text" value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Search recipes..."
-            style={{
-              flex: 1, border: 'none', background: 'none',
-              fontFamily: 'var(--font-body)', fontSize: '14px',
-              color: 'var(--ink)', outline: 'none'
-            }}
+            style={{ flex: 1, border: 'none', background: 'none', fontFamily: 'var(--font-body)', fontSize: '14px', color: 'var(--ink)', outline: 'none' }}
           />
           {search && (
-            <button onClick={() => setSearch('')} style={{
-              background: 'none', border: 'none', cursor: 'pointer',
-              color: 'var(--muted)', fontSize: '16px', padding: 0, lineHeight: 1
-            }}>×</button>
+            <button onClick={() => setSearch('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', fontSize: '16px', padding: 0, lineHeight: 1 }}>×</button>
           )}
         </div>
 
-        {/* Filters + Sort row */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-          <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
-            {FILTERS.map(f => (
-              <button key={f} onClick={() => setFilter(f)} style={{
-                padding: '7px 16px', borderRadius: 'var(--radius-pill)',
-                border: filter === f ? 'none' : '1.5px solid var(--tan)',
-                background: filter === f ? 'var(--clay)' : 'transparent',
-                color: filter === f ? 'var(--cream)' : 'var(--muted)',
-                fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600',
-                cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.15s'
-              }}>{f}</button>
-            ))}
-          </div>
+        {/* Status label */}
+        <div style={{ fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '8px' }}>Status</div>
 
-          {/* Sort toggle */}
-          <button onClick={() => setSort(s => s === 'date' ? 'alpha' : 'date')} style={{
-            flexShrink: 0, marginLeft: '10px', padding: '7px 12px',
-            borderRadius: 'var(--radius-pill)', border: '1.5px solid var(--tan)',
-            background: 'transparent', color: 'var(--muted)',
-            fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600',
-            cursor: 'pointer', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '5px'
+        {/* Status chips */}
+        <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px', marginBottom: '12px' }}>
+          {FILTERS.map(f => (
+            <button key={f} onClick={() => setFilter(f)} style={chipStyle(filter === f)}>
+              {f}
+              <span style={badgeStyle(filter === f)}>{statusCounts[f]}</span>
+            </button>
+          ))}
+        </div>
+
+        <div style={{ height: '1px', background: 'var(--parchment)', marginBottom: '12px' }} />
+
+        {/* Tags + Sort row */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+          <div style={{ fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--muted)' }}>
+            Tags <span style={{ fontWeight: '400', textTransform: 'none', letterSpacing: 0, fontSize: '10px', color: '#B0A090' }}>(select multiple)</span>
+          </div>
+          <button onClick={cycleSort} style={{
+            padding: '5px 10px', borderRadius: 'var(--radius-md)',
+            border: '1.5px solid var(--tan)', background: 'var(--warm-white)',
+            color: 'var(--muted)', fontFamily: 'var(--font-body)',
+            fontSize: '11px', fontWeight: '600', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0
           }}>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
               <path d="M3 6h18M6 12h12M9 18h6" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round"/>
             </svg>
-            {sort === 'date' ? 'Date' : 'A–Z'}
+            {SORT_OPTIONS[sortIndex]}
           </button>
         </div>
 
-        {/* Tag filters */}
-        <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px', marginBottom: '16px' }}>
+        {/* Tag chips */}
+        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '10px' }}>
           {allTags.map(tag => (
-            <button key={tag} onClick={() => setTagFilter(tagFilter === tag ? null : tag)} style={{
-              padding: '5px 12px', borderRadius: 'var(--radius-pill)',
-              border: tagFilter === tag ? 'none' : '1.5px solid var(--tan)',
-              background: tagFilter === tag ? 'var(--ink)' : 'transparent',
-              color: tagFilter === tag ? 'var(--cream)' : 'var(--muted)',
-              fontFamily: 'var(--font-body)', fontSize: '11px', fontWeight: '600',
-              cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.15s', flexShrink: 0
-            }}>{tag}</button>
+            <button key={tag} onClick={() => toggleTag(tag)} style={tagChipStyle(tagFilters.includes(tag))}>
+              {tag}
+            </button>
           ))}
         </div>
+
+        {/* Active filters bar */}
+        {hasActiveFilters && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '12px' }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+              <path d="M3 6h18M6 12h12M9 18h6" stroke="var(--clay)" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+            <span style={{ fontSize: '12px', color: 'var(--clay)', fontWeight: '600' }}>
+              {tagFilters.length} {tagFilters.length === 1 ? 'tag' : 'tags'} active
+            </span>
+            <span style={{ fontSize: '12px', color: 'var(--muted)' }}>·</span>
+            <button onClick={() => setTagFilters([])} style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              color: 'var(--clay)', fontSize: '12px', fontWeight: '600',
+              textDecoration: 'underline', padding: 0
+            }}>Clear</button>
+          </div>
+        )}
 
         {/* Recipe count */}
         <div style={{ fontSize: '12px', color: 'var(--muted)', marginBottom: '16px' }}>
           {filtered.length} {filtered.length === 1 ? 'recipe' : 'recipes'}
         </div>
 
-        {/* Recipe list */}
+        {/* Circle modal */}
         {circleModal && (
-          <CircleFriendsModal
-            sourceUrl={circleModal}
-            session={session}
-            onClose={() => setCircleModal(null)}
-            onSelectUser={onSelectUser}
-          />
+          <CircleFriendsModal sourceUrl={circleModal} session={session}
+            onClose={() => setCircleModal(null)} onSelectUser={onSelectUser} />
         )}
 
+        {/* Recipe list */}
         {loading ? null : filtered.length === 0 ? (
           <div style={{
             textAlign: 'center', padding: '60px 24px',
@@ -205,12 +261,12 @@ const allTags = [...new Set([
             border: '1px solid var(--parchment)'
           }}>
             <div style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: '500', color: 'var(--ink)', marginBottom: '8px' }}>
-              {search ? `No results for "${search}"` : filter === 'All' ? 'Your Cookbook is empty' : `No ${filter} recipes yet`}
+              {emptyMessage().title}
             </div>
             <div style={{ fontSize: '13px', color: 'var(--muted)', marginBottom: '24px' }}>
-              {search ? 'Try a different search.' : filter === 'All' ? 'Add your first recipe to get started.' : 'Save some recipes first.'}
+              {emptyMessage().sub}
             </div>
-            {filter === 'All' && !search && (
+            {emptyMessage().cta && (
               <button onClick={onAddRecipe} style={{
                 padding: '12px 24px', background: 'var(--clay)', color: 'var(--cream)',
                 border: 'none', borderRadius: 'var(--radius-pill)',
@@ -250,8 +306,10 @@ const allTags = [...new Set([
                         {(recipe.tags || []).map(tag => (
                           <span key={tag} style={{
                             padding: '2px 8px', borderRadius: 'var(--radius-pill)',
-                            background: 'var(--parchment)', fontSize: '10px',
-                            fontWeight: '600', color: 'var(--charcoal)'
+                            background: tagFilters.includes(tag) ? '#F0E0D0' : 'var(--parchment)',
+                            border: tagFilters.includes(tag) ? '1px solid #C4713A' : 'none',
+                            fontSize: '10px', fontWeight: '600',
+                            color: tagFilters.includes(tag) ? '#8A3A10' : 'var(--charcoal)'
                           }}>{tag}</span>
                         ))}
                       </div>
@@ -263,11 +321,11 @@ const allTags = [...new Set([
                     fontSize: '11px', fontWeight: '600', flexShrink: 0
                   }}>{statusLabel[recipe.status]}</div>
                 </div>
+
                 {circleFriendsMap[recipe.id] && (
                   <div onClick={e => { e.stopPropagation(); setCircleModal(recipe.source_url) }} style={{
                     display: 'flex', alignItems: 'center', gap: '6px',
-                    marginTop: '10px', paddingTop: '10px',
-                    borderTop: '1px solid var(--parchment)'
+                    marginTop: '10px', paddingTop: '10px', borderTop: '1px solid var(--parchment)'
                   }}>
                     <div style={{ display: 'flex' }}>
                       {circleFriendsMap[recipe.id].avatars.map((p, i) => (
@@ -281,7 +339,9 @@ const allTags = [...new Set([
                       ))}
                     </div>
                     <span style={{ fontSize: '11px', color: 'var(--muted)' }}>
-                      <span style={{ fontWeight: '600', color: 'var(--clay)' }}>{circleFriendsMap[recipe.id].count} {circleFriendsMap[recipe.id].count === 1 ? 'friend' : 'friends'}</span> also {circleFriendsMap[recipe.id].count === 1 ? 'has' : 'have'} this
+                      <span style={{ fontWeight: '600', color: 'var(--clay)' }}>
+                        {circleFriendsMap[recipe.id].count} {circleFriendsMap[recipe.id].count === 1 ? 'friend' : 'friends'}
+                      </span> made this too
                     </span>
                   </div>
                 )}
