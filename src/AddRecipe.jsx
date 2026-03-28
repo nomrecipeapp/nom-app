@@ -70,10 +70,14 @@ export default function AddRecipe({ session, onSave, onCancel }) {
     setDuplicate(null)
 
     if (!skipDuplicateCheck) {
-      const { data: existing } = await supabase
+      const { data: existing, error: dupError } = await supabase
         .from('recipes').select('id, title')
         .eq('user_id', session.user.id).eq('source_url', url)
         .maybeSingle()
+
+      console.log('Duplicate check — url:', url)
+      console.log('Duplicate check — result:', existing)
+      console.log('Duplicate check — error:', dupError)
 
       if (existing) { setDuplicate(existing); setLoading(false); return }
     }
