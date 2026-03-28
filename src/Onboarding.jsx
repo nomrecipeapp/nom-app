@@ -137,19 +137,26 @@ export default function Onboarding({ onComplete, session }) {
     setRequested(prev => ({ ...prev, [targetId]: true }))
   }
 
-  async function importRecipe() {
+async function importRecipe() {
     if (!recipeUrl.trim()) return
     setImporting(true)
     setImportError(null)
     try {
-      const res = await fetch(`https://api.microlink.io?url=${encodeURIComponent(recipeUrl)}`)
-      const json = await res.json()
-      const meta = json.data
+      const apiKey = import.meta.env.VITE_SPOONACULAR_KEY
+      const res = await fetch(`https://api.spoonacular.com/recipes/extract?url=${encodeURIComponent(recipeUrl)}&apiKey=${apiKey}`)
+      const data = await res.json()
+
+      if (data.code === 402) {
+        setImportError('Daily import limit reached. Try again tomorrow or add manually.')
+        setImporting(false)
+        return
+      }
+
       setImportedRecipe({
-        title: meta?.title || 'Untitled Recipe',
+        title: data.title || 'Untitled Recipe',
         source_url: recipeUrl,
-        source_name: meta?.publisher || new URL(recipeUrl).hostname.replace('www.', ''),
-        image_url: meta?.image?.url || null,
+        source_name: data.sourceName || new URL(recipeUrl).hostname.replace('www.', ''),
+        image_url: data.image || null,
       })
     } catch {
       setImportError("Couldn't fetch that URL. Try another link.")
