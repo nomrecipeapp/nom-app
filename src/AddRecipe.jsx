@@ -63,24 +63,30 @@ export default function AddRecipe({ session, onSave, onCancel }) {
     if (customTags.length > 0) setAvailableTags([...PRESET_TAGS, ...customTags])
   }
 
+  async function checkDuplicate(urlToCheck) {
+    if (!urlToCheck.trim()) return
+    const { data: existingList } = await supabase
+      .from('recipes')
+      .select('id, title')
+      .eq('user_id', session.user.id)
+      .eq('source_url', urlToCheck.trim())
+      .limit(1)
+    if (existingList && existingList.length > 0) {
+      setDuplicate(existingList[0])
+    }
+  }
+
   async function importFromUrl(skipDuplicateCheck = false) {
     if (!url) return
     setLoading(true)
     setError(null)
-    setDuplicate(null)
 
-    if (!skipDuplicateCheck) {
-      const { data: existing, error: dupError } = await supabase
-        .from('recipes').select('id, title')
-        .eq('user_id', session.user.id).eq('source_url', url)
-        .maybeSingle()
-
-      console.log('Duplicate check — url:', url)
-      console.log('Duplicate check — result:', existing)
-      console.log('Duplicate check — error:', dupError)
-
-      if (existing) { setDuplicate(existing); setLoading(false); return }
+    if (!skipDuplicateCheck && duplicate) {
+      setLoading(false)
+      return
     }
+
+    setDuplicate(null)
 
     try {
       const apiKey = import.meta.env.VITE_SPOONACULAR_KEY
@@ -510,7 +516,9 @@ export default function AddRecipe({ session, onSave, onCancel }) {
         {mode === 'url' && !recipe && (
           <div style={{ background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--parchment)', padding: '28px' }}>
             <label style={labelStyle}>Recipe URL</label>
-            <input type="url" value={url} onChange={e => { setUrl(e.target.value); setDuplicate(null) }}
+            <input type="url" value={url}
+              onChange={e => { setUrl(e.target.value); setDuplicate(null) }}
+              onBlur={e => checkDuplicate(e.target.value)}
               placeholder="https://www.seriouseats.com/..." style={{ ...inputStyle, marginBottom: '16px' }} />
 
             {duplicate && (
