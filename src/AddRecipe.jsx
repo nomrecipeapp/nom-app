@@ -72,7 +72,8 @@ export default function AddRecipe({ session, onSave, onCancel }) {
     if (!skipDuplicateCheck) {
       const { data: existing } = await supabase
         .from('recipes').select('id, title')
-        .eq('user_id', session.user.id).eq('source_url', url).single()
+        .eq('user_id', session.user.id).eq('source_url', url)
+        .maybeSingle()
 
       if (existing) { setDuplicate(existing); setLoading(false); return }
     }
