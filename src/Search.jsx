@@ -50,16 +50,27 @@ export default function Search({ session, onSelectUser, onSelectSave, onSelectCo
     return () => clearTimeout(debounceRef.current)
   }, [query])
 
-  async function fetchRecentlyViewed() {
+async function fetchRecentlyViewed() {
     setLoadingViewed(true)
     const { data } = await supabase
       .from('recipe_views')
       .select('recipe_id, viewed_at, recipes(id, title, image_url, source_name, user_id)')
       .eq('user_id', session.user.id)
       .order('viewed_at', { ascending: false })
-      .limit(6)
+      .limit(50)
 
-    if (data) setRecentlyViewed(data.filter(v => v.recipes))
+    if (data) {
+      const seen = new Set()
+      const deduped = data
+        .filter(v => v.recipes)
+        .filter(v => {
+          if (seen.has(v.recipe_id)) return false
+          seen.add(v.recipe_id)
+          return true
+        })
+        .slice(0, 10)
+      setRecentlyViewed(deduped)
+    }
     setLoadingViewed(false)
   }
 
