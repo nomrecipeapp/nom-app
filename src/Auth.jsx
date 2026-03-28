@@ -23,7 +23,7 @@ export default function Auth() {
       } else setMessage('Check your email to confirm your account.')
     } else if (mode === 'reset') {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: 'https://nom-app.vercel.app'
+        redirectTo: 'https://www.nomrecipeapp.com'
       })
       if (error) setError(error.message)
       else setMessage('Check your email for a password reset link.')
