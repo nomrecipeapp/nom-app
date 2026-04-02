@@ -7,13 +7,12 @@ const verdictStyles = {
   never_again: { bg: '#F4E8E8', border: '#C47070', color: '#9B4040', label: 'Never Again' },
 }
 
-export default function CircleFriendsModal({ sourceUrl, session, onClose, onSelectUser }) {
-  const [friends, setFriends] = useState([])
+export default function CircleFriendsModal({ sourceUrl, canonicalId, session, onClose, onSelectUser }) {  const [friends, setFriends] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     fetchFriends()
-  }, [sourceUrl])
+  }, [sourceUrl, canonicalId])
 
   async function fetchFriends() {
     setLoading(true)
@@ -25,10 +24,12 @@ export default function CircleFriendsModal({ sourceUrl, session, onClose, onSele
     if (!following || following.length === 0) { setFriends([]); setLoading(false); return }
 
     const followingIds = following.map(f => f.following_id)
+    const searchIds = [...followingIds, session.user.id]
 
     const { data: matchingRecipes } = await supabase
       .from('recipes').select('id, user_id, status')
-      .eq('source_url', sourceUrl).in('user_id', followingIds)
+      .eq(canonicalId ? 'canonical_id' : 'source_url', canonicalId || sourceUrl)
+      .in('user_id', searchIds)
 
     if (!matchingRecipes || matchingRecipes.length === 0) { setFriends([]); setLoading(false); return }
 
