@@ -140,7 +140,8 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
 
     const { data: matchingRecipes } = await supabase
       .from('recipes').select('id, user_id, canonical_id')
-      .in('canonical_id', canonicalIds).in('user_id', followingIds)
+      .in('canonical_id', canonicalIds)
+      .in('user_id', [...followingIds, session.user.id])
 
     if (!matchingRecipes || matchingRecipes.length === 0) return
 
@@ -273,9 +274,22 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
         ))}
       </div>
       <span style={{ fontSize: '11px', color: 'var(--muted)' }}>
-        <span style={{ fontWeight: '600', color: 'var(--clay)' }}>
-          {circleFriendsMap[key].count} {circleFriendsMap[key].count === 1 ? 'friend' : 'friends'}
-        </span> made this too
+        {circleFriendsMap[key].iHaveIt ? (
+          <>
+            <span style={{ fontWeight: '600', color: 'var(--clay)' }}>You</span>
+            {circleFriendsMap[key].count > 0 && (
+              <> and <span style={{ fontWeight: '600', color: 'var(--clay)' }}>
+                {circleFriendsMap[key].count} {circleFriendsMap[key].count === 1 ? 'friend' : 'friends'}
+              </span></>
+            )} have this
+          </>
+        ) : (
+          <>
+            <span style={{ fontWeight: '600', color: 'var(--clay)' }}>
+              {circleFriendsMap[key].count} {circleFriendsMap[key].count === 1 ? 'friend' : 'friends'}
+            </span> have this
+          </>
+        )}
       </span>
     </div>
   )
