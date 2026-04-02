@@ -257,7 +257,7 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
   )
 
   const circleBadge = (key) => circleFriendsMap[key] && (
-    <div onClick={e => { e.stopPropagation(); setCircleModal(circleFriendsMap[key].sourceUrl) }} style={{
+    <div onClick={e => { e.stopPropagation(); setCircleModal(circleFriendsMap[key].canonicalId) }} style={{
       display: 'flex', alignItems: 'center', gap: '6px',
       padding: '8px 16px', borderTop: '1px solid var(--parchment)', cursor: 'pointer'
     }}>
