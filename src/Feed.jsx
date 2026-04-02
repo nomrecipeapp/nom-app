@@ -153,12 +153,17 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
     for (const item of items) {
       const canonicalId = item._type === 'cook' ? item.recipes?.canonical_id : item.canonical_id
       if (!canonicalId) continue
-      const matches = matchingRecipes.filter(m => m.canonical_id === canonicalId)
-        .filter(m => m.user_id !== item.user_id)
-      if (matches.length === 0) continue
-      const userIds = [...new Set(matches.map(m => m.user_id))]
-      const avatars = userIds.slice(0, 3).map(id => profiles?.find(p => p.id === id)).filter(Boolean)
-      map[`${item._type}-${item.id}`] = { count: userIds.length, avatars, canonicalId }
+      const allMatches = matchingRecipes.filter(m => m.canonical_id === canonicalId)
+      const otherMatches = allMatches.filter(m => m.user_id !== item.user_id)
+      if (otherMatches.length === 0) continue
+
+      const iHaveIt = allMatches.some(m => m.user_id === session.user.id)
+      const friendIds = [...new Set(allMatches
+        .filter(m => m.user_id !== session.user.id)
+        .map(m => m.user_id)
+      )]
+      const avatars = friendIds.slice(0, 3).map(id => profiles?.find(p => p.id === id)).filter(Boolean)
+      map[`${item._type}-${item.id}`] = { count: friendIds.length, avatars, canonicalId, iHaveIt }
     }
     setCircleFriendsMap(map)
   }
