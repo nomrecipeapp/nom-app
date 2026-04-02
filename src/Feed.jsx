@@ -296,7 +296,7 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
           onClose={() => setLikesModal(null)} onSelectUser={onSelectUser} />
       )}
       {circleModal && (
-        <CircleFriendsModal sourceUrl={circleModal} session={session}
+        <CircleFriendsModal canonicalId={circleModal} session={session}
           onClose={() => setCircleModal(null)} onSelectUser={onSelectUser} />
       )}
 
