@@ -169,7 +169,7 @@ if (showLogin) return <Auth />
   // Center title per screen
   const screenTitles = {
     cookbook: 'Cookbook',
-    search: 'Explore',
+    search: 'Find',
     profile: 'My Profile',
     notifications: 'Notifications',
     friendProfile: selectedUserId ? '' : '',
@@ -418,7 +418,7 @@ if (showLogin) return <Auth />
           background: 'var(--warm-white)',
           borderTop: '1px solid var(--parchment)',
           display: 'flex',
-          justifyContent: 'space-around',
+          justifyContent: 'space-evenly',
           alignItems: 'center',
           padding: '12px 0 20px',
           zIndex: 100
