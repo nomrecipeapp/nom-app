@@ -15,6 +15,7 @@ import FriendRecipeDetail from './FriendRecipeDetail'
 import './index.css'
 import ResetPassword from './ResetPassword'
 import FollowList from './FollowList'
+import Settings from './Settings'
 
 export default function App() {
   const [session, setSession] = useState(null)
@@ -39,6 +40,7 @@ export default function App() {
   const [feedScrollY, setFeedScrollY] = useState(0)
   const [cookbookScrollY, setCookbookScrollY] = useState(0)
   const [cookbookKey, setCookbookKey] = useState(0)
+  const [settingsVisible, setSettingsVisible] = useState(false)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -218,11 +220,23 @@ if (showLogin) return <Auth />
           {/* Right */}
           <div style={{ width: '72px', display: 'flex', justifyContent: 'flex-end' }}>
             {screen === 'profile' ? (
-              <button onClick={() => setProfileEditing(true)} style={{
-                background: 'var(--parchment)', border: 'none', borderRadius: 'var(--radius-md)',
-                padding: '6px 12px', fontFamily: 'var(--font-body)', fontSize: '12px',
-                fontWeight: '600', color: 'var(--charcoal)', cursor: 'pointer'
-              }}>Edit</button>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button onClick={() => setProfileEditing(true)} style={{
+                  background: 'var(--parchment)', border: 'none', borderRadius: 'var(--radius-md)',
+                  padding: '6px 12px', fontFamily: 'var(--font-body)', fontSize: '12px',
+                  fontWeight: '600', color: 'var(--charcoal)', cursor: 'pointer'
+                }}>Edit</button>
+                <button onClick={() => setSettingsVisible(true)} style={{
+                  width: '32px', height: '32px', borderRadius: '50%',
+                  background: 'var(--warm-white)', border: '1px solid var(--parchment)',
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="3" stroke="var(--ink)" strokeWidth="1.8"/>
+                    <path d="M12 2v2M12 20v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M2 12h2M20 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" stroke="var(--ink)" strokeWidth="1.8" strokeLinecap="round"/>
+                  </svg>
+                </button>
+              </div>
             ) : screen === 'notifications' ? null : (
               <button onClick={() => { setPrevScreen(screen); setScreen('notifications') }} style={{
                 position: 'relative',
@@ -252,6 +266,32 @@ if (showLogin) return <Auth />
             )}
           </div>
 
+        </div>
+      )}
+
+      {settingsVisible && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'var(--cream)', overflowY: 'auto' }}>
+          <div style={{
+            position: 'fixed', top: 0, left: 0, right: 0,
+            maxWidth: '480px', margin: '0 auto',
+            height: '54px', background: 'var(--cream)',
+            borderBottom: '1px solid var(--parchment)',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '0 16px', zIndex: 301
+          }}>
+            <button onClick={() => setSettingsVisible(false)} style={{
+              display: 'flex', alignItems: 'center', gap: '5px',
+              background: 'none', border: 'none', cursor: 'pointer', padding: 0
+            }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                <path d="M19 12H5M5 12l7-7M5 12l7 7" stroke="var(--ink)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              <span style={{ fontSize: '13px', fontWeight: '600', color: 'var(--ink)' }}>Profile</span>
+            </button>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: '17px', fontWeight: '600', color: 'var(--ink)' }}>Settings</div>
+            <div style={{ width: '72px' }} />
+          </div>
+          <Settings session={session} onBack={() => setSettingsVisible(false)} />
         </div>
       )}
 
