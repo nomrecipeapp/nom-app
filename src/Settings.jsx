@@ -170,6 +170,104 @@ export default function Settings({ session, onBack }) {
     return <div style={{ height: '6px', background: '#F0E8D8' }} />
   }
 
+  function InviteSection({ session }) {
+    const [codes, setCodes] = useState([])
+    const [loadingCodes, setLoadingCodes] = useState(true)
+    const [copied, setCopied] = useState(null)
+
+    useEffect(() => {
+      fetchCodes()
+    }, [])
+
+    async function fetchCodes() {
+      const { data } = await supabase
+        .from('invites')
+        .select('id, code, used_by, used_at')
+        .eq('created_by', session.user.id)
+        .order('created_at', { ascending: true })
+      setCodes(data || [])
+      setLoadingCodes(false)
+    }
+
+    function copyCode(code) {
+      const message = `Join me on Nom — a private recipe journal for people who actually cook. Use my invite code: ${code}\n\nnomrecipeapp.com`
+      navigator.clipboard.writeText(message)
+      setCopied(code)
+      setTimeout(() => setCopied(null), 2000)
+    }
+
+    if (loadingCodes) return (
+      <div style={{ padding: '16px 20px', fontSize: '13px', color: 'var(--muted)' }}>Loading...</div>
+    )
+
+    const available = codes.filter(c => !c.used_by)
+    const used = codes.filter(c => c.used_by)
+
+    return (
+      <div style={{ padding: '4px 20px 16px' }}>
+        <div style={{ fontSize: '13px', color: 'var(--muted)', lineHeight: '1.5', marginBottom: '16px' }}>
+          You have <span style={{ fontWeight: '700', color: 'var(--ink)' }}>{available.length}</span> invite{available.length !== 1 ? 's' : ''} left. Each code can only be used once.
+        </div>
+
+        {available.length === 0 && (
+          <div style={{
+            background: 'var(--parchment)', borderRadius: 'var(--radius-md)',
+            padding: '12px 14px', fontSize: '13px', color: 'var(--muted)', textAlign: 'center'
+          }}>
+            You've used all your invites for now.
+          </div>
+        )}
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {available.map(c => (
+            <div key={c.id} style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              background: 'var(--parchment)', borderRadius: 'var(--radius-md)',
+              padding: '12px 14px'
+            }}>
+              <div style={{
+                fontFamily: 'var(--font-display)', fontSize: '16px',
+                fontWeight: '700', color: 'var(--ink)', letterSpacing: '0.12em'
+              }}>{c.code}</div>
+              <button
+                onClick={() => copyCode(c.code)}
+                style={{
+                  padding: '7px 14px',
+                  background: copied === c.code ? '#EEF4E5' : 'var(--clay)',
+                  color: copied === c.code ? '#4A5E42' : 'var(--cream)',
+                  border: 'none', borderRadius: 'var(--radius-pill)',
+                  fontFamily: 'var(--font-body)', fontSize: '12px',
+                  fontWeight: '600', cursor: 'pointer', transition: 'all 0.15s'
+                }}
+              >{copied === c.code ? '✓ Copied' : 'Copy'}</button>
+            </div>
+          ))}
+        </div>
+
+        {used.length > 0 && (
+          <div style={{ marginTop: '12px' }}>
+            <div style={{ fontSize: '11px', fontWeight: '600', color: 'var(--muted)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '8px' }}>Used</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              {used.map(c => (
+                <div key={c.id} style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '10px 14px', background: 'var(--parchment)',
+                  borderRadius: 'var(--radius-md)', opacity: 0.5
+                }}>
+                  <div style={{
+                    fontFamily: 'var(--font-display)', fontSize: '15px',
+                    fontWeight: '700', color: 'var(--ink)', letterSpacing: '0.12em'
+                  }}>{c.code}</div>
+                  <div style={{ fontSize: '11px', color: 'var(--muted)' }}>Used</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    )
+  }
+
   return (
     <>
       {/* Edit field modal */}
@@ -287,9 +385,17 @@ export default function Settings({ session, onBack }) {
             <SettingsRow iconBg="#E2EBD8" icon={<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="5" r="2.5" stroke="#4A5E42" strokeWidth="1.3"/><path d="M2 13c0-2.5 2-4 5-4s5 1.5 5 4" stroke="#4A5E42" strokeWidth="1.3" strokeLinecap="round"/></svg>} label="Profile visibility" value="Anyone can request" onTap={() => {}} />
           </div>
 
-          <Divider />
+            <Divider />
 
-          {/* Account actions */}
+            {/* Invite Friends */}
+            <div style={{ background: 'var(--cream)' }}>
+            <SectionHeader label="Invite Friends" />
+            <InviteSection session={session} />
+            </div>
+
+            <Divider />
+
+            {/* Account actions */}
           <div style={{ background: 'var(--cream)' }}>
             <SectionHeader label="Account Actions" />
             <SettingsRow iconBg="#E8E6E2" icon={<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9 2H5a1 1 0 00-1 1v1h6V3a1 1 0 00-1-1zM2 4h10M3 4l.7 7.3A1 1 0 004.7 12h4.6a1 1 0 001-.7L11 4" stroke="#3A3630" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>} label="Log out" onTap={handleLogOut} />
