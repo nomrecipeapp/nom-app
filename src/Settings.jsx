@@ -200,10 +200,15 @@ export default function Settings({ session, onBack }) {
             // user dismissed, do nothing
             }
         } else {
-            // fallback for desktop
-            navigator.clipboard.writeText(message)
-            setCopied(code)
-            setTimeout(() => setCopied(null), 2000)
+        // fallback for desktop
+        try {
+            await navigator.clipboard.writeText(message)
+        } catch {
+            // if clipboard fails, show the text to copy manually
+            prompt('Copy your invite link:', message)
+        }
+        setCopied(code)
+        setTimeout(() => setCopied(null), 2000)
         }
         }
 
@@ -241,7 +246,7 @@ export default function Settings({ session, onBack }) {
                 fontWeight: '700', color: 'var(--ink)', letterSpacing: '0.12em'
               }}>{c.code}</div>
               <button
-                onClick={() => copyCode(c.code)}
+                onClick={() => shareCode(c.code)}
                 style={{
                   padding: '7px 14px',
                   background: copied === c.code ? '#EEF4E5' : 'var(--clay)',
@@ -250,7 +255,7 @@ export default function Settings({ session, onBack }) {
                   fontFamily: 'var(--font-body)', fontSize: '12px',
                   fontWeight: '600', cursor: 'pointer', transition: 'all 0.15s'
                 }}
-              >{copied === c.code ? '✓ Copied' : 'Copy'}</button>
+              >{copied === c.code ? '✓ Copied' : 'Share'}</button>
             </div>
           ))}
         </div>
