@@ -425,7 +425,7 @@ if (showLogin) return <Auth />
         }}>
           <button onClick={() => setScreen('feed')} style={{
             background: 'none', border: 'none', cursor: 'pointer',
-            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '4px 16px'
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '4px 0', flex: 1
           }}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
               <rect x="3" y="3" width="8" height="8" rx="2" stroke={screen === 'feed' ? 'var(--clay)' : 'var(--muted)'} strokeWidth="1.8"/>
@@ -438,7 +438,7 @@ if (showLogin) return <Auth />
 
           <button onClick={() => setScreen('search')} style={{
             background: 'none', border: 'none', cursor: 'pointer',
-            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '4px 16px'
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '4px 0', flex: 1
           }}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
               <circle cx="11" cy="11" r="7" stroke={screen === 'search' ? 'var(--clay)' : 'var(--muted)'} strokeWidth="1.8"/>
@@ -451,7 +451,7 @@ if (showLogin) return <Auth />
             background: 'var(--clay)', border: 'none', cursor: 'pointer',
             width: '48px', height: '48px', borderRadius: '50%',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            marginBottom: '8px',
+            marginBottom: '8px', flex: 1,
             boxShadow: '0 4px 12px rgba(196, 113, 58, 0.4)'
           }}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
@@ -461,7 +461,7 @@ if (showLogin) return <Auth />
 
           <button onClick={() => setScreen('cookbook')} style={{
             background: 'none', border: 'none', cursor: 'pointer',
-            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '4px 16px'
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '4px 0', flex: 1
           }}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
               <path d="M4 19V8a2 2 0 012-2h12a2 2 0 012 2v11" stroke={screen === 'cookbook' ? 'var(--clay)' : 'var(--muted)'} strokeWidth="1.8" strokeLinecap="round"/>
@@ -472,7 +472,7 @@ if (showLogin) return <Auth />
 
           <button onClick={() => setScreen('profile')} style={{
             background: 'none', border: 'none', cursor: 'pointer',
-            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '4px 16px'
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '4px 0', flex: 1
           }}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
               <circle cx="12" cy="8" r="4" stroke={screen === 'profile' ? 'var(--clay)' : 'var(--muted)'} strokeWidth="1.8"/>
