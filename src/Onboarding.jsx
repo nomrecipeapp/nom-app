@@ -31,6 +31,7 @@ export default function Onboarding({ onComplete, session }) {
   const [authLoading, setAuthLoading] = useState(false)
   const [authError, setAuthError] = useState(null)
   const [userId, setUserId] = useState(session?.user?.id || null)
+  const [inviteCode, setInviteCode] = useState('')
 
   // Step 3 — find cooks
   const [searchQuery, setSearchQuery] = useState('')
@@ -55,6 +56,24 @@ export default function Onboarding({ onComplete, session }) {
   async function handleCreateAccount() {
     const validationError = validateStep2()
     if (validationError) { setAuthError(validationError); return }
+
+    // Validate invite code
+    const { data: invite } = await supabase
+      .from('invites')
+      .select('id, used_by')
+      .eq('code', inviteCode.trim().toUpperCase())
+      .maybeSingle()
+
+    if (!invite) {
+      setAuthError('That invite code is invalid. Ask a friend for one.')
+      setAuthLoading(false)
+      return
+    }
+    if (invite.used_by) {
+      setAuthError('That invite code has already been used.')
+      setAuthLoading(false)
+      return
+    }
 
     setAuthLoading(true)
     setAuthError(null)
@@ -104,6 +123,20 @@ export default function Onboarding({ onComplete, session }) {
       email: email,
       onboarding_complete: false
     })
+
+    // Mark invite as used
+    await supabase
+      .from('invites')
+      .update({ used_by: user.id, used_at: new Date().toISOString() })
+      .eq('id', invite.id)
+
+    // Generate 3 invite codes for the new user
+    const codes = Array.from({ length: 3 }, () =>
+      Math.random().toString(36).substring(2, 10).toUpperCase()
+    )
+    await supabase.from('invites').insert(
+      codes.map(code => ({ code, created_by: user.id }))
+    )
 
     setUserId(user.id)
     setAccountCreated(true)
@@ -298,8 +331,21 @@ async function importRecipe() {
         <label style={labelStyle}>Password</label>
         <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" style={inputStyle} />
       </div>
-      <div style={{ fontSize: '11px', color: 'var(--muted)', marginBottom: '24px' }}>Must be at least 8 characters</div>
+      <div style={{ fontSize: '11px', color: 'var(--muted)', marginBottom: '16px' }}>Must be at least 8 characters</div>
 
+      <div style={{ marginBottom: '24px' }}>
+        <label style={labelStyle}>Invite Code</label>
+        <input
+          type="text"
+          value={inviteCode}
+          onChange={e => setInviteCode(e.target.value.trim().toUpperCase())}
+          placeholder="XXXXXXXX"
+          style={{ ...inputStyle, letterSpacing: '0.1em' }}
+        />
+        <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '4px' }}>
+          You need an invite code to join Nom.
+        </div>
+      </div>
       {authError && (
         <div style={{
           background: '#FDE8E8', border: '1px solid #F5C0C0', borderRadius: 'var(--radius-md)',
