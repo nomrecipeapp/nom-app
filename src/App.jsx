@@ -447,17 +447,19 @@ if (showLogin) return <Auth />
             <span style={{ fontSize: '10px', fontWeight: '600', color: screen === 'search' ? 'var(--clay)' : 'var(--muted)' }}>Find</span>
           </button>
 
-          <button onClick={() => setScreen('add')} style={{
-            background: 'var(--clay)', border: 'none', cursor: 'pointer',
-            width: '48px', height: '48px', borderRadius: '50%',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            marginBottom: '8px', flex: 1,
-            boxShadow: '0 4px 12px rgba(196, 113, 58, 0.4)'
-          }}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-              <path d="M12 5v14M5 12h14" stroke="white" strokeWidth="2.2" strokeLinecap="round"/>
-            </svg>
-          </button>
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <button onClick={() => setScreen('add')} style={{
+              background: 'var(--clay)', border: 'none', cursor: 'pointer',
+              width: '48px', height: '48px', borderRadius: '50%',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              marginBottom: '8px',
+              boxShadow: '0 4px 12px rgba(196, 113, 58, 0.4)'
+            }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                <path d="M12 5v14M5 12h14" stroke="white" strokeWidth="2.2" strokeLinecap="round"/>
+              </svg>
+            </button>
+          </div>
 
           <button onClick={() => setScreen('cookbook')} style={{
             background: 'none', border: 'none', cursor: 'pointer',
