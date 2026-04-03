@@ -19,8 +19,8 @@ function ProgressDots({ step }) {
   )
 }
 
-export default function Onboarding({ onComplete, session }) {
-  const [step, setStep] = useState(session ? 3 : 1)
+export default function Onboarding({ onComplete, session, prefillInviteCode }) {
+  const [step, setStep] = useState(session ? 3 : prefillInviteCode ? 2 : 1)
   const [accountCreated, setAccountCreated] = useState(!!session)
 
   // Step 2 — account
@@ -31,7 +31,7 @@ export default function Onboarding({ onComplete, session }) {
   const [authLoading, setAuthLoading] = useState(false)
   const [authError, setAuthError] = useState(null)
   const [userId, setUserId] = useState(session?.user?.id || null)
-  const [inviteCode, setInviteCode] = useState('')
+  const [inviteCode, setInviteCode] = useState(prefillInviteCode || '')
 
   // Step 3 — find cooks
   const [searchQuery, setSearchQuery] = useState('')

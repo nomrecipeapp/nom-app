@@ -40,6 +40,13 @@ export default function App() {
   const [feedScrollY, setFeedScrollY] = useState(0)
   const [cookbookScrollY, setCookbookScrollY] = useState(0)
   const [cookbookKey, setCookbookKey] = useState(0)
+  const [prefillInviteCode, setPrefillInviteCode] = useState('')
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const code = params.get('code')
+    if (code) setPrefillInviteCode(code.toUpperCase())
+  }, [])
   const [settingsVisible, setSettingsVisible] = useState(false)
 
   useEffect(() => {
@@ -159,8 +166,8 @@ export default function App() {
 
 if (showLogin) return <Auth />
   if (loading) return null
-  if (!session) return <Onboarding onComplete={handleOnboardingComplete} />
-  if (!onboardingComplete) return <Onboarding session={session} onComplete={handleOnboardingComplete} />
+  if (!session) return <Onboarding onComplete={handleOnboardingComplete} prefillInviteCode={prefillInviteCode} />
+  if (!onboardingComplete) return <Onboarding session={session} onComplete={handleOnboardingComplete} prefillInviteCode={prefillInviteCode} />
 
   const hideNav = screen === 'add'
   const hideTopBar = screen === 'add' || screen === 'resetPassword'

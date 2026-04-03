@@ -189,12 +189,23 @@ export default function Settings({ session, onBack }) {
       setLoadingCodes(false)
     }
 
-    function copyCode(code) {
-      const message = `Join me on Nom — a private recipe journal for people who actually cook. Use my invite code: ${code}\n\nnomrecipeapp.com`
-      navigator.clipboard.writeText(message)
-      setCopied(code)
-      setTimeout(() => setCopied(null), 2000)
-    }
+    async function shareCode(code) {
+        const url = `https://www.nomrecipeapp.com?code=${code}`
+        const message = `Join me on Nom — a private recipe journal for people who actually cook.\n\nUse my invite link: ${url}`
+
+        if (navigator.share) {
+            try {
+            await navigator.share({ text: message })
+            } catch (e) {
+            // user dismissed, do nothing
+            }
+        } else {
+            // fallback for desktop
+            navigator.clipboard.writeText(message)
+            setCopied(code)
+            setTimeout(() => setCopied(null), 2000)
+        }
+        }
 
     if (loadingCodes) return (
       <div style={{ padding: '16px 20px', fontSize: '13px', color: 'var(--muted)' }}>Loading...</div>
