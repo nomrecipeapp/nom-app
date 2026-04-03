@@ -145,8 +145,6 @@ export default function Settings({ session, onBack }) {
           width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: '13px 20px', background: 'none', border: 'none', cursor: 'pointer', gap: '12px', textAlign: 'left',
         }}
-        onMouseEnter={e => e.currentTarget.style.background = 'var(--parchment)'}
-        onMouseLeave={e => e.currentTarget.style.background = 'none'}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0 }}>
           <div style={{ width: '30px', height: '30px', borderRadius: '8px', background: iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{icon}</div>
