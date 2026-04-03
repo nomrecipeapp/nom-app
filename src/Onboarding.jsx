@@ -320,7 +320,10 @@ async function importRecipe() {
         }}
       >{authLoading ? 'Creating account...' : 'Create Account'}</button>
       <div style={{ fontSize: '11px', color: 'var(--muted)', textAlign: 'center', lineHeight: '1.5' }}>
-        By continuing you agree to our Terms & Privacy Policy
+        By continuing you agree to our{' '}
+        <a href="https://app.termly.io/policy-viewer/policy.html?policyUUID=61e1bda6-9414-4896-bd55-972479e2c5ee" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--clay)', textDecoration: 'underline' }}>Terms</a>
+        {' & '}
+        <a href="https://app.termly.io/policy-viewer/policy.html?policyUUID=758a4b17-ed24-4c70-acda-5aaa6c508907" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--clay)', textDecoration: 'underline' }}>Privacy Policy</a>
       </div>
     </div>
   )
