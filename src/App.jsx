@@ -220,23 +220,18 @@ if (showLogin) return <Auth />
           {/* Right */}
           <div style={{ width: '72px', display: 'flex', justifyContent: 'flex-end' }}>
             {screen === 'profile' ? (
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button onClick={() => setProfileEditing(true)} style={{
-                  background: 'var(--parchment)', border: 'none', borderRadius: 'var(--radius-md)',
-                  padding: '6px 12px', fontFamily: 'var(--font-body)', fontSize: '12px',
-                  fontWeight: '600', color: 'var(--charcoal)', cursor: 'pointer'
-                }}>Edit</button>
-                <button onClick={() => setSettingsVisible(true)} style={{
-                  width: '32px', height: '32px', borderRadius: '50%',
-                  background: 'var(--warm-white)', border: '1px solid var(--parchment)',
-                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center'
-                }}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                    <circle cx="12" cy="12" r="3" stroke="var(--ink)" strokeWidth="1.8"/>
-                    <path d="M12 2v2M12 20v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M2 12h2M20 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" stroke="var(--ink)" strokeWidth="1.8" strokeLinecap="round"/>
-                  </svg>
-                </button>
-              </div>
+              <button onClick={() => setSettingsVisible(true)} style={{
+                background: 'var(--parchment)', border: 'none', borderRadius: 'var(--radius-pill)',
+                padding: '6px 12px', fontFamily: 'var(--font-body)', fontSize: '12px',
+                fontWeight: '600', color: 'var(--charcoal)', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: '5px'
+              }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="12" r="3" stroke="var(--charcoal)" strokeWidth="1.8"/>
+                  <path d="M12 2v2M12 20v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M2 12h2M20 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" stroke="var(--charcoal)" strokeWidth="1.8" strokeLinecap="round"/>
+                </svg>
+                Settings
+              </button>
             ) : screen === 'notifications' ? null : (
               <button onClick={() => { setPrevScreen(screen); setScreen('notifications') }} style={{
                 position: 'relative',
