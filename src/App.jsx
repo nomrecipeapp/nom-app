@@ -111,6 +111,7 @@ export default function App() {
       const { data: { session } } = await supabase.auth.getSession()
       setSession(session)
       setOnboardingComplete(true)
+      setSettingsVisible(false)
       setScreen('feed')
     }
   }

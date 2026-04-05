@@ -385,7 +385,13 @@ export default function Profile({ session, onBack, onSelectRecipe, onViewFollowL
 
         {/* Sign out */}
         <div style={{ padding: '20px' }}>
-          <button onClick={() => supabase.auth.signOut()} style={{ width: '100%', padding: '12px', background: 'transparent', color: 'var(--muted)', border: '1.5px solid var(--parchment)', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>Sign Out</button>
+          <button onClick={() => {
+            sessionStorage.removeItem('nom_onboarding_step')
+            sessionStorage.removeItem('nom_onboarding_user')
+            sessionStorage.removeItem('nom_onboarding_name')
+            supabase.auth.signOut()
+          }} style=
+            {{ width: '100%', padding: '12px', background: 'transparent', color: 'var(--muted)', border: '1.5px solid var(--parchment)', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>Sign Out</button>
         </div>
 
       </div>

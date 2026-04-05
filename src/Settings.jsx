@@ -114,12 +114,23 @@ export default function Settings({ session, onBack }) {
   }
 
   async function handleLogOut() {
+    sessionStorage.removeItem('nom_onboarding_step')
+    sessionStorage.removeItem('nom_onboarding_user')
+    sessionStorage.removeItem('nom_onboarding_name')
     await supabase.auth.signOut()
   }
 
   async function handleDeleteAccount() {
     if (deleteText !== 'delete') return
     setDeleting(true)
+    try {
+      await supabase.rpc('delete_user')
+    } catch (e) {
+      console.error('Delete failed:', e)
+    }
+    sessionStorage.removeItem('nom_onboarding_step')
+    sessionStorage.removeItem('nom_onboarding_user')
+    sessionStorage.removeItem('nom_onboarding_name')
     await supabase.auth.signOut()
   }
 
