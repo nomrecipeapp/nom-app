@@ -172,7 +172,9 @@ export default function App() {
 
 if (showLogin) return <Auth />
   if (loading) return null
-  if (!session || midSignup) return <Onboarding onComplete={handleOnboardingComplete} prefillInviteCode={prefillInviteCode} midSignup={midSignup} setMidSignup={setMidSignup} />
+  if (!session) return <Onboarding onComplete={handleOnboardingComplete} prefillInviteCode={prefillInviteCode} midSignup={midSignup} setMidSignup={setMidSignup} />
+  if (midSignup) return <Onboarding onComplete={handleOnboardingComplete} prefillInviteCode={prefillInviteCode} midSignup={midSignup} setMidSignup={setMidSignup} />
+  if (!onboardingComplete) return <Onboarding session={session} onComplete={handleOnboardingComplete} prefillInviteCode={prefillInviteCode} />
   if (!onboardingComplete) return <Onboarding session={session} onComplete={handleOnboardingComplete} prefillInviteCode={prefillInviteCode} />
 
   const hideNav = screen === 'add'
