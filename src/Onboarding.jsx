@@ -18,8 +18,7 @@ function ProgressDots({ step }) {
     </div>
   )
 }
-
-export default function Onboarding({ onComplete, session, prefillInviteCode }) {
+  export default function Onboarding({ onComplete, session, prefillInviteCode, midSignup, setMidSignup }) {
     const [step, setStep] = useState(() => {
     if (session) return 3
     if (prefillInviteCode) return 2
@@ -147,6 +146,7 @@ export default function Onboarding({ onComplete, session, prefillInviteCode }) {
     setUserId(user.id)
     setAccountCreated(true)
     setAuthLoading(false)
+    setMidSignup && setMidSignup(true)
     setStep('photo')
   }
 
@@ -225,6 +225,7 @@ async function importRecipe() {
     } catch (e) {
       console.log('Profile update error:', e)
     }
+    setMidSignup && setMidSignup(false)
     onComplete()
   }
 

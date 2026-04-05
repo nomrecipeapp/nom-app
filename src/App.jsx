@@ -41,6 +41,7 @@ export default function App() {
   const [cookbookScrollY, setCookbookScrollY] = useState(0)
   const [cookbookKey, setCookbookKey] = useState(0)
   const [prefillInviteCode, setPrefillInviteCode] = useState('')
+  const [midSignup, setMidSignup] = useState(false)
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -63,8 +64,7 @@ export default function App() {
         setLoading(false)
         return
       }
-      if (event === 'SIGNED_IN' && !onboardingComplete) {
-        // Mid-onboarding signup — set session but don't remount Onboarding
+      if (event === 'SIGNED_IN' && midSignup) {
         setSession(session)
         setShowLogin(false)
         return
@@ -172,7 +172,7 @@ export default function App() {
 
 if (showLogin) return <Auth />
   if (loading) return null
-  if (!session) return <Onboarding onComplete={handleOnboardingComplete} prefillInviteCode={prefillInviteCode} />
+  if (!session || midSignup) return <Onboarding onComplete={handleOnboardingComplete} prefillInviteCode={prefillInviteCode} midSignup={midSignup} setMidSignup={setMidSignup} />
   if (!onboardingComplete) return <Onboarding session={session} onComplete={handleOnboardingComplete} prefillInviteCode={prefillInviteCode} />
 
   const hideNav = screen === 'add'
