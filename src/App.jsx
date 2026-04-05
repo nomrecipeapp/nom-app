@@ -64,9 +64,8 @@ export default function App() {
         setLoading(false)
         return
       }
-      if (event === 'SIGNED_IN' && midSignup) {
-        setSession(session)
-        setShowLogin(false)
+      if (event === 'SIGNED_IN' && !session?.user?.user_metadata?.onboarding_complete) {
+        // New signup mid-onboarding — don't interrupt the flow
         return
       }
       setSession(session)

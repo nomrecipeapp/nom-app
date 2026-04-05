@@ -221,10 +221,14 @@ async function importRecipe() {
       const id = userId || session?.user?.id
       if (id) {
         await supabase.from('profiles').update({ onboarding_complete: true }).eq('id', id)
+        await supabase.auth.updateUser({ data: { onboarding_complete: true } })
       }
     } catch (e) {
       console.log('Profile update error:', e)
     }
+    sessionStorage.removeItem('nom_onboarding_step')
+    sessionStorage.removeItem('nom_onboarding_user')
+    sessionStorage.removeItem('nom_onboarding_name')
     setMidSignup && setMidSignup(false)
     onComplete()
   }
