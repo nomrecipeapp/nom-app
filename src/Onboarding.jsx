@@ -20,7 +20,11 @@ function ProgressDots({ step }) {
 }
 
 export default function Onboarding({ onComplete, session, prefillInviteCode }) {
-  const [step, setStep] = useState(session ? 3 : prefillInviteCode ? 2 : 1)
+    const [step, setStep] = useState(() => {
+    if (session) return 3
+    if (prefillInviteCode) return 2
+    return 1
+  })
   const [accountCreated, setAccountCreated] = useState(!!session)
 
   // Step 2 — account
