@@ -116,6 +116,7 @@ export default function App() {
       setOnboardingComplete(true)
       setSettingsVisible(false)
       setScreen('feed')
+      console.log('all state set, should be on feed now')
     }
   }
 
@@ -175,6 +176,7 @@ export default function App() {
 
 if (showLogin) return <Auth />
   if (loading) return null
+  console.log('render check — session:', !!session, 'midSignup:', midSignup, 'onboardingComplete:', onboardingComplete)
   if (!session) return <Onboarding onComplete={handleOnboardingComplete} prefillInviteCode={prefillInviteCode} midSignup={midSignup} setMidSignup={setMidSignup} />
   if (midSignup) return <Onboarding onComplete={handleOnboardingComplete} prefillInviteCode={prefillInviteCode} midSignup={midSignup} setMidSignup={setMidSignup} />
   if (!onboardingComplete) return <Onboarding session={session} onComplete={handleOnboardingComplete} prefillInviteCode={prefillInviteCode} />
