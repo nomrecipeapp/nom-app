@@ -64,8 +64,7 @@ export default function App() {
         setLoading(false)
         return
       }
-      if (event === 'SIGNED_IN' && !session?.user?.user_metadata?.onboarding_complete) {
-        // New signup mid-onboarding — don't interrupt the flow
+      if (event === 'SIGNED_IN' && midSignup) {
         return
       }
       setSession(session)
@@ -100,7 +99,12 @@ export default function App() {
       .select('onboarding_complete')
       .eq('id', userId)
       .maybeSingle()
-    setOnboardingComplete(data?.onboarding_complete === true)
+    // Only update if not already complete — don't override a true with false
+    if (data?.onboarding_complete === true) {
+      setOnboardingComplete(true)
+    } else if (!onboardingComplete) {
+      setOnboardingComplete(false)
+    }
     setLoading(false)
   }
 
