@@ -32,6 +32,8 @@ export default function Onboarding({ onComplete, session, prefillInviteCode }) {
   const [authError, setAuthError] = useState(null)
   const [userId, setUserId] = useState(session?.user?.id || null)
   const [inviteCode, setInviteCode] = useState(prefillInviteCode || '')
+  const [avatarUrl, setAvatarUrl] = useState(null)
+  const [avatarUploading, setAvatarUploading] = useState(false)
 
   // Step 3 — find cooks
   const [searchQuery, setSearchQuery] = useState('')
@@ -141,7 +143,7 @@ export default function Onboarding({ onComplete, session, prefillInviteCode }) {
     setUserId(user.id)
     setAccountCreated(true)
     setAuthLoading(false)
-    setStep(3)
+    setStep(2.5)
   }
 
   async function searchUsers(query) {
@@ -373,6 +375,111 @@ async function importRecipe() {
       </div>
     </div>
   )
+
+  // ── STEP 2.5: PROFILE PHOTO ──
+  if (step === 2.5) {
+    const initial = (fullName || '?')[0].toUpperCase()
+
+    async function handlePhotoUpload(e) {
+      const file = e.target.files?.[0]
+      if (!file) return
+      setAvatarUploading(true)
+      try {
+        const ext = file.name.split('.').pop() || 'jpg'
+        const path = `${userId}/${Date.now()}.${ext}`
+        const { error: uploadError } = await supabase.storage.from('avatars').upload(path, file, { upsert: true })
+        if (uploadError) throw uploadError
+        const { data } = supabase.storage.from('avatars').getPublicUrl(path)
+        await supabase.from('profiles').update({ avatar_url: data.publicUrl }).eq('id', userId)
+        setAvatarUrl(data.publicUrl)
+      } catch (err) {
+        console.error('Avatar upload failed:', err)
+      }
+      setAvatarUploading(false)
+      e.target.value = ''
+    }
+
+    return (
+      <div style={{
+        minHeight: '100vh', background: 'var(--cream)', display: 'flex',
+        flexDirection: 'column', maxWidth: '480px', margin: '0 auto',
+        padding: '48px 28px 40px'
+      }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: '26px', fontWeight: '700', color: 'var(--ink)', lineHeight: '1.2', marginBottom: '8px', textAlign: 'center' }}>
+            Put a face to the name.
+          </div>
+          <div style={{ fontSize: '13px', color: 'var(--muted)', marginBottom: '40px', textAlign: 'center', lineHeight: '1.6' }}>
+            Help your friends recognize you.
+          </div>
+
+          {/* Avatar */}
+          <input
+            id="onboarding-avatar"
+            type="file"
+            accept="image/*"
+            style={{ display: 'none' }}
+            onChange={handlePhotoUpload}
+          />
+          <label htmlFor="onboarding-avatar" style={{ cursor: 'pointer', marginBottom: '16px' }}>
+            <div style={{ position: 'relative' }}>
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="" style={{
+                  width: '120px', height: '120px', borderRadius: '50%',
+                  objectFit: 'cover',
+                  boxShadow: '0 0 0 4px var(--cream), 0 0 0 6px var(--clay)'
+                }} />
+              ) : (
+                <div style={{
+                  width: '120px', height: '120px', borderRadius: '50%',
+                  background: 'linear-gradient(135deg, var(--clay), var(--ember))',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontFamily: 'var(--font-display)', fontSize: '48px', fontWeight: '700',
+                  color: 'var(--cream)',
+                  boxShadow: '0 0 0 4px var(--cream), 0 0 0 6px var(--tan)'
+                }}>{initial}</div>
+              )}
+              <div style={{
+                position: 'absolute', bottom: '4px', right: '4px',
+                width: '32px', height: '32px', borderRadius: '50%',
+                background: 'var(--clay)', border: '3px solid var(--cream)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center'
+              }}>
+                {avatarUploading
+                  ? <div style={{ width: '12px', height: '12px', border: '2px solid rgba(255,255,255,0.4)', borderTop: '2px solid white', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+                  : <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/><circle cx="12" cy="13" r="4" stroke="white" strokeWidth="2.5"/></svg>
+                }
+              </div>
+            </div>
+          </label>
+
+          <div style={{ fontSize: '13px', color: 'var(--muted)', marginBottom: '8px' }}>
+            {avatarUploading ? 'Uploading...' : avatarUrl ? 'Tap to change' : 'Tap to add a photo'}
+          </div>
+
+        </div>
+
+        <div>
+          <ProgressDots step={2} />
+          <button onClick={() => setStep(3)} style={{
+            width: '100%', padding: '15px',
+            background: avatarUrl ? 'var(--clay)' : 'var(--clay)',
+            color: 'var(--cream)', border: 'none', borderRadius: 'var(--radius-pill)',
+            fontFamily: 'var(--font-body)', fontSize: '15px', fontWeight: '700',
+            cursor: 'pointer', marginBottom: '10px'
+          }}>{avatarUrl ? 'Continue' : 'Continue'}</button>
+          {!avatarUrl && (
+            <button onClick={() => setStep(3)} style={{
+              width: '100%', padding: '10px', background: 'none', border: 'none',
+              fontFamily: 'var(--font-body)', fontSize: '13px', color: 'var(--muted)', cursor: 'pointer'
+            }}>Skip for now</button>
+          )}
+        </div>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    )
+  }
 
   // ── STEP 3: FIND FELLOW COOKS ──
   if (step === 3) return (
