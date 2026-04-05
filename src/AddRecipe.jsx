@@ -442,8 +442,9 @@ export default function AddRecipe({ session, onSave, onCancel }) {
           <textarea value={recipe?.instructions || ''} onChange={e => setRecipe({...recipe, instructions: e.target.value})} placeholder="Steps..." rows={5} style={{ ...inputStyle, resize: 'vertical' }} />
         </div>
         <div>
-          <label style={labelStyle}>Notes (optional)</label>
-          <textarea value={recipe?.notes || ''} onChange={e => setRecipe({...recipe, notes: e.target.value})} placeholder="Anything you want to remember..." rows={3} style={{ ...inputStyle, resize: 'vertical' }} />
+          <label style={labelStyle}>Recipe Notes (optional)</label>
+          <div style={{ fontSize: '11px', color: 'var(--muted)', marginBottom: '6px', marginTop: '-4px' }}>Private reminders — only you can see these.</div>
+          <textarea value={recipe?.notes || ''} onChange={e => setRecipe({...recipe, notes: e.target.value})} placeholder="Tweaks, substitutions, context..." rows={3} style={{ ...inputStyle, resize: 'vertical' }} />
         </div>
 
         {/* Log a Cook toggle */}
@@ -652,8 +653,9 @@ export default function AddRecipe({ session, onSave, onCancel }) {
                 <textarea value={instructions} onChange={e => setInstructions(e.target.value)} placeholder="Steps..." rows={4} style={{ ...inputStyle, resize: 'vertical' }} />
               </div>
               <div>
-                <label style={labelStyle}>Notes</label>
-                <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Anything you want to remember..." rows={2} style={{ ...inputStyle, resize: 'vertical' }} />
+                <label style={labelStyle}>Recipe Notes (optional)</label>
+                <div style={{ fontSize: '11px', color: 'var(--muted)', marginBottom: '6px', marginTop: '-4px' }}>Private reminders — only you can see these.</div>
+                <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Tweaks, substitutions, context..." rows={2} style={{ ...inputStyle, resize: 'vertical' }} />
               </div>
             </div>
 
