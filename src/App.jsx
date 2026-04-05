@@ -105,13 +105,16 @@ export default function App() {
   }
 
   async function handleOnboardingComplete(action) {
+    console.log('handleOnboardingComplete called, action:', action)
     if (action === 'login') {
       setShowLogin(true)
     } else {
       const { data: { session } } = await supabase.auth.getSession()
+      console.log('session after getSession:', session?.user?.id)
       setSession(session)
       setOnboardingComplete(true)
       setSettingsVisible(false)
+      setMidSignup(false)
       setScreen('feed')
     }
   }
