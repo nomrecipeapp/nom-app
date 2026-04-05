@@ -559,7 +559,7 @@ export default function RecipeDetail({ recipe: initialRecipe, session, onBack, o
         </div>
 
         {showCircleModal && (
-          <CircleFriendsModal sourceUrl={recipe.source_url} session={session} onClose={() => setShowCircleModal(false)} onSelectUser={onSelectUser} />
+          <CircleFriendsModal canonicalId={recipe.canonical_id} sourceUrl={recipe.source_url} session={session} onClose={() => setShowCircleModal(false)} onSelectUser={onSelectUser} />
         )}
 
         {circleFriendsCount > 0 && (
