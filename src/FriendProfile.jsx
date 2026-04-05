@@ -641,11 +641,12 @@ export default function FriendProfile({ userId, session, onBack, onSelectCook, o
         {/* Cookbook Tab */}
         {followStatus === 'approved' && activeTab === 'cookbook' && (
           <div style={{ padding: '0 20px' }}>
+
             {/* Search */}
             <div style={{
               display: 'flex', alignItems: 'center', gap: '10px',
               background: 'var(--warm-white)', borderRadius: 'var(--radius-md)',
-              padding: '10px 14px', marginBottom: '16px',
+              padding: '10px 14px', marginBottom: '12px',
               border: '1.5px solid var(--tan)'
             }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
@@ -671,29 +672,36 @@ export default function FriendProfile({ userId, session, onBack, onSelectCook, o
               )}
             </div>
 
-            {/* Filters + Sort */}
+            {/* Status label */}
+            <div style={{ fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '8px' }}>Status</div>
+
+            {/* Status chips */}
+            <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px', marginBottom: '12px' }}>
+              {FILTERS.map(f => (
+                <button key={f} onClick={() => setCookbookFilter(f)} style={{
+                  padding: '6px 14px', borderRadius: 'var(--radius-pill)',
+                  border: cookbookFilter === f ? 'none' : '1.5px solid var(--tan)',
+                  background: cookbookFilter === f ? 'var(--clay)' : 'transparent',
+                  color: cookbookFilter === f ? 'var(--cream)' : 'var(--muted)',
+                  fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600',
+                  cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.15s'
+                }}>{f}</button>
+              ))}
+            </div>
+
+            <div style={{ height: '1px', background: 'var(--parchment)', marginBottom: '12px' }} />
+
+            {/* Sort row */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-              <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
-                {FILTERS.map(f => (
-                  <button key={f} onClick={() => setCookbookFilter(f)} style={{
-                    padding: '7px 16px', borderRadius: 'var(--radius-pill)',
-                    border: cookbookFilter === f ? 'none' : '1.5px solid var(--tan)',
-                    background: cookbookFilter === f ? 'var(--clay)' : 'transparent',
-                    color: cookbookFilter === f ? 'var(--cream)' : 'var(--muted)',
-                    fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600',
-                    cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.15s'
-                  }}>{f}</button>
-                ))}
-              </div>
+              <div style={{ fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--muted)' }}>Sort</div>
               <select
                 value={cookbookSort}
                 onChange={e => setCookbookSort(e.target.value)}
                 style={{
-                  flexShrink: 0, marginLeft: '10px', padding: '7px 12px',
-                  borderRadius: 'var(--radius-pill)', border: '1.5px solid var(--tan)',
-                  background: 'var(--warm-white)', color: 'var(--muted)',
-                  fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600',
-                  cursor: 'pointer', outline: 'none'
+                  padding: '5px 10px', borderRadius: 'var(--radius-md)',
+                  border: '1.5px solid var(--tan)', background: 'var(--warm-white)',
+                  color: 'var(--muted)', fontFamily: 'var(--font-body)',
+                  fontSize: '11px', fontWeight: '600', cursor: 'pointer', outline: 'none'
                 }}
               >
                 <option value="newest">Newest</option>
@@ -702,6 +710,7 @@ export default function FriendProfile({ userId, session, onBack, onSelectCook, o
               </select>
             </div>
 
+            {/* Recipe count */}
             <div style={{ fontSize: '12px', color: 'var(--muted)', marginBottom: '16px' }}>
               {filteredRecipes.length} {filteredRecipes.length === 1 ? 'recipe' : 'recipes'}
             </div>
@@ -720,7 +729,8 @@ export default function FriendProfile({ userId, session, onBack, onSelectCook, o
                   }}>
                     {recipe.image_url && (
                       <div style={{ width: '52px', height: '52px', borderRadius: 'var(--radius-sm)', background: 'var(--parchment)', flexShrink: 0, overflow: 'hidden' }}>
-                        <img src={recipe.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        <img src={recipe.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          onError={e => e.target.parentElement.style.display = 'none'} />
                       </div>
                     )}
                     <div style={{ flex: 1, minWidth: 0 }}>
