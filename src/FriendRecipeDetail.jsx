@@ -338,9 +338,7 @@ async function fetchSavedByProfile() {
         src={recipe.image_url}
         alt=""
         style={{ width: '100%', height: '260px', objectFit: 'cover', display: 'block' }}
-        onError={e => {
-          e.target.parentElement.innerHTML = `<div style="height:160px;background:linear-gradient(160deg,#C4713A 0%,#E8A87C 100%);display:flex;align-items:center;justify-content:center"><span style="font-family:serif;font-size:64px;font-weight:700;color:rgba(255,255,255,0.5)">${(recipe.title||'?')[0].toUpperCase()}</span></div>`
-        }}
+        onError={e => { e.target.style.display = 'none'; e.target.parentElement.style.display = 'none' }}
       />
     </div>
   ) : (
