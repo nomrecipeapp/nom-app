@@ -84,7 +84,7 @@ export default function Onboarding({ onComplete, session, prefillInviteCode }) {
       .from('profiles')
       .select('id')
       .eq('username', username)
-      .single()
+      .maybeSingle()
 
     if (existingUsername) {
       setAuthError('That username is already taken. Try another one.')
@@ -96,7 +96,7 @@ export default function Onboarding({ onComplete, session, prefillInviteCode }) {
       .from('profiles')
       .select('id')
       .eq('email', email)
-      .single()
+      .maybeSingle()
 
     if (existingEmail) {
       setAuthError('An account with this email already exists. Try logging in instead.')
@@ -143,7 +143,7 @@ export default function Onboarding({ onComplete, session, prefillInviteCode }) {
     setUserId(user.id)
     setAccountCreated(true)
     setAuthLoading(false)
-    setStep(2.5)
+    setStep('photo')
   }
 
   async function searchUsers(query) {
@@ -377,7 +377,7 @@ async function importRecipe() {
   )
 
   // ── STEP 2.5: PROFILE PHOTO ──
-  if (step === 2.5) {
+  if (step === 'photo') {
     const initial = (fullName || '?')[0].toUpperCase()
 
     const handlePhotoUpload = async (e) => {
