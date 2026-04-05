@@ -225,7 +225,7 @@ export default function FriendProfile({ userId, session, onBack, onSelectCook, o
   const [activeTab, setActiveTab] = useState('stats')
   const [cookbookFilter, setCookbookFilter] = useState('All')
   const [selectedRecipe, setSelectedRecipe] = useState(null)
-  const [cookbookSort, setCookbookSort] = useState('date')
+  const [cookbookSort, setCookbookSort] = useState('newest')
   const [cookbookSearch, setCookbookSearch] = useState('')
   const [followCounts, setFollowCounts] = useState({ following: 0, followers: 0 })
 
@@ -409,7 +409,8 @@ export default function FriendProfile({ userId, session, onBack, onSelectCook, o
     })
     .sort((a, b) => {
       if (cookbookSort === 'alpha') return a.title.localeCompare(b.title)
-      return 0
+      if (cookbookSort === 'oldest') return new Date(a.created_at) - new Date(b.created_at)
+      return new Date(b.created_at) - new Date(a.created_at)
     })
 
   const sectionLabel = {
@@ -684,18 +685,21 @@ export default function FriendProfile({ userId, session, onBack, onSelectCook, o
                   }}>{f}</button>
                 ))}
               </div>
-              <button onClick={() => setCookbookSort(s => s === 'date' ? 'alpha' : 'date')} style={{
-                flexShrink: 0, marginLeft: '10px', padding: '7px 12px',
-                borderRadius: 'var(--radius-pill)', border: '1.5px solid var(--tan)',
-                background: 'transparent', color: 'var(--muted)',
-                fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600',
-                cursor: 'pointer', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '5px'
-              }}>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
-                  <path d="M3 6h18M6 12h12M9 18h6" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round"/>
-                </svg>
-                {cookbookSort === 'date' ? 'Date' : 'A–Z'}
-              </button>
+              <select
+                value={cookbookSort}
+                onChange={e => setCookbookSort(e.target.value)}
+                style={{
+                  flexShrink: 0, marginLeft: '10px', padding: '7px 12px',
+                  borderRadius: 'var(--radius-pill)', border: '1.5px solid var(--tan)',
+                  background: 'var(--warm-white)', color: 'var(--muted)',
+                  fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600',
+                  cursor: 'pointer', outline: 'none'
+                }}
+              >
+                <option value="newest">Newest</option>
+                <option value="oldest">Oldest</option>
+                <option value="alpha">A→Z</option>
+              </select>
             </div>
 
             <div style={{ fontSize: '12px', color: 'var(--muted)', marginBottom: '16px' }}>
