@@ -362,13 +362,21 @@ async function fetchRecentlyViewed() {
                       <div style={{
                         width: '44px', height: '44px', borderRadius: 'var(--radius-md)',
                         overflow: 'hidden', flexShrink: 0,
-                        background: recipe.image_url ? 'var(--parchment)' : 'linear-gradient(135deg, var(--clay), var(--ember))',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center'
+                        background: 'linear-gradient(135deg, var(--clay), var(--ember))',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        position: 'relative'
                       }}>
-                        {recipe.image_url
-                          ? <img src={recipe.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                          : <span style={{ fontFamily: 'var(--font-display)', fontSize: '16px', fontWeight: '700', color: 'var(--cream)' }}>{(recipe.title || '?')[0].toUpperCase()}</span>
-                        }
+                        {recipe.image_url && (
+                          <img
+                            src={recipe.image_url}
+                            alt=""
+                            style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }}
+                            onError={e => e.target.style.display = 'none'}
+                          />
+                        )}
+                        <span style={{ fontFamily: 'var(--font-display)', fontSize: '16px', fontWeight: '700', color: 'var(--cream)' }}>
+                          {(recipe.title || '?')[0].toUpperCase()}
+                        </span>
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: '600', color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{recipe.title}</div>
