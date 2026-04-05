@@ -332,17 +332,14 @@ async function fetchSavedByProfile() {
   return (
     <div style={{ maxWidth: '480px', margin: '0 auto', paddingBottom: '100px' }}>
 
-  {recipe.image_url ? (
-    <div style={{ marginTop: '54px' }}>
-      <img
-        src={recipe.image_url}
-        alt=""
-        style={{ width: '100%', height: '260px', objectFit: 'cover', display: 'block' }}
-        onError={e => { e.target.style.display = 'none'; e.target.parentElement.style.display = 'none' }}
-      />
-    </div>
-  ) : (
-    <div style={{ marginTop: '54px' }} />
+  <div style={{ marginTop: '54px' }} />
+  {recipe.image_url && (
+    <img
+      src={recipe.image_url}
+      alt=""
+      style={{ width: '100%', height: '260px', objectFit: 'cover', display: 'block' }}
+      onError={e => e.target.style.display = 'none'}
+    />
   )}
 
       <div style={{ padding: '20px 20px 0' }}>
