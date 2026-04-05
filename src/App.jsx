@@ -57,16 +57,14 @@ export default function App() {
     })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-    console.log('Auth event:', event)
       if (event === 'PASSWORD_RECOVERY') {
         setScreen('resetPassword')
         setSession(session)
         setLoading(false)
         return
       }
-      if (event === 'SIGNED_UP') {
-        // New signup — set session but don't call checkOnboarding
-        // The Onboarding component is already handling the flow
+      if (event === 'SIGNED_IN' && !onboardingComplete) {
+        // Mid-onboarding signup — set session but don't remount Onboarding
         setSession(session)
         setShowLogin(false)
         return
