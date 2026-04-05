@@ -474,8 +474,9 @@ export default function RecipeDetail({ recipe: initialRecipe, session, onBack, o
               ))}
             </div>
             <div>
-              <label style={fieldLabel}>Notes</label>
-              <textarea value={editForm.notes} onChange={e => setEditForm(f => ({ ...f, notes: e.target.value }))} rows={3} placeholder="Any personal notes about this recipe" style={textareaStyle} />
+              <label style={fieldLabel}>Recipe Notes</label>
+              <div style={{ fontSize: '11px', color: 'var(--muted)', marginBottom: '6px', marginTop: '-4px' }}>Private reminders — only you can see these.</div>
+              <textarea value={editForm.notes} onChange={e => setEditForm(f => ({ ...f, notes: e.target.value }))} rows={3} placeholder="Tweaks, substitutions, context..." style={textareaStyle} />
             </div>
             {editError && (
               <div style={{ background: '#FDE8E8', border: '1px solid #F5C0C0', borderRadius: 'var(--radius-md)', padding: '10px 14px', fontSize: '13px', color: '#B85252' }}>{editError}</div>
@@ -644,7 +645,8 @@ export default function RecipeDetail({ recipe: initialRecipe, session, onBack, o
             </div>
 
             <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--charcoal)', marginBottom: '6px', letterSpacing: '0.04em' }}>Notes</label>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--charcoal)', marginBottom: '2px', letterSpacing: '0.04em' }}>Cook Notes</label>
+              <div style={{ fontSize: '11px', color: 'var(--muted)', marginBottom: '6px' }}>How did this cook go? This shows on your feed.</div>
               <textarea value={cookNotes} onChange={e => setCookNotes(e.target.value)} placeholder="What did you tweak? Would you change anything?" rows={3} style={{ width: '100%', padding: '10px 14px', border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-md)', background: 'var(--cream)', fontFamily: 'var(--font-body)', fontSize: '14px', color: 'var(--ink)', outline: 'none', resize: 'vertical' }} />
             </div>
 
@@ -715,7 +717,8 @@ export default function RecipeDetail({ recipe: initialRecipe, session, onBack, o
 
         {recipe.notes && (
           <div style={{ background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--parchment)', padding: '20px', marginBottom: '16px' }}>
-            <div style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '10px' }}>Notes</div>
+            <div style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '2px' }}>Recipe Notes</div>
+            <div style={{ fontSize: '11px', color: 'var(--muted)', marginBottom: '10px' }}>Private reminders — only you can see these.</div>
             <div style={{ fontSize: '14px', color: 'var(--charcoal)', lineHeight: '1.6', fontStyle: 'italic' }}>"{recipe.notes}"</div>
           </div>
         )}
