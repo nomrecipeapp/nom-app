@@ -109,12 +109,12 @@ export default function App() {
     if (action === 'login') {
       setShowLogin(true)
     } else {
+      setMidSignup(false)
       const { data: { session } } = await supabase.auth.getSession()
       console.log('session after getSession:', session?.user?.id)
       setSession(session)
       setOnboardingComplete(true)
       setSettingsVisible(false)
-      setMidSignup(false)
       setScreen('feed')
     }
   }

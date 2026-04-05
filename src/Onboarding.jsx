@@ -229,9 +229,6 @@ async function importRecipe() {
     sessionStorage.removeItem('nom_onboarding_step')
     sessionStorage.removeItem('nom_onboarding_user')
     sessionStorage.removeItem('nom_onboarding_name')
-    setMidSignup && setMidSignup(false)
-    // Get fresh session before completing
-    await supabase.auth.getSession()
     onComplete()
   }
 
