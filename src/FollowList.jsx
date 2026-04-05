@@ -34,7 +34,7 @@ export default function FollowList({ userId, type, session, onBack, onSelectUser
 
     const { data: profiles } = await supabase
       .from('profiles')
-      .select('id, full_name, username')
+      .select('id, full_name, username, avatar_url')
       .in('id', ids)
 
     setPeople(profiles || [])
@@ -109,14 +109,17 @@ export default function FollowList({ userId, type, session, onBack, onSelectUser
                 padding: '14px 20px', cursor: 'pointer',
                 borderBottom: '1px solid var(--parchment)',
               }}>
-                <div style={{
-                  width: '42px', height: '42px', borderRadius: '50%', flexShrink: 0,
-                  background: 'linear-gradient(135deg, var(--clay), var(--ember))',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontFamily: 'var(--font-display)', fontSize: '16px', fontWeight: '700', color: 'var(--cream)'
-                }}>
-                  {(person.full_name || person.username || '?')[0].toUpperCase()}
-                </div>
+                {person.avatar_url
+                  ? <img src={person.avatar_url} alt="" style={{ width: '42px', height: '42px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+                  : <div style={{
+                      width: '42px', height: '42px', borderRadius: '50%', flexShrink: 0,
+                      background: 'linear-gradient(135deg, var(--clay), var(--ember))',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontFamily: 'var(--font-display)', fontSize: '16px', fontWeight: '700', color: 'var(--cream)'
+                    }}>
+                      {(person.full_name || person.username || '?')[0].toUpperCase()}
+                    </div>
+                }
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: '14px', fontWeight: '600', color: 'var(--ink)' }}>
                     {person.full_name || person.username}

@@ -422,7 +422,7 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
                       display: 'flex', alignItems: 'center', justifyContent: 'center'
                     }}>
                       {item.image_url
-                        ? <img src={item.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ? <img src={item.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => e.target.style.display = 'none'} />
                         : <span style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: '700', color: 'var(--cream)' }}>{(item.title || '?')[0].toUpperCase()}</span>
                       }
                     </div>
@@ -465,7 +465,7 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
                 </div>
 
                 {(item.photo_urls?.[0] || recipe.image_url) && (
-                  <img src={item.photo_urls?.[0] || recipe.image_url} alt="" style={{ width: '100%', height: '200px', objectFit: 'cover', display: 'block' }} />
+                  <img src={item.photo_urls?.[0] || recipe.image_url} alt="" style={{ width: '100%', height: '200px', objectFit: 'cover', display: 'block' }} onError={e => e.target.parentElement.style.display = 'none'} />
                 )}
 
                 <div style={{ padding: '14px 16px' }}>
