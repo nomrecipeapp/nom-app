@@ -63,6 +63,13 @@ export default function App() {
         setLoading(false)
         return
       }
+      if (event === 'SIGNED_UP') {
+        // New signup — set session but don't call checkOnboarding
+        // The Onboarding component is already handling the flow
+        setSession(session)
+        setShowLogin(false)
+        return
+      }
       setSession(session)
       if (session) {
         setShowLogin(false)
