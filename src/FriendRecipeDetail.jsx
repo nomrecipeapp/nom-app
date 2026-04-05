@@ -342,11 +342,7 @@ async function fetchSavedByProfile() {
       />
     </div>
   ) : (
-    <div style={{ marginTop: '54px', height: '160px', background: 'linear-gradient(160deg, var(--clay) 0%, var(--ember) 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <span style={{ fontFamily: 'var(--font-display)', fontSize: '64px', fontWeight: '700', color: 'rgba(255,255,255,0.5)' }}>
-        {(recipe.title || '?')[0].toUpperCase()}
-      </span>
-    </div>
+    <div style={{ marginTop: '54px' }} />
   )}
 
       <div style={{ padding: '20px 20px 0' }}>
