@@ -376,6 +376,7 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
 
         {showCircleModal && (
           <CircleFriendsModal
+            canonicalId={recipe.canonical_id}
             sourceUrl={recipe.source_url}
             session={session}
             onClose={() => setShowCircleModal(false)}
