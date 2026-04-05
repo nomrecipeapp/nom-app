@@ -380,7 +380,7 @@ async function importRecipe() {
   if (step === 2.5) {
     const initial = (fullName || '?')[0].toUpperCase()
 
-    async function handlePhotoUpload(e) {
+    const handlePhotoUpload = async (e) => {
       const file = e.target.files?.[0]
       if (!file) return
       setAvatarUploading(true)
@@ -396,10 +396,10 @@ async function importRecipe() {
         console.error('Avatar upload failed:', err)
       }
       setAvatarUploading(false)
-      e.target.value = ''
-    }
+          e.target.value = ''
+      }
 
-    return (
+      return (
       <div style={{
         minHeight: '100vh', background: 'var(--cream)', display: 'flex',
         flexDirection: 'column', maxWidth: '480px', margin: '0 auto',
