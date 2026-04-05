@@ -333,16 +333,23 @@ async function fetchSavedByProfile() {
     <div style={{ maxWidth: '480px', margin: '0 auto', paddingBottom: '100px' }}>
 
   {recipe.image_url ? (
-        <div style={{ marginTop: '54px' }}>
-          <img src={recipe.image_url} alt="" style={{ width: '100%', height: '260px', objectFit: 'cover', display: 'block' }} />
-        </div>
-      ) : (
-        <div style={{ marginTop: '54px', height: '160px', background: 'linear-gradient(160deg, var(--clay) 0%, var(--ember) 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <span style={{ fontFamily: 'var(--font-display)', fontSize: '64px', fontWeight: '700', color: 'rgba(255,255,255,0.5)' }}>
-            {(recipe.title || '?')[0].toUpperCase()}
-          </span>
-        </div>
-      )}
+    <div style={{ marginTop: '54px' }}>
+      <img
+        src={recipe.image_url}
+        alt=""
+        style={{ width: '100%', height: '260px', objectFit: 'cover', display: 'block' }}
+        onError={e => {
+          e.target.parentElement.innerHTML = `<div style="height:160px;background:linear-gradient(160deg,#C4713A 0%,#E8A87C 100%);display:flex;align-items:center;justify-content:center"><span style="font-family:serif;font-size:64px;font-weight:700;color:rgba(255,255,255,0.5)">${(recipe.title||'?')[0].toUpperCase()}</span></div>`
+        }}
+      />
+    </div>
+  ) : (
+    <div style={{ marginTop: '54px', height: '160px', background: 'linear-gradient(160deg, var(--clay) 0%, var(--ember) 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <span style={{ fontFamily: 'var(--font-display)', fontSize: '64px', fontWeight: '700', color: 'rgba(255,255,255,0.5)' }}>
+        {(recipe.title || '?')[0].toUpperCase()}
+      </span>
+    </div>
+  )}
 
       <div style={{ padding: '20px 20px 0' }}>
         <div style={{ marginBottom: '14px' }}>
