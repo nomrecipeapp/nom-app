@@ -43,7 +43,13 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
   const [circleFriendsMap, setCircleFriendsMap] = useState({})
   const [lastUpdated, setLastUpdated] = useState(null)
   const [updatedLabel, setUpdatedLabel] = useState('')
-  const scrollRef = useRef(null)
+
+  // Pull-to-refresh state
+  const [pullDistance, setPullDistance] = useState(0)
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const touchStartY = useRef(null)
+  const isPulling = useRef(false)
+  const PULL_THRESHOLD = 72
 
   useEffect(() => {
     fetchFeed()
@@ -82,6 +88,40 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
     const interval = setInterval(updateLabel, 30000)
     return () => clearInterval(interval)
   }, [lastUpdated])
+
+  // ── PULL-TO-REFRESH HANDLERS ──
+  function handleTouchStart(e) {
+    const container = document.getElementById('feed-scroll-container')
+    const scrollTop = container ? container.scrollTop : window.scrollY
+    if (scrollTop <= 0 && !isRefreshing) {
+      touchStartY.current = e.touches[0].clientY
+      isPulling.current = true
+    }
+  }
+
+  function handleTouchMove(e) {
+    if (!isPulling.current || touchStartY.current === null) return
+    const delta = e.touches[0].clientY - touchStartY.current
+    if (delta <= 0) { setPullDistance(0); return }
+    // Rubber-band resistance — pull feels natural, slows down the further you go
+    const resistance = Math.min(delta * 0.45, PULL_THRESHOLD + 20)
+    setPullDistance(resistance)
+  }
+
+  async function handleTouchEnd() {
+    if (!isPulling.current) return
+    isPulling.current = false
+    touchStartY.current = null
+
+    if (pullDistance >= PULL_THRESHOLD) {
+      setIsRefreshing(true)
+      setPullDistance(0)
+      await fetchFeed()
+      setIsRefreshing(false)
+    } else {
+      setPullDistance(0)
+    }
+  }
 
   async function fetchFeed() {
     setLoading(true)
@@ -299,8 +339,16 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
     </div>
   )
 
+  // Pull indicator progress (0 to 1)
+  const pullProgress = Math.min(pullDistance / PULL_THRESHOLD, 1)
+
   return (
-    <div style={{ maxWidth: '480px', margin: '0 auto', padding: '70px 16px 100px' }}>
+    <div
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      style={{ maxWidth: '480px', margin: '0 auto', padding: '70px 16px 100px' }}
+    >
       <style>{`
         @keyframes shimmer {
           0% { opacity: 1; }
@@ -308,7 +356,47 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
           100% { opacity: 1; }
         }
         .skel { animation: shimmer 1.4s ease-in-out infinite; }
+        @keyframes ptr-spin {
+          to { transform: rotate(360deg); }
+        }
       `}</style>
+
+      {/* ── PULL-TO-REFRESH INDICATOR ── */}
+      {(pullDistance > 0 || isRefreshing) && (
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          height: isRefreshing ? '52px' : `${pullDistance}px`,
+          marginTop: '-70px', marginBottom: isRefreshing ? '8px' : '0',
+          transition: isRefreshing ? 'height 0.2s ease' : 'none',
+          overflow: 'hidden',
+        }}>
+          <div style={{
+            width: '32px', height: '32px', borderRadius: '50%',
+            background: 'var(--parchment)', border: '1px solid var(--tan)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            opacity: isRefreshing ? 1 : pullProgress,
+            transform: `scale(${0.7 + pullProgress * 0.3})`,
+            transition: isRefreshing ? 'none' : 'opacity 0.1s, transform 0.1s',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+          }}>
+            {isRefreshing ? (
+              // Spinning loader
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                style={{ animation: 'ptr-spin 0.8s linear infinite' }}>
+                <circle cx="12" cy="12" r="9" stroke="var(--tan)" strokeWidth="2.5"/>
+                <path d="M12 3a9 9 0 019 9" stroke="var(--clay)" strokeWidth="2.5" strokeLinecap="round"/>
+              </svg>
+            ) : (
+              // Arrow that rotates as you pull
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                style={{ transform: `rotate(${pullProgress * 180}deg)`, transition: 'transform 0.15s' }}>
+                <path d="M12 5v14M12 19l-5-5M12 19l5-5"
+                  stroke="var(--clay)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            )}
+          </div>
+        </div>
+      )}
 
       {likesModal && (
         <LikesModal targetType={likesModal.targetType} targetId={likesModal.targetId}
@@ -333,7 +421,6 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
           <SkeletonCard />
         </div>
       ) : feed.length === 0 ? (
-        // ── EMPTY STATE ──
         <div style={{ textAlign: 'center', padding: '40px 16px 0' }}>
           <svg width="100%" viewBox="0 0 680 420" style={{ maxWidth: '360px', margin: '0 auto 8px', display: 'block' }}>
             <rect x="140" y="270" width="400" height="12" rx="6" fill="#D9C9B0" opacity="0.5"/>
@@ -364,14 +451,12 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
               <line x1="522" y1="253" x2="522" y2="272" stroke="#8A8070" strokeWidth="1.5" strokeLinecap="round"/>
             </g>
           </svg>
-
           <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: '700', color: 'var(--ink)', lineHeight: '1.2', marginBottom: '8px' }}>
             Your feed fills up<br />as friends join.
           </div>
           <div style={{ fontSize: '13px', color: 'var(--muted)', lineHeight: '1.6', marginBottom: '28px' }}>
             Follow a cook to see what they're making.<br />Until then, your Cookbook is waiting.
           </div>
-
           <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
             <button onClick={() => onGoToSearch && onGoToSearch()} style={{
               padding: '13px 24px', background: 'var(--clay)', color: 'var(--cream)',
@@ -414,7 +499,6 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
                       </div>
                     </div>
                   </div>
-
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '0 16px 14px' }}>
                     <div style={{
                       width: '48px', height: '48px', borderRadius: 'var(--radius-md)', overflow: 'hidden', flexShrink: 0,
@@ -422,12 +506,8 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
                       display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative'
                     }}>
                       {item.image_url && (
-                        <img
-                          src={item.image_url}
-                          alt=""
-                          style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }}
-                          onError={e => e.target.style.display = 'none'}
-                        />
+                        <img src={item.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }}
+                          onError={e => e.target.style.display = 'none'} />
                       )}
                       <span style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: '700', color: 'var(--cream)' }}>
                         {(item.title || '?')[0].toUpperCase()}
@@ -438,7 +518,6 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
                       {item.source_name && <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '2px' }}>{item.source_name}</div>}
                     </div>
                   </div>
-
                   {circleBadge(`save-${item.id}`)}
                   {engagementBar(item, 'save')}
                 </div>
@@ -470,16 +549,11 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
                     </div>
                   </div>
                 </div>
-
                 {(item.photo_urls?.[0] || recipe.image_url) && (
-                  <img
-                    src={item.photo_urls?.[0] || recipe.image_url}
-                    alt=""
+                  <img src={item.photo_urls?.[0] || recipe.image_url} alt=""
                     style={{ width: '100%', height: '200px', objectFit: 'cover', display: 'block' }}
-                    onError={e => e.target.style.display = 'none'}
-                  />
+                    onError={e => e.target.style.display = 'none'} />
                 )}
-
                 <div style={{ padding: '14px 16px' }}>
                   {v && (
                     <div style={{
@@ -494,7 +568,6 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
                     <div style={{ fontSize: '13px', color: 'var(--charcoal)', lineHeight: '1.55', fontStyle: 'italic' }}>"{item.notes}"</div>
                   )}
                 </div>
-
                 {circleBadge(`cook-${item.id}`)}
                 {engagementBar(item, 'cook')}
               </div>
