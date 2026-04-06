@@ -183,16 +183,29 @@ export default function Onboarding({ onComplete, session, prefillInviteCode }) {
   }
 
   async function finishOnboarding() {
+    const id = userId || session?.user?.id
+    if (!id) { onComplete(); return }
+
     try {
-      const id = userId || session?.user?.id
-      if (id) {
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ onboarding_complete: true })
+        .eq('id', id)
+
+      if (profileError) throw profileError
+
+      await supabase.auth.updateUser({ data: { onboarding_complete: true } })
+
+      onComplete()
+    } catch (e) {
+      console.error('Onboarding completion error:', e)
+      // Try one more time silently, then let them through anyway
+      try {
         await supabase.from('profiles').update({ onboarding_complete: true }).eq('id', id)
         await supabase.auth.updateUser({ data: { onboarding_complete: true } })
-      }
-    } catch (e) {
-      console.log('Profile update error:', e)
+      } catch {}
+      onComplete()
     }
-    onComplete()
   }
 
   const inputStyle = {
