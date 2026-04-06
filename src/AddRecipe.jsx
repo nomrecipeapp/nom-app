@@ -108,7 +108,13 @@ export default function AddRecipe({ session, onSave, onCancel }) {
       const cookTime = data.readyInMinutes ? `${data.readyInMinutes} min` : ''
 
       // Try Spoonacular image first, fall back to OG image if needed
-      let imageUrl = data.image || null
+      const spoonacularImageIsGeneric = data.image && (
+        data.image.includes('defaultOg') ||
+        data.image.includes('default-og') ||
+        data.image.includes('placeholder') ||
+        data.image.includes('nytimes.com/assets')
+      )
+      let imageUrl = (data.image && !spoonacularImageIsGeneric) ? data.image : null
       if (!imageUrl) {
         try {
           const ogRes = await fetch('/api/fetch-og-image', {
