@@ -107,11 +107,30 @@ export default function AddRecipe({ session, onSave, onCancel }) {
         : data.instructions || ''
       const cookTime = data.readyInMinutes ? `${data.readyInMinutes} min` : ''
 
+      // Try Spoonacular image first, fall back to OG image if needed
+      let imageUrl = data.image || null
+      if (!imageUrl) {
+        try {
+          const ogRes = await fetch('/api/fetch-og-image', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url })
+          })
+          const ogData = await ogRes.json()
+          const isGenericFallback = ogData.image_url && (
+            ogData.image_url.includes('defaultOg') ||
+            ogData.image_url.includes('default-og') ||
+            ogData.image_url.includes('placeholder')
+          )
+          imageUrl = (ogData.image_url && !isGenericFallback) ? ogData.image_url : null
+        } catch { /* silent fail */ }
+      }
+
       setRecipe({
         title: data.title || '',
         source_url: url,
         source_name: data.sourceName || new URL(url).hostname.replace('www.', ''),
-        image_url: data.image || null,
+        image_url: imageUrl,
         cook_time: cookTime,
         difficulty: '',
         ingredients,
@@ -373,7 +392,35 @@ export default function AddRecipe({ session, onSave, onCancel }) {
           />
           {recipe?.image_url ? (
             <div style={{ position: 'relative', height: '140px', borderRadius: 'var(--radius-md)', overflow: 'hidden', marginBottom: '8px' }}>
-              <img src={recipe.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <img
+                src={recipe.image_url}
+                alt=""
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                onError={async e => {
+                  e.target.onerror = null // prevent loop
+                  try {
+                    const ogRes = await fetch('/api/fetch-og-image', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ url: recipe.source_url })
+                    })
+                    const ogData = await ogRes.json()
+                    const isGenericFallback = ogData.image_url && (
+                      ogData.image_url.includes('defaultOg') ||
+                      ogData.image_url.includes('default-og') ||
+                      ogData.image_url.includes('placeholder')
+                    )
+                    if (ogData.image_url && !isGenericFallback) {
+                      e.target.src = ogData.image_url
+                      setRecipe(r => ({ ...r, image_url: ogData.image_url }))
+                    } else {
+                      e.target.style.display = 'none'
+                    }
+                  } catch {
+                    e.target.style.display = 'none'
+                  }
+                }}
+              />
               <button onClick={() => setRecipe({ ...recipe, image_url: '' })} style={{ position: 'absolute', top: '8px', right: '8px', width: '28px', height: '28px', borderRadius: '50%', background: 'rgba(0,0,0,0.5)', border: 'none', color: 'white', fontSize: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
               <button onClick={() => reviewPhotoInputRef.current?.click()} style={{ position: 'absolute', top: '8px', right: '44px', width: '28px', height: '28px', borderRadius: '50%', background: 'rgba(0,0,0,0.5)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
