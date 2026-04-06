@@ -107,7 +107,16 @@ function ProgressDots({ step }) {
       return
     }
 
-    const { data, error } = await supabase.auth.signUp({ email, password })
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          full_name: fullName,
+          username: username
+        }
+      }
+    })
     if (error) {
       if (error.message.toLowerCase().includes('already registered')) {
         setAuthError('An account with this email already exists. Try logging in instead.')
@@ -121,14 +130,12 @@ function ProgressDots({ step }) {
     const user = data?.user
     if (!user) { setAuthError('Something went wrong. Please try again.'); setAuthLoading(false); return }
 
-    const { error: profileError } = await supabase.from('profiles').upsert({
-      id: user.id,
+    const { error: profileError } = await supabase.from('profiles').update({
       full_name: fullName,
       username: username || null,
       email: email,
-      onboarding_complete: false
-    })
-    if (profileError) console.error('Profile insert error:', profileError)
+    }).eq('id', user.id)
+    if (profileError) console.error('Profile update error:', profileError)
 
     // Mark invite as used
     await supabase
