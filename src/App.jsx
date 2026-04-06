@@ -20,7 +20,7 @@ import Settings from './Settings'
 export default function App() {
   const [session, setSession] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [onboardingComplete, setOnboardingComplete] = useState(true)
+  const [onboardingComplete, setOnboardingComplete] = useState(false)
   const [showLogin, setShowLogin] = useState(false)
   const [screen, setScreen] = useState('feed')
   const [selectedRecipe, setSelectedRecipe] = useState(null)
