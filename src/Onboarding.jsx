@@ -130,10 +130,15 @@ function ProgressDots({ step }) {
     const user = data?.user
     if (!user) { setAuthError('Something went wrong. Please try again.'); setAuthLoading(false); return }
 
-    // Small delay to ensure session is established before profile insert
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    // Profile is created automatically by database trigger
-    console.log('Account created, profile will be created by trigger')
+    await new Promise(resolve => setTimeout(resolve, 1500))
+    const { error: profileError } = await supabase.from('profiles').upsert({
+      id: user.id,
+      full_name: fullName,
+      username: username || null,
+      email: email,
+      onboarding_complete: false
+    })
+    if (profileError) console.error('Profile upsert error:', profileError.message, profileError.details)
 
     // Mark invite as used
     await supabase
