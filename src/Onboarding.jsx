@@ -121,13 +121,14 @@ function ProgressDots({ step }) {
     const user = data?.user
     if (!user) { setAuthError('Something went wrong. Please try again.'); setAuthLoading(false); return }
 
-    await supabase.from('profiles').upsert({
+    const { error: profileError } = await supabase.from('profiles').upsert({
       id: user.id,
       full_name: fullName,
       username: username || null,
       email: email,
       onboarding_complete: false
     })
+    if (profileError) console.error('Profile insert error:', profileError)
 
     // Mark invite as used
     await supabase
@@ -221,7 +222,6 @@ async function importRecipe() {
       const id = userId || session?.user?.id
       if (id) {
         await supabase.from('profiles').update({ onboarding_complete: true }).eq('id', id)
-        await supabase.auth.updateUser({ data: { onboarding_complete: true } })
       }
     } catch (e) {
       console.log('Profile update error:', e)
