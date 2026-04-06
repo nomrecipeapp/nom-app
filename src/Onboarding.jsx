@@ -130,6 +130,8 @@ function ProgressDots({ step }) {
     const user = data?.user
     if (!user) { setAuthError('Something went wrong. Please try again.'); setAuthLoading(false); return }
 
+    // Small delay to ensure session is established before profile insert
+    await new Promise(resolve => setTimeout(resolve, 1000))
     const { error: profileError } = await supabase.from('profiles').upsert({
       id: user.id,
       full_name: fullName,

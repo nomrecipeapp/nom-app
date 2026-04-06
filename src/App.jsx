@@ -65,6 +65,8 @@ export default function App() {
         return
       }
       if (event === 'SIGNED_IN' && midSignup) {
+        // Session is now established — safe to create profile
+        setSession(session)
         return
       }
       setSession(session)
