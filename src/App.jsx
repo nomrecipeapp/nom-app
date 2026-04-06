@@ -41,6 +41,7 @@ export default function App() {
   const [cookbookScrollY, setCookbookScrollY] = useState(0)
   const [cookbookKey, setCookbookKey] = useState(0)
   const [prefillInviteCode, setPrefillInviteCode] = useState('')
+  const [settingsVisible, setSettingsVisible] = useState(false)
   const [midSignup, setMidSignup] = useState(false)
 
   useEffect(() => {
@@ -48,7 +49,6 @@ export default function App() {
     const code = params.get('code')
     if (code) setPrefillInviteCode(code.toUpperCase())
   }, [])
-  const [settingsVisible, setSettingsVisible] = useState(false)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -64,9 +64,11 @@ export default function App() {
         setLoading(false)
         return
       }
-      if (event === 'SIGNED_IN' && midSignup) {
-        // Session is now established — safe to create profile
+      // During signup, the SIGNED_IN event fires before we finish onboarding
+      // We use user_metadata to detect this — new users won't have onboarding_complete set
+      if (event === 'SIGNED_IN' && !session?.user?.user_metadata?.onboarding_complete) {
         setSession(session)
+        setShowLogin(false)
         return
       }
       setSession(session)
@@ -101,28 +103,20 @@ export default function App() {
       .select('onboarding_complete')
       .eq('id', userId)
       .maybeSingle()
-    // Only update if not already complete — don't override a true with false
-    if (data?.onboarding_complete === true) {
-      setOnboardingComplete(true)
-    } else if (!onboardingComplete) {
-      setOnboardingComplete(false)
-    }
+    setOnboardingComplete(data?.onboarding_complete === true)
     setLoading(false)
   }
 
   async function handleOnboardingComplete(action) {
-    console.log('handleOnboardingComplete called, action:', action)
     if (action === 'login') {
       setShowLogin(true)
     } else {
-      setMidSignup(false)
       const { data: { session } } = await supabase.auth.getSession()
-      console.log('session after getSession:', session?.user?.id)
       setSession(session)
       setOnboardingComplete(true)
       setSettingsVisible(false)
+      setMidSignup(false)
       setScreen('feed')
-      console.log('all state set, should be on feed now')
     }
   }
 
@@ -168,10 +162,10 @@ export default function App() {
   }
 
   function goToFollowList(userId, type) {
-  setPrevScreen(screen)
-  setFollowListUserId(userId)
-  setFollowListType(type)
-  setScreen('followList')
+    setPrevScreen(screen)
+    setFollowListUserId(userId)
+    setFollowListType(type)
+    setScreen('followList')
   }
 
   function goToPost(item) {
@@ -180,48 +174,36 @@ export default function App() {
     setScreen('postDetail')
   }
 
-if (showLogin) return <Auth />
+  if (showLogin) return <Auth />
   if (loading) return null
-  console.log('render check — session:', !!session, 'midSignup:', midSignup, 'onboardingComplete:', onboardingComplete)
-  if (!session) return <Onboarding onComplete={handleOnboardingComplete} prefillInviteCode={prefillInviteCode} midSignup={midSignup} setMidSignup={setMidSignup} />
-  if (midSignup) return <Onboarding onComplete={handleOnboardingComplete} prefillInviteCode={prefillInviteCode} midSignup={midSignup} setMidSignup={setMidSignup} />
-  if (!onboardingComplete) return <Onboarding session={session} onComplete={handleOnboardingComplete} prefillInviteCode={prefillInviteCode} />
+  if (!session) return <Onboarding onComplete={handleOnboardingComplete} prefillInviteCode={prefillInviteCode} />
   if (!onboardingComplete) return <Onboarding session={session} onComplete={handleOnboardingComplete} prefillInviteCode={prefillInviteCode} />
 
   const hideNav = screen === 'add'
   const hideTopBar = screen === 'add' || screen === 'resetPassword'
 
-  // What the back button does per screen
-  const screensWithBack = ['cookbook', 'search', 'profile', 'notifications', 'recipe', 'socialRecipe', 'friendRecipeDetail', 'friendProfile', 'followList']
-
-  // Center title per screen
   const screenTitles = {
     cookbook: 'Cookbook',
     search: 'Find',
     profile: 'My Profile',
     notifications: 'Notifications',
-    friendProfile: selectedUserId ? '' : '',
+    friendProfile: '',
     followList: followListType === 'following' ? 'Following' : 'Followers',
   }
 
   return (
     <>
-      {/* Top bar */}
       {!hideTopBar && (
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0,
           maxWidth: '480px', margin: '0 auto',
-          height: '54px',
-          background: 'var(--cream)',
+          height: '54px', background: 'var(--cream)',
           borderBottom: '1px solid var(--parchment)',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '0 16px',
-          zIndex: 200,
+          padding: '0 16px', zIndex: 200,
         }}>
-
-          {/* Left */}
           <div style={{ width: '72px' }}>
-          {screen === 'feed' ? (
+            {screen === 'feed' ? (
               <div style={{ fontFamily: 'var(--font-display)', fontSize: '24px', fontWeight: '700', color: 'var(--clay)', letterSpacing: '-0.5px' }}>Nom</div>
             ) : ['recipe', 'socialRecipe', 'friendRecipeDetail', 'friendProfile', 'followList', 'notifications'].includes(screen) ? (
               <button onClick={() => screen === 'recipe' ? setScreen(recipeBackScreen) : setScreen(prevScreen)} style={{
@@ -238,12 +220,10 @@ if (showLogin) return <Auth />
             )}
           </div>
 
-          {/* Center */}
           <div style={{ fontFamily: 'var(--font-display)', fontSize: '17px', fontWeight: '600', color: 'var(--ink)', textAlign: 'center', flex: 1 }}>
             {screenTitles[screen] || ''}
           </div>
 
-          {/* Right */}
           <div style={{ width: '72px', display: 'flex', justifyContent: 'flex-end' }}>
             {screen === 'profile' ? (
               <button onClick={() => setSettingsVisible(true)} style={{
@@ -260,12 +240,9 @@ if (showLogin) return <Auth />
               </button>
             ) : screen === 'notifications' ? null : (
               <button onClick={() => { setPrevScreen(screen); setScreen('notifications') }} style={{
-                position: 'relative',
-                width: '36px', height: '36px', borderRadius: '50%',
-                background: 'var(--warm-white)',
-                border: '1px solid var(--parchment)',
-                cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                position: 'relative', width: '36px', height: '36px', borderRadius: '50%',
+                background: 'var(--warm-white)', border: '1px solid var(--parchment)',
+                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>
                 <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
                   <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"
@@ -286,7 +263,6 @@ if (showLogin) return <Auth />
               </button>
             )}
           </div>
-
         </div>
       )}
 
@@ -363,11 +339,7 @@ if (showLogin) return <Auth />
           onBack={() => setScreen(recipeBackScreen)}
           onSelectUser={goToFriendProfile}
           onUpdate={async () => {
-            const { data } = await supabase
-              .from('recipes')
-              .select('*')
-              .eq('id', selectedRecipe.id)
-              .single()
+            const { data } = await supabase.from('recipes').select('*').eq('id', selectedRecipe.id).single()
             if (data) setSelectedRecipe(data)
             setScreen('recipe')
             setRecipeBackScreen(recipeBackScreen)
@@ -411,27 +383,27 @@ if (showLogin) return <Auth />
 
       {screen === 'followList' && followListUserId && (
         <FollowList
-            userId={followListUserId}
-            type={followListType}
-            session={session}
-            onBack={() => setScreen(prevScreen)}
-            onSelectUser={goToFriendProfile}
+          userId={followListUserId}
+          type={followListType}
+          session={session}
+          onBack={() => setScreen(prevScreen)}
+          onSelectUser={goToFriendProfile}
         />
       )}
 
       <div style={{ display: screen === 'feed' ? 'block' : 'none', height: '100vh', overflowY: 'auto' }} id="feed-scroll-container">
-      <Feed
-        session={session}
-        onSelectCook={goToSocialRecipe}
-        onSelectUser={goToFriendProfile}
-        onSelectPost={goToPost}
-        onSelectSave={goToFriendRecipeDetail}
-        onGoToSearch={() => setScreen('search')}
-        onGoToCookbook={() => setScreen('cookbook')}
-        savedScrollY={feedScrollY}
-        onScrollChange={setFeedScrollY}
-      />
-    </div>
+        <Feed
+          session={session}
+          onSelectCook={goToSocialRecipe}
+          onSelectUser={goToFriendProfile}
+          onSelectPost={goToPost}
+          onSelectSave={goToFriendRecipeDetail}
+          onGoToSearch={() => setScreen('search')}
+          onGoToCookbook={() => setScreen('cookbook')}
+          savedScrollY={feedScrollY}
+          onScrollChange={setFeedScrollY}
+        />
+      </div>
 
       {screen === 'search' && (
         <Search
@@ -440,7 +412,6 @@ if (showLogin) return <Auth />
           onSelectSave={goToFriendRecipeDetail}
           onSelectCook={goToSocialRecipe}
           onSelectRecipe={(recipe) => {
-            console.log('onSelectRecipe called, recipe:', recipe.title)
             setRecipeBackScreen('search')
             setSelectedRecipe(recipe)
             setScreen('recipe')
@@ -467,27 +438,17 @@ if (showLogin) return <Auth />
       </div>
 
       {screen === 'resetPassword' && (
-        <ResetPassword
-          onComplete={() => { setScreen('feed') }}
-        />
+        <ResetPassword onComplete={() => { setScreen('feed') }} />
       )}
 
       {!hideNav && (
         <div style={{
-          position: 'fixed',
-          bottom: 0, left: 0, right: 0,
-          background: 'var(--warm-white)',
-          borderTop: '1px solid var(--parchment)',
-          display: 'flex',
-          justifyContent: 'space-evenly',
-          alignItems: 'center',
-          padding: '12px 0 20px',
-          zIndex: 100
+          position: 'fixed', bottom: 0, left: 0, right: 0,
+          background: 'var(--warm-white)', borderTop: '1px solid var(--parchment)',
+          display: 'flex', justifyContent: 'space-evenly', alignItems: 'center',
+          padding: '12px 0 20px', zIndex: 100
         }}>
-          <button onClick={() => setScreen('feed')} style={{
-            background: 'none', border: 'none', cursor: 'pointer',
-            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '4px 0', flex: 1
-          }}>
+          <button onClick={() => setScreen('feed')} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '4px 0', flex: 1 }}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
               <rect x="3" y="3" width="8" height="8" rx="2" stroke={screen === 'feed' ? 'var(--clay)' : 'var(--muted)'} strokeWidth="1.8"/>
               <rect x="13" y="3" width="8" height="8" rx="2" stroke={screen === 'feed' ? 'var(--clay)' : 'var(--muted)'} strokeWidth="1.8"/>
@@ -497,10 +458,7 @@ if (showLogin) return <Auth />
             <span style={{ fontSize: '10px', fontWeight: '600', color: screen === 'feed' ? 'var(--clay)' : 'var(--muted)' }}>Feed</span>
           </button>
 
-          <button onClick={() => setScreen('search')} style={{
-            background: 'none', border: 'none', cursor: 'pointer',
-            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '4px 0', flex: 1
-          }}>
+          <button onClick={() => setScreen('search')} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '4px 0', flex: 1 }}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
               <circle cx="11" cy="11" r="7" stroke={screen === 'search' ? 'var(--clay)' : 'var(--muted)'} strokeWidth="1.8"/>
               <path d="M16.5 16.5L21 21" stroke={screen === 'search' ? 'var(--clay)' : 'var(--muted)'} strokeWidth="1.8" strokeLinecap="round"/>
@@ -513,8 +471,7 @@ if (showLogin) return <Auth />
               background: 'var(--clay)', border: 'none', cursor: 'pointer',
               width: '48px', height: '48px', borderRadius: '50%',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              marginBottom: '8px',
-              boxShadow: '0 4px 12px rgba(196, 113, 58, 0.4)'
+              marginBottom: '8px', boxShadow: '0 4px 12px rgba(196, 113, 58, 0.4)'
             }}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
                 <path d="M12 5v14M5 12h14" stroke="white" strokeWidth="2.2" strokeLinecap="round"/>
@@ -522,10 +479,7 @@ if (showLogin) return <Auth />
             </button>
           </div>
 
-          <button onClick={() => setScreen('cookbook')} style={{
-            background: 'none', border: 'none', cursor: 'pointer',
-            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '4px 0', flex: 1
-          }}>
+          <button onClick={() => setScreen('cookbook')} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '4px 0', flex: 1 }}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
               <path d="M4 19V8a2 2 0 012-2h12a2 2 0 012 2v11" stroke={screen === 'cookbook' ? 'var(--clay)' : 'var(--muted)'} strokeWidth="1.8" strokeLinecap="round"/>
               <path d="M4 19h16M9 11h6M9 15h4" stroke={screen === 'cookbook' ? 'var(--clay)' : 'var(--muted)'} strokeWidth="1.8" strokeLinecap="round"/>
@@ -533,10 +487,7 @@ if (showLogin) return <Auth />
             <span style={{ fontSize: '10px', fontWeight: '600', color: screen === 'cookbook' ? 'var(--clay)' : 'var(--muted)' }}>Cookbook</span>
           </button>
 
-          <button onClick={() => setScreen('profile')} style={{
-            background: 'none', border: 'none', cursor: 'pointer',
-            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '4px 0', flex: 1
-          }}>
+          <button onClick={() => setScreen('profile')} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '4px 0', flex: 1 }}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
               <circle cx="12" cy="8" r="4" stroke={screen === 'profile' ? 'var(--clay)' : 'var(--muted)'} strokeWidth="1.8"/>
               <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke={screen === 'profile' ? 'var(--clay)' : 'var(--muted)'} strokeWidth="1.8" strokeLinecap="round"/>
