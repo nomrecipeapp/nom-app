@@ -130,12 +130,14 @@ function ProgressDots({ step }) {
     const user = data?.user
     if (!user) { setAuthError('Something went wrong. Please try again.'); setAuthLoading(false); return }
 
-    const { error: profileError } = await supabase.from('profiles').update({
+    const { error: profileError } = await supabase.from('profiles').upsert({
+      id: user.id,
       full_name: fullName,
       username: username || null,
       email: email,
-    }).eq('id', user.id)
-    if (profileError) console.error('Profile update error:', profileError)
+      onboarding_complete: false
+    })
+    if (profileError) console.error('Profile upsert error:', profileError)
 
     // Mark invite as used
     await supabase
