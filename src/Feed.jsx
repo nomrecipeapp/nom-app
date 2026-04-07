@@ -563,7 +563,8 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
                       fontSize: '12px', fontWeight: '600', color: v.color, marginBottom: '8px'
                     }}>{v.label}</div>
                   )}
-                  <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: '500', color: 'var(--ink)', marginBottom: '6px' }}>{recipe.title}</div>
+                  <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: '500', color: 'var(--ink)', marginBottom: '4px' }}>{recipe.title}</div>
+                  {recipe.source_name && <div style={{ fontSize: '11px', color: 'var(--muted)', marginBottom: '6px' }}>{recipe.source_name}</div>}
                   {item.notes && (
                     <div style={{ fontSize: '13px', color: 'var(--charcoal)', lineHeight: '1.55', fontStyle: 'italic' }}>"{item.notes}"</div>
                   )}
