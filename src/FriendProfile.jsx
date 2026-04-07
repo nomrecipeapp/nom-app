@@ -35,14 +35,27 @@ function RecipeInitial({ title }) {
 }
 
 function RecipeThumbnailSmall({ recipe }) {
-  if (recipe.image_url) {
-    return (
-      <div style={{ width: '36px', height: '36px', borderRadius: 'var(--radius-md)', overflow: 'hidden', flexShrink: 0 }}>
-        <img src={recipe.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-      </div>
-    )
-  }
-  return <RecipeInitial title={recipe.title} />
+  return (
+    <div style={{
+      width: '36px', height: '36px', borderRadius: 'var(--radius-md)',
+      overflow: 'hidden', flexShrink: 0,
+      background: 'linear-gradient(135deg, var(--clay), var(--ember))',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      position: 'relative'
+    }}>
+      {recipe.image_url && (
+        <img
+          src={recipe.image_url}
+          alt=""
+          style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }}
+          onError={e => e.target.style.display = 'none'}
+        />
+      )}
+      <span style={{ fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: '700', color: 'var(--cream)' }}>
+        {(recipe.title || '?')[0].toUpperCase()}
+      </span>
+    </div>
+  )
 }
 
 // Read-only recipe detail for uncooked recipes
@@ -108,7 +121,7 @@ function FriendRecipeDetail({ recipe, session, onBack }) {
     <div style={{ maxWidth: '480px', margin: '0 auto', paddingBottom: '100px' }}>
       {recipe.image_url ? (
         <div style={{ position: 'relative' }}>
-          <img src={recipe.image_url} alt="" style={{ width: '100%', height: '260px', objectFit: 'cover', display: 'block' }} />
+          <img src={recipe.image_url} alt="" style={{ width: '100%', height: '260px', objectFit: 'cover', display: 'block' }} onError={e => { e.target.style.display = 'none' }} />
           <button onClick={onBack} style={{
             position: 'absolute', top: '16px', left: '16px',
             width: '36px', height: '36px', borderRadius: '50%',
@@ -447,7 +460,7 @@ export default function FriendProfile({ userId, session, onBack, onSelectCook, o
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '24px 20px 20px' }}>
           <div style={{ position: 'relative', marginBottom: '12px' }}>
             {profile?.avatar_url ? (
-              <img src={profile.avatar_url} alt="" style={{ width: '72px', height: '72px', borderRadius: '50%', objectFit: 'cover', boxShadow: '0 0 0 3px var(--cream), 0 0 0 5px var(--tan)', display: 'block' }} />
+              <img src={profile.avatar_url} alt="" style={{ width: '72px', height: '72px', borderRadius: '50%', objectFit: 'cover', boxShadow: '0 0 0 3px var(--cream), 0 0 0 5px var(--tan)', display: 'block' }} onError={e => e.target.style.display = 'none'} />
             ) : (
               <div style={{ width: '72px', height: '72px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--clay), var(--ember))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-display)', fontSize: '28px', fontWeight: '700', color: 'var(--cream)', boxShadow: '0 0 0 3px var(--cream), 0 0 0 5px var(--tan)' }}>
                 {(profile?.full_name || profile?.username || '?')[0].toUpperCase()}
@@ -560,14 +573,19 @@ export default function FriendProfile({ userId, session, onBack, onSelectCook, o
                       <div key={cook.id} onClick={() => onSelectCook(cook)} style={{ flexShrink: 0, width: '88px', cursor: 'pointer' }}>
                         <div style={{
                           width: '88px', height: '88px', borderRadius: 'var(--radius-md)',
-                          background: recipe.image_url ? 'var(--parchment)' : 'linear-gradient(135deg, var(--clay), var(--ember))',
+                          background: 'linear-gradient(135deg, var(--clay), var(--ember))',
                           marginBottom: '6px', position: 'relative', overflow: 'hidden',
                           display: 'flex', alignItems: 'center', justifyContent: 'center'
                         }}>
-                          {recipe.image_url
-                            ? <img src={recipe.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                            : <span style={{ fontFamily: 'var(--font-display)', fontSize: '28px', fontWeight: '700', color: 'var(--cream)' }}>{(recipe.title || '?')[0].toUpperCase()}</span>
-                          }
+                          {recipe.image_url && (
+                            <img
+                              src={recipe.image_url}
+                              alt=""
+                              style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }}
+                              onError={e => e.target.style.display = 'none'}
+                            />
+                          )}
+                          <span style={{ fontFamily: 'var(--font-display)', fontSize: '28px', fontWeight: '700', color: 'var(--cream)' }}>{(recipe.title || '?')[0].toUpperCase()}</span>
                           {v && (
                             <div style={{
                               position: 'absolute', bottom: '4px', left: '4px',
