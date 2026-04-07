@@ -151,11 +151,9 @@ export default function Profile({ session, onBack, onSelectRecipe, onSelectCook,
   async function fetchActivityFeed() {
     setActivityLoading(true)
     const { data: cooks } = await supabase
-      .from('cooks')
-      .select('*, recipes(*)')
+      .from('cooks').select('*, recipes(*)')
       .eq('user_id', session.user.id)
-      .order('cooked_at', { ascending: false })
-      .limit(30)
+      .order('cooked_at', { ascending: false }).limit(30)
 
     const [{ data: saves }] = await Promise.all([
       supabase.from('recipes').select('*').eq('user_id', session.user.id)
@@ -163,7 +161,7 @@ export default function Profile({ session, onBack, onSelectRecipe, onSelectCook,
     ])
 
     // Merge cooks and saves into one activity feed sorted by date
-    const cookItems = (cooks || []).filter(c => c.recipes).map(c => ({ ...c, _type: 'cook', _date: c.cooked_at }))
+    const cookItems = (cooks || []).filter(c => c.recipes).map(c => ({ ...c, profiles: profile, _type: 'cook', _date: c.cooked_at }))
     const saveItems = (saves || []).map(r => ({ ...r, _type: 'save', _date: r.created_at }))
     const merged = [...cookItems, ...saveItems].sort((a, b) => new Date(b._date) - new Date(a._date))
     setActivityFeed(merged)
