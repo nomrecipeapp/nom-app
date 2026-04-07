@@ -281,13 +281,15 @@ async function fetchRecentlyViewed() {
                         <div style={{
                           width: '36px', height: '36px', borderRadius: 'var(--radius-sm)',
                           overflow: 'hidden', flexShrink: 0,
-                          background: recipe.image_url ? 'var(--parchment)' : 'linear-gradient(135deg, var(--clay), var(--ember))',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center'
+                          background: 'linear-gradient(135deg, var(--clay), var(--ember))',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          position: 'relative'
                         }}>
                           {recipe.image_url
-                            ? <img src={recipe.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                            : <span style={{ fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: '700', color: 'var(--cream)' }}>{(recipe.title || '?')[0].toUpperCase()}</span>
+                            ? <img src={recipe.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => { e.target.style.display = 'none' }} />
+                            : null
                           }
+                        <span style={{ fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: '700', color: 'var(--cream)', position: 'absolute' }}>{(recipe.title || '?')[0].toUpperCase()}</span>
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{recipe.title}</div>

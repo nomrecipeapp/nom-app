@@ -25,19 +25,30 @@ function RecipeInitial({ title, dashed }) {
 }
 
 function RecipeThumbnailSmall({ recipe, dashed }) {
-  if (recipe.image_url) {
-    return (
-      <div style={{
-        width: '36px', height: '36px',
-        borderRadius: 'var(--radius-md)',
-        overflow: 'hidden', flexShrink: 0,
-        border: dashed ? '1.5px dashed var(--tan)' : 'none'
-      }}>
-        <img src={recipe.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-      </div>
-    )
-  }
-  return <RecipeInitial title={recipe.title} dashed={dashed} />
+  return (
+    <div style={{
+      width: '36px', height: '36px',
+      borderRadius: 'var(--radius-md)',
+      overflow: 'hidden', flexShrink: 0,
+      border: dashed ? '1.5px dashed var(--tan)' : 'none',
+      background: dashed ? 'transparent' : 'linear-gradient(135deg, var(--clay), var(--ember))',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      position: 'relative', flexShrink: 0
+    }}>
+      {recipe.image_url && (
+        <img
+          src={recipe.image_url}
+          alt=""
+          style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }}
+          onError={e => e.target.style.display = 'none'}
+        />
+      )}
+      <span style={{
+        fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: '700',
+        color: dashed ? 'var(--tan)' : 'var(--cream)'
+      }}>{(recipe.title || '?')[0].toUpperCase()}</span>
+    </div>
+  )
 }
 
 export default function Profile({ session, onBack, onSelectRecipe, onViewFollowList, externalEditing, onEditingDone, onViewCookbook }) {
@@ -196,7 +207,7 @@ export default function Profile({ session, onBack, onSelectRecipe, onViewFollowL
   const avatarCircle = (size, fontSize) => (
     <div style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
       {profile.avatar_url ? (
-        <img src={profile.avatar_url} alt="" style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', boxShadow: '0 0 0 3px var(--cream), 0 0 0 5px var(--tan)' }} />
+        <img src={profile.avatar_url} alt="" style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', boxShadow: '0 0 0 3px var(--cream), 0 0 0 5px var(--tan)' }} onError={e => { e.target.style.display = 'none' }} />
       ) : (
         <div style={{
           width: size, height: size, borderRadius: '50%',
@@ -321,11 +332,16 @@ export default function Profile({ session, onBack, onSelectRecipe, onViewFollowL
                 if (!recipe) return null
                 return (
                   <div key={cook.id} onClick={() => onSelectRecipe(recipe)} style={{ flexShrink: 0, width: '88px', cursor: 'pointer' }}>
-                    <div style={{ width: '88px', height: '88px', borderRadius: 'var(--radius-md)', background: recipe.image_url ? 'var(--parchment)' : 'linear-gradient(135deg, var(--clay), var(--ember))', marginBottom: '6px', position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      {recipe.image_url
-                        ? <img src={recipe.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                        : <span style={{ fontFamily: 'var(--font-display)', fontSize: '28px', fontWeight: '700', color: 'var(--cream)' }}>{(recipe.title || '?')[0].toUpperCase()}</span>
-                      }
+                    <div style={{ width: '88px', height: '88px', borderRadius: 'var(--radius-md)', background: 'linear-gradient(135deg, var(--clay), var(--ember))', marginBottom: '6px', position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {recipe.image_url && (
+                        <img
+                          src={recipe.image_url}
+                          alt=""
+                          style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }}
+                          onError={e => e.target.style.display = 'none'}
+                        />
+                      )}
+                      <span style={{ fontFamily: 'var(--font-display)', fontSize: '28px', fontWeight: '700', color: 'var(--cream)' }}>{(recipe.title || '?')[0].toUpperCase()}</span>
                       {v && (
                         <div style={{ position: 'absolute', bottom: '4px', left: '4px', background: v.bg, border: '1px solid ' + v.border, borderRadius: '100px', padding: '2px 6px', fontSize: '8px', fontWeight: '700', color: v.color }}>{v.label}</div>
                       )}
