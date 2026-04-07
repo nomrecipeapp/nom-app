@@ -248,8 +248,14 @@ async function fetchRecentlyViewed() {
                             width: '32px', height: '32px', borderRadius: '50%', flexShrink: 0,
                             background: 'linear-gradient(135deg, var(--clay), var(--ember))',
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            fontFamily: 'var(--font-display)', fontSize: '12px', fontWeight: '700', color: 'var(--cream)'
-                          }}>{(profile.full_name || profile.username || '?')[0].toUpperCase()}</div>
+                            fontFamily: 'var(--font-display)', fontSize: '12px', fontWeight: '700', color: 'var(--cream)',
+                            position: 'relative', overflow: 'hidden'
+                          }}>
+                            {profile.avatar_url && (
+                              <img src={profile.avatar_url} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} onError={e => e.target.style.display = 'none'} />
+                            )}
+                            {(profile.full_name || profile.username || '?')[0].toUpperCase()}
+                          </div>
                           <div>
                             <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--ink)' }}>{profile.full_name || profile.username}</div>
                             {profile.username && profile.full_name && <div style={{ fontSize: '11px', color: 'var(--muted)' }}>@{profile.username}</div>}

@@ -110,7 +110,7 @@ export default function FollowList({ userId, type, session, onBack, onSelectUser
                 borderBottom: '1px solid var(--parchment)',
               }}>
                 {person.avatar_url
-                  ? <img src={person.avatar_url} alt="" style={{ width: '42px', height: '42px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+                  ? <img src={person.avatar_url} alt="" style={{ width: '42px', height: '42px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} onError={e => e.target.style.display = 'none'} />
                   : <div style={{
                       width: '42px', height: '42px', borderRadius: '50%', flexShrink: 0,
                       background: 'linear-gradient(135deg, var(--clay), var(--ember))',

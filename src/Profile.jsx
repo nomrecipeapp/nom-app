@@ -67,12 +67,10 @@ export default function Profile({ session, onBack, onSelectRecipe, onViewFollowL
   const [avatarUploading, setAvatarUploading] = useState(false)
 
   useEffect(() => {
-    // Load header data first — shows profile immediately
+    // Load header data and recipe lists in two parallel batches
+    // Header batch renders immediately, lists fill in behind
     Promise.all([fetchProfile(), fetchStats(), fetchFollowCounts()])
-    // Load recipe lists in background
-    fetchRecentCooks()
-    fetchTopRated()
-    fetchWantToMake()
+    fetchProfileLists()
   }, [])
 
   useEffect(() => {
@@ -108,44 +106,41 @@ export default function Profile({ session, onBack, onSelectRecipe, onViewFollowL
     setFollowers(followersCount || 0)
   }
 
-  async function fetchRecentCooks() {
-    const { data } = await supabase
-      .from('cooks').select('*, recipes(*)').eq('user_id', session.user.id)
-      .order('cooked_at', { ascending: false }).limit(50)
-    if (!data) return
-    const seen = new Set()
-    const deduped = data.filter(c => {
-      if (!c.recipes) return false
-      if (seen.has(c.recipe_id)) return false
-      seen.add(c.recipe_id); return true
-    })
-    setRecentCooks(deduped.slice(0, 5))
-  }
+  async function fetchProfileLists() {
+    // One query for all cooks + recipes, one for want to make — replaces 3 separate queries
+    const [{ data: cooksData }, { data: wantData }] = await Promise.all([
+      supabase.from('cooks').select('*, recipes(*)').eq('user_id', session.user.id)
+        .order('cooked_at', { ascending: false }).limit(100),
+      supabase.from('recipes').select('*').eq('user_id', session.user.id)
+        .eq('status', 'want_to_make').order('created_at', { ascending: false }).limit(5)
+    ])
 
-  async function fetchTopRated() {
-    const { data } = await supabase
-      .from('cooks').select('*, recipes(*)').eq('user_id', session.user.id)
-      .not('flavor', 'is', null).order('cooked_at', { ascending: false }).limit(100)
-    if (!data) return
-    const recipeMap = {}
-    data.forEach(cook => {
-      if (!cook.recipes) return
-      const id = cook.recipe_id
-      if (!recipeMap[id]) recipeMap[id] = { cook, scores: [], recipe: cook.recipes }
-      const scores = [cook.flavor, cook.effort, cook.would_share, cook.true_to_recipe].filter(Boolean)
-      if (scores.length > 0) recipeMap[id].scores.push(...scores)
-    })
-    const ranked = Object.values(recipeMap)
-      .map(entry => ({ ...entry.cook, recipes: entry.recipe, avgScore: entry.scores.length > 0 ? entry.scores.reduce((a, b) => a + b, 0) / entry.scores.length : 0 }))
-      .filter(e => e.avgScore > 0).sort((a, b) => b.avgScore - a.avgScore).slice(0, 5)
-    setTopRated(ranked)
-  }
+    // Recently cooked — deduplicated by recipe
+    if (cooksData) {
+      const seen = new Set()
+      const deduped = cooksData.filter(c => {
+        if (!c.recipes) return false
+        if (seen.has(c.recipe_id)) return false
+        seen.add(c.recipe_id); return true
+      })
+      setRecentCooks(deduped.slice(0, 5))
 
-  async function fetchWantToMake() {
-    const { data } = await supabase
-      .from('recipes').select('*').eq('user_id', session.user.id).eq('status', 'want_to_make')
-      .order('created_at', { ascending: false }).limit(5)
-    if (data) setWantToMake(data)
+      // Top rated — derived from same cooksData
+      const recipeMap = {}
+      cooksData.forEach(cook => {
+        if (!cook.recipes) return
+        const id = cook.recipe_id
+        if (!recipeMap[id]) recipeMap[id] = { cook, scores: [], recipe: cook.recipes }
+        const scores = [cook.flavor, cook.effort, cook.would_share, cook.true_to_recipe].filter(Boolean)
+        if (scores.length > 0) recipeMap[id].scores.push(...scores)
+      })
+      const ranked = Object.values(recipeMap)
+        .map(entry => ({ ...entry.cook, recipes: entry.recipe, avgScore: entry.scores.length > 0 ? entry.scores.reduce((a, b) => a + b, 0) / entry.scores.length : 0 }))
+        .filter(e => e.avgScore > 0).sort((a, b) => b.avgScore - a.avgScore).slice(0, 5)
+      setTopRated(ranked)
+    }
+
+    if (wantData) setWantToMake(wantData)
   }
 
   async function handleAvatarChange(e) {
