@@ -51,7 +51,7 @@ function RecipeThumbnailSmall({ recipe, dashed }) {
   )
 }
 
-export default function Profile({ session, onBack, onSelectRecipe, onViewFollowList, externalEditing, onEditingDone, onViewCookbook }) {
+export default function Profile({ session, onBack, onSelectRecipe, onSelectCook, onSelectSave, onViewFollowList, externalEditing, onEditingDone, onViewCookbook }) {
   const [profile, setProfile] = useState({ full_name: '', username: '', avatar_url: null })
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -62,6 +62,10 @@ export default function Profile({ session, onBack, onSelectRecipe, onViewFollowL
   const [recentCooks, setRecentCooks] = useState([])
   const [topRated, setTopRated] = useState([])
   const [wantToMake, setWantToMake] = useState([])
+  const [activeTab, setActiveTab] = useState('stats')
+  const [activityFeed, setActivityFeed] = useState([])
+  const [activityEngagement, setActivityEngagement] = useState({})
+  const [activityLoading, setActivityLoading] = useState(false)
 
   const avatarInputRef = useRef(null)
   const [avatarUploading, setAvatarUploading] = useState(false)
@@ -71,6 +75,7 @@ export default function Profile({ session, onBack, onSelectRecipe, onViewFollowL
     // Header batch renders immediately, lists fill in behind
     Promise.all([fetchProfile(), fetchStats(), fetchFollowCounts()])
     fetchProfileLists()
+    fetchActivityFeed()
   }, [])
 
   useEffect(() => {
@@ -141,6 +146,64 @@ export default function Profile({ session, onBack, onSelectRecipe, onViewFollowL
     }
 
     if (wantData) setWantToMake(wantData)
+  }
+
+  async function fetchActivityFeed() {
+    setActivityLoading(true)
+    const { data: cooks } = await supabase
+      .from('cooks')
+      .select('*, recipes(*)')
+      .eq('user_id', session.user.id)
+      .order('cooked_at', { ascending: false })
+      .limit(30)
+
+    const [{ data: saves }] = await Promise.all([
+      supabase.from('recipes').select('*').eq('user_id', session.user.id)
+        .eq('status', 'want_to_make').order('created_at', { ascending: false }).limit(30)
+    ])
+
+    // Merge cooks and saves into one activity feed sorted by date
+    const cookItems = (cooks || []).filter(c => c.recipes).map(c => ({ ...c, _type: 'cook', _date: c.cooked_at }))
+    const saveItems = (saves || []).map(r => ({ ...r, _type: 'save', _date: r.created_at }))
+    const merged = [...cookItems, ...saveItems].sort((a, b) => new Date(b._date) - new Date(a._date))
+    setActivityFeed(merged)
+
+    const cookIds = (cooks || []).map(c => c.id)
+    const saveIds = (saves || []).map(r => r.id)
+
+    const queries = []
+    if (cookIds.length > 0) {
+      queries.push(supabase.from('likes').select('target_id').eq('target_type', 'cook').in('target_id', cookIds))
+      queries.push(supabase.from('comments').select('target_id').eq('target_type', 'cook').in('target_id', cookIds))
+    } else {
+      queries.push(Promise.resolve({ data: [] }))
+      queries.push(Promise.resolve({ data: [] }))
+    }
+    if (saveIds.length > 0) {
+      queries.push(supabase.from('likes').select('target_id').eq('target_type', 'save').in('target_id', saveIds))
+      queries.push(supabase.from('comments').select('target_id').eq('target_type', 'save').in('target_id', saveIds))
+    } else {
+      queries.push(Promise.resolve({ data: [] }))
+      queries.push(Promise.resolve({ data: [] }))
+    }
+
+    const [{ data: cookLikes }, { data: cookComments }, { data: saveLikes }, { data: saveComments }] = await Promise.all(queries)
+
+    const eng = {}
+    cookIds.forEach(id => {
+      eng[`cook-${id}`] = {
+        likes: cookLikes?.filter(l => l.target_id === id).length || 0,
+        comments: cookComments?.filter(c => c.target_id === id).length || 0,
+      }
+    })
+    saveIds.forEach(id => {
+      eng[`save-${id}`] = {
+        likes: saveLikes?.filter(l => l.target_id === id).length || 0,
+        comments: saveComments?.filter(c => c.target_id === id).length || 0,
+      }
+    })
+    setActivityEngagement(eng)
+    setActivityLoading(false)
   }
 
   async function handleAvatarChange(e) {
@@ -313,84 +376,203 @@ export default function Profile({ session, onBack, onSelectRecipe, onViewFollowL
             <div style={{ fontSize: '10px', color: 'var(--muted)', marginTop: '2px' }}>Top cuisine</div>
           </div>
         </div>
+        
+        {/* Tabs */}
+        <div style={{
+          display: 'flex', margin: '0 0 20px',
+          borderBottom: '2px solid var(--parchment)',
+        }}>
+          {['stats', 'activity'].map(tab => (
+            <button key={tab} onClick={() => setActiveTab(tab)} style={{
+              flex: 1, padding: '12px',
+              background: 'none', border: 'none',
+              borderBottom: activeTab === tab ? '2px solid var(--clay)' : '2px solid transparent',
+              marginBottom: '-2px',
+              fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '600',
+              color: activeTab === tab ? 'var(--clay)' : 'var(--muted)',
+              cursor: 'pointer', transition: 'all 0.15s'
+            }}>
+              {tab === 'stats' ? 'Stats' : 'Activity'}
+            </button>
+          ))}
+        </div>
 
-        {/* Recently Cooked */}
-        {recentCooks.length > 0 && (
-          <div style={{ marginBottom: '20px' }}>
-            <div style={{ padding: '0 20px', marginBottom: '12px' }}>
-              <div style={sectionLabel}>Recently Cooked</div>
-            </div>
-            <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', padding: '0 20px 4px', scrollbarWidth: 'none' }}>
-              {recentCooks.map(cook => {
-                const v = verdictStyles[cook.verdict]
-                const recipe = cook.recipes
-                if (!recipe) return null
-                return (
-                  <div key={cook.id} onClick={() => onSelectRecipe(recipe)} style={{ flexShrink: 0, width: '88px', cursor: 'pointer' }}>
-                    <div style={{ width: '88px', height: '88px', borderRadius: 'var(--radius-md)', background: 'linear-gradient(135deg, var(--clay), var(--ember))', marginBottom: '6px', position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      {recipe.image_url && (
-                        <img
-                          src={recipe.image_url}
-                          alt=""
-                          style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }}
-                          onError={e => e.target.style.display = 'none'}
-                        />
-                      )}
-                      <span style={{ fontFamily: 'var(--font-display)', fontSize: '28px', fontWeight: '700', color: 'var(--cream)' }}>{(recipe.title || '?')[0].toUpperCase()}</span>
-                      {v && (
-                        <div style={{ position: 'absolute', bottom: '4px', left: '4px', background: v.bg, border: '1px solid ' + v.border, borderRadius: '100px', padding: '2px 6px', fontSize: '8px', fontWeight: '700', color: v.color }}>{v.label}</div>
-                      )}
+        {activeTab === 'stats' && <>
+          {/* Recently Cooked */}
+          {recentCooks.length > 0 && (
+            <div style={{ marginBottom: '20px' }}>
+              <div style={{ padding: '0 20px', marginBottom: '12px' }}>
+                <div style={sectionLabel}>Recently Cooked</div>
+              </div>
+              <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', padding: '0 20px 4px', scrollbarWidth: 'none' }}>
+                {recentCooks.map(cook => {
+                  const v = verdictStyles[cook.verdict]
+                  const recipe = cook.recipes
+                  if (!recipe) return null
+                  return (
+                    <div key={cook.id} onClick={() => onSelectRecipe(recipe)} style={{ flexShrink: 0, width: '88px', cursor: 'pointer' }}>
+                      <div style={{ width: '88px', height: '88px', borderRadius: 'var(--radius-md)', background: 'linear-gradient(135deg, var(--clay), var(--ember))', marginBottom: '6px', position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        {recipe.image_url && (
+                          <img
+                            src={recipe.image_url}
+                            alt=""
+                            style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }}
+                            onError={e => e.target.style.display = 'none'}
+                          />
+                        )}
+                        <span style={{ fontFamily: 'var(--font-display)', fontSize: '28px', fontWeight: '700', color: 'var(--cream)' }}>{(recipe.title || '?')[0].toUpperCase()}</span>
+                        {v && (
+                          <div style={{ position: 'absolute', bottom: '4px', left: '4px', background: v.bg, border: '1px solid ' + v.border, borderRadius: '100px', padding: '2px 6px', fontSize: '8px', fontWeight: '700', color: v.color }}>{v.label}</div>
+                        )}
+                      </div>
+                      <div style={{ fontSize: '11px', color: 'var(--charcoal)', fontWeight: '500', lineHeight: '1.3', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{recipe.title}</div>
                     </div>
-                    <div style={{ fontSize: '11px', color: 'var(--charcoal)', fontWeight: '500', lineHeight: '1.3', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{recipe.title}</div>
-                  </div>
-                )
-              })}
+                  )
+                })}
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        <div style={{ height: '1px', background: 'var(--parchment)', margin: '0 20px 20px' }} />
+          <div style={{ height: '1px', background: 'var(--parchment)', margin: '0 20px 20px' }} />
 
-        {/* Top Rated */}
-        {topRated.length > 0 && (
-          <div style={{ padding: '0 20px', marginBottom: '20px' }}>
-            <div style={sectionLabel}>Top Rated</div>
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              {topRated.map(cook => {
-                const recipe = cook.recipes
-                if (!recipe) return null
-                return (
-                  <div key={cook.id} onClick={() => onSelectRecipe(recipe)} style={{ ...listRow, cursor: 'pointer' }}>
-                    <RecipeThumbnailSmall recipe={recipe} />
+          {/* Top Rated */}
+          {topRated.length > 0 && (
+            <div style={{ padding: '0 20px', marginBottom: '20px' }}>
+              <div style={sectionLabel}>Top Rated</div>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                {topRated.map(cook => {
+                  const recipe = cook.recipes
+                  if (!recipe) return null
+                  return (
+                    <div key={cook.id} onClick={() => onSelectRecipe(recipe)} style={{ ...listRow, cursor: 'pointer' }}>
+                      <RecipeThumbnailSmall recipe={recipe} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: '13px', color: 'var(--ink)', fontWeight: '500', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{recipe.title}</div>
+                        {recipe.source_name && <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '1px' }}>{recipe.source_name}</div>}
+                      </div>
+                      <div style={{ background: 'var(--ink)', borderRadius: '100px', padding: '3px 8px', fontSize: '10px', fontWeight: '700', color: 'var(--cream)', flexShrink: 0 }}>{cook.avgScore.toFixed(1)}</div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          <div style={{ height: '1px', background: 'var(--parchment)', margin: '0 20px 20px' }} />
+
+          {/* Want to Make */}
+          {wantToMake.length > 0 && (
+            <div style={{ padding: '0 20px', marginBottom: '20px' }}>
+              <div style={sectionLabel}>Want to Make</div>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                {wantToMake.map(recipe => (
+                  <div key={recipe.id} onClick={() => onSelectRecipe(recipe)} style={{ ...listRow, cursor: 'pointer' }}>
+                    <RecipeThumbnailSmall recipe={recipe} dashed />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: '13px', color: 'var(--ink)', fontWeight: '500', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{recipe.title}</div>
                       {recipe.source_name && <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '1px' }}>{recipe.source_name}</div>}
                     </div>
-                    <div style={{ background: 'var(--ink)', borderRadius: '100px', padding: '3px 8px', fontSize: '10px', fontWeight: '700', color: 'var(--cream)', flexShrink: 0 }}>{cook.avgScore.toFixed(1)}</div>
                   </div>
-                )
-              })}
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </>}
 
-        <div style={{ height: '1px', background: 'var(--parchment)', margin: '0 20px 20px' }} />
+        {activeTab === 'activity' && (
+          <div style={{ padding: '0 20px' }}>
+            {activityLoading ? (
+              <div style={{ textAlign: 'center', padding: '40px 0', fontSize: '13px', color: 'var(--muted)' }}>Loading...</div>
+            ) : activityFeed.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: '500', color: 'var(--ink)', marginBottom: '8px' }}>No cooks logged yet</div>
+                <div style={{ fontSize: '13px', color: 'var(--muted)' }}>Log a cook from any recipe in your Cookbook.</div>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {activityFeed.map(item => {
+                  if (item._type === 'save') {
+                    return (
+                      <div key={`save-${item.id}`} onClick={() => onSelectRecipe && onSelectRecipe(item)} style={{
+                        background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)',
+                        border: '1px solid var(--parchment)', overflow: 'hidden', cursor: 'pointer',
+                        display: 'flex', flexDirection: 'column'
+                      }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 16px' }}>
+                        <div style={{
+                          width: '48px', height: '48px', borderRadius: 'var(--radius-md)',
+                          background: 'linear-gradient(135deg, var(--clay), var(--ember))',
+                          flexShrink: 0, overflow: 'hidden', position: 'relative',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center'
+                        }}>
+                          {item.image_url && (
+                            <img src={item.image_url} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} onError={e => e.target.style.display = 'none'} />
+                          )}
+                          <span style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: '700', color: 'var(--cream)' }}>{(item.title || '?')[0].toUpperCase()}</span>
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: '11px', color: 'var(--muted)', marginBottom: '2px' }}>Saved a recipe</div>
+                          <div style={{ fontFamily: 'var(--font-display)', fontSize: '15px', fontWeight: '500', color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.title}</div>
+                          {item.source_name && <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '2px' }}>{item.source_name}</div>}
+                        </div>
+                        <div style={{ background: 'var(--parchment)', border: '1.5px dashed var(--tan)', borderRadius: 'var(--radius-pill)', padding: '4px 10px', fontSize: '11px', fontWeight: '600', color: 'var(--muted)', flexShrink: 0 }}>Want to Make</div>
+                      </div>
+                      <div style={{ display: 'flex', gap: '16px', padding: '10px 16px', borderTop: '1px solid var(--parchment)' }}>
+                        {(() => { const eng = activityEngagement[`save-${item.id}`] || { likes: 0, comments: 0 }; return (<>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 21C12 21 3 14.5 3 8.5C3 5.42 5.42 3 8.5 3C10.24 3 11.91 3.81 13 5.08C14.09 3.81 15.76 3 17.5 3C20.58 3 23 5.42 23 8.5C23 14.5 12 21 12 21Z" stroke="var(--muted)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                            <span style={{ fontSize: '12px', color: 'var(--muted)', fontWeight: '600' }}>{eng.likes > 0 ? `${eng.likes} ` : ''}Like</span>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" stroke="var(--muted)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                            <span style={{ fontSize: '12px', color: 'var(--muted)', fontWeight: '600' }}>{eng.comments > 0 ? `${eng.comments} ` : ''}Comment</span>
+                          </div>
+                        </>)})()}
+                      </div>
+                    </div>
+                  )
+                }
 
-        {/* Want to Make */}
-        {wantToMake.length > 0 && (
-          <div style={{ padding: '0 20px', marginBottom: '20px' }}>
-            <div style={sectionLabel}>Want to Make</div>
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              {wantToMake.map(recipe => (
-                <div key={recipe.id} onClick={() => onSelectRecipe(recipe)} style={{ ...listRow, cursor: 'pointer' }}>
-                  <RecipeThumbnailSmall recipe={recipe} dashed />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: '13px', color: 'var(--ink)', fontWeight: '500', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{recipe.title}</div>
-                    {recipe.source_name && <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '1px' }}>{recipe.source_name}</div>}
-                  </div>
-                </div>
-              ))}
-            </div>
+                  const recipe = item.recipes
+                  if (!recipe) return null
+                  const eng = activityEngagement[`cook-${item.id}`] || { likes: 0, comments: 0 }
+                  const verdictMap = {
+                    would_make_again: { bg: '#EEF4E5', border: '#7A8C6E', color: '#4A5E42', label: 'Would Make Again' },
+                    it_was_fine: { bg: '#FBF0E6', border: '#E8A87C', color: '#C4713A', label: 'It Was Fine' },
+                    never_again: { bg: '#F4E8E8', border: '#C47070', color: '#9B4040', label: 'Never Again' },
+                  }
+                  const v = verdictMap[item.verdict]
+                  return (
+                    <div key={`cook-${item.id}`} onClick={() => onSelectCook && onSelectCook(item)} style={{
+                      background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)',
+                      border: '1px solid var(--parchment)', overflow: 'hidden', cursor: 'pointer'
+                    }}>
+                      {(item.photo_urls?.[0] || recipe.image_url) && (
+                        <img src={item.photo_urls?.[0] || recipe.image_url} alt="" style={{ width: '100%', height: '160px', objectFit: 'cover', display: 'block' }} onError={e => e.target.style.display = 'none'} />
+                      )}
+                      <div style={{ padding: '14px 16px' }}>
+                        {v && (
+                          <div style={{ display: 'inline-flex', alignItems: 'center', background: v.bg, border: '1px solid ' + v.border, borderRadius: 'var(--radius-pill)', padding: '4px 10px', fontSize: '11px', fontWeight: '600', color: v.color, marginBottom: '6px' }}>{v.label}</div>
+                        )}
+                        <div style={{ fontFamily: 'var(--font-display)', fontSize: '16px', fontWeight: '500', color: 'var(--ink)', marginBottom: '4px' }}>{recipe.title}</div>
+                        <div style={{ fontSize: '11px', color: 'var(--muted)' }}>{new Date(item.cooked_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
+                        {item.notes && <div style={{ fontSize: '13px', color: 'var(--charcoal)', lineHeight: '1.55', fontStyle: 'italic', marginTop: '8px' }}>"{item.notes}"</div>}
+                      </div>
+                      <div style={{ display: 'flex', gap: '16px', padding: '10px 16px', borderTop: '1px solid var(--parchment)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 21C12 21 3 14.5 3 8.5C3 5.42 5.42 3 8.5 3C10.24 3 11.91 3.81 13 5.08C14.09 3.81 15.76 3 17.5 3C20.58 3 23 5.42 23 8.5C23 14.5 12 21 12 21Z" stroke="var(--muted)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                          <span style={{ fontSize: '12px', color: 'var(--muted)', fontWeight: '600' }}>{eng.likes > 0 ? `${eng.likes} ` : ''}Like</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" stroke="var(--muted)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                          <span style={{ fontSize: '12px', color: 'var(--muted)', fontWeight: '600' }}>{eng.comments > 0 ? `${eng.comments} ` : ''}Comment</span>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
         )}
 

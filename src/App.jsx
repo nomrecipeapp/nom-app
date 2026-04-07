@@ -325,6 +325,8 @@ export default function App() {
           session={session}
           onBack={() => setScreen(prevScreen)}
           onSelectRecipe={(recipe) => { setRecipeBackScreen('profile'); setSelectedRecipe(recipe); setScreen('recipe') }}
+          onSelectCook={goToSocialRecipe}
+          onSelectSave={goToFriendRecipeDetail}
           onViewFollowList={(type) => goToFollowList(session.user.id, type)}
           externalEditing={profileEditing}
           onEditingDone={() => setProfileEditing(false)}
@@ -377,6 +379,7 @@ export default function App() {
           session={session}
           onBack={() => setScreen(prevScreen)}
           onSelectCook={goToSocialRecipe}
+          onSelectSave={goToFriendRecipeDetail}
           onViewFollowList={(userId, type) => goToFollowList(userId, type)}
         />
       )}

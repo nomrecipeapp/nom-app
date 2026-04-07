@@ -225,7 +225,7 @@ function FriendRecipeDetail({ recipe, session, onBack }) {
   )
 }
 
-export default function FriendProfile({ userId, session, onBack, onSelectCook, onViewFollowList }) {
+export default function FriendProfile({ userId, session, onBack, onSelectCook, onSelectSave, onViewFollowList }) {
   const [profile, setProfile] = useState(null)
   const [cooks, setCooks] = useState([])
   const [allRecipes, setAllRecipes] = useState([])
@@ -241,6 +241,9 @@ export default function FriendProfile({ userId, session, onBack, onSelectCook, o
   const [cookbookSort, setCookbookSort] = useState('newest')
   const [cookbookSearch, setCookbookSearch] = useState('')
   const [followCounts, setFollowCounts] = useState({ following: 0, followers: 0 })
+  const [friendActivity, setFriendActivity] = useState([])
+  const [friendEngagement, setFriendEngagement] = useState({})
+  const [friendActivityLoading, setFriendActivityLoading] = useState(false)
 
   useEffect(() => {
     setFollowCounts({ following: 0, followers: 0 })
@@ -270,6 +273,7 @@ export default function FriendProfile({ userId, session, onBack, onSelectCook, o
       fetchStats()
       fetchWantToMake()
       fetchAllRecipes()
+      fetchFriendActivity()
     }
   }, [followStatus])
 
@@ -359,6 +363,61 @@ export default function FriendProfile({ userId, session, onBack, onSelectCook, o
     if (data) setWantToMake(data)
   }
 
+  async function fetchFriendActivity() {
+    setFriendActivityLoading(true)
+    const { data: cooks } = await supabase
+      .from('cooks')
+      .select('*, recipes(*)')
+      .eq('user_id', userId)
+      .order('cooked_at', { ascending: false })
+      .limit(30)
+
+    const saves = await supabase.from('recipes').select('*').eq('user_id', userId)
+      .eq('status', 'want_to_make').order('created_at', { ascending: false }).limit(30)
+
+    const cookItems = (cooks || []).filter(c => c.recipes).map(c => ({ ...c, _type: 'cook', _date: c.cooked_at }))
+    const saveItems = (saves.data || []).map(r => ({ ...r, _type: 'save', _date: r.created_at }))
+    const merged = [...cookItems, ...saveItems].sort((a, b) => new Date(b._date) - new Date(a._date))
+    setFriendActivity(merged)
+
+    const cookIds = (cooks || []).map(c => c.id)
+    const saveIds = (saves.data || []).map(r => r.id)
+
+    const queries = []
+    if (cookIds.length > 0) {
+      queries.push(supabase.from('likes').select('target_id').eq('target_type', 'cook').in('target_id', cookIds))
+      queries.push(supabase.from('comments').select('target_id').eq('target_type', 'cook').in('target_id', cookIds))
+    } else {
+      queries.push(Promise.resolve({ data: [] }))
+      queries.push(Promise.resolve({ data: [] }))
+    }
+    if (saveIds.length > 0) {
+      queries.push(supabase.from('likes').select('target_id').eq('target_type', 'save').in('target_id', saveIds))
+      queries.push(supabase.from('comments').select('target_id').eq('target_type', 'save').in('target_id', saveIds))
+    } else {
+      queries.push(Promise.resolve({ data: [] }))
+      queries.push(Promise.resolve({ data: [] }))
+    }
+
+    const [{ data: cookLikes }, { data: cookComments }, { data: saveLikes }, { data: saveComments }] = await Promise.all(queries)
+
+    const eng = {}
+    cookIds.forEach(id => {
+      eng[`cook-${id}`] = {
+        likes: cookLikes?.filter(l => l.target_id === id).length || 0,
+        comments: cookComments?.filter(c => c.target_id === id).length || 0,
+      }
+    })
+    saveIds.forEach(id => {
+      eng[`save-${id}`] = {
+        likes: saveLikes?.filter(l => l.target_id === id).length || 0,
+        comments: saveComments?.filter(c => c.target_id === id).length || 0,
+      }
+    })
+    setFriendEngagement(eng)
+    setFriendActivityLoading(false)
+  }
+
   async function fetchFollowStatus() {
     const { data } = await supabase
       .from('follows')
@@ -399,12 +458,11 @@ export default function FriendProfile({ userId, session, onBack, onSelectCook, o
   }
 
   function handleRecipeTap(recipe) {
-    // Find most recent cook for this recipe
     const cook = cooks.find(c => c.recipe_id === recipe.id)
     if (cook) {
       onSelectCook(cook)
     } else {
-      setSelectedRecipe(recipe)
+      onSelectSave && onSelectSave(recipe)
     }
   }
 
@@ -539,17 +597,17 @@ export default function FriendProfile({ userId, session, onBack, onSelectCook, o
             borderRadius: 'var(--radius-md)',
             overflow: 'hidden'
           }}>
-            {['stats', 'cookbook'].map(tab => (
+            {['stats', 'cookbook', 'activity'].map((tab, i) => (
               <button key={tab} onClick={() => setActiveTab(tab)} style={{
                 flex: 1, padding: '10px',
                 background: activeTab === tab ? 'var(--clay)' : 'var(--warm-white)',
                 color: activeTab === tab ? 'var(--cream)' : 'var(--muted)',
                 border: 'none',
-                borderRight: tab === 'stats' ? '1px solid var(--parchment)' : 'none',
+                borderRight: i < 2 ? '1px solid var(--parchment)' : 'none',
                 fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '600',
                 cursor: 'pointer', transition: 'all 0.15s'
               }}>
-                {tab === 'stats' ? 'Stats' : 'Cookbook'}
+                {tab === 'stats' ? 'Stats' : tab === 'cookbook' ? 'Cookbook' : 'Activity'}
               </button>
             ))}
           </div>
@@ -763,6 +821,104 @@ export default function FriendProfile({ userId, session, onBack, onSelectCook, o
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Activity Tab */}
+        {followStatus === 'approved' && activeTab === 'activity' && (
+          <div style={{ padding: '0 20px' }}>
+            {friendActivityLoading ? (
+              <div style={{ textAlign: 'center', padding: '40px 0', fontSize: '13px', color: 'var(--muted)' }}>Loading...</div>
+            ) : friendActivity.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: '500', color: 'var(--ink)', marginBottom: '8px' }}>No cooks logged yet</div>
+                <div style={{ fontSize: '13px', color: 'var(--muted)' }}>Nothing here yet.</div>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {friendActivity.map(item => {
+                  if (item._type === 'save') {
+                    return (
+                      <div key={`save-${item.id}`} onClick={() => onSelectSave && onSelectSave(item)} style={{
+                        background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)',
+                        border: '1px solid var(--parchment)', overflow: 'hidden', cursor: 'pointer',
+                        display: 'flex', flexDirection: 'column'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 16px' }}>
+                          <div style={{
+                            width: '48px', height: '48px', borderRadius: 'var(--radius-md)',
+                            background: 'linear-gradient(135deg, var(--clay), var(--ember))',
+                            flexShrink: 0, overflow: 'hidden', position: 'relative',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center'
+                          }}>
+                            {item.image_url && (
+                              <img src={item.image_url} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} onError={e => e.target.style.display = 'none'} />
+                            )}
+                            <span style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: '700', color: 'var(--cream)' }}>{(item.title || '?')[0].toUpperCase()}</span>
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: '11px', color: 'var(--muted)', marginBottom: '2px' }}>Saved a recipe</div>
+                            <div style={{ fontFamily: 'var(--font-display)', fontSize: '15px', fontWeight: '500', color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.title}</div>
+                            {item.source_name && <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '2px' }}>{item.source_name}</div>}
+                          </div>
+                          <div style={{ background: 'var(--parchment)', border: '1.5px dashed var(--tan)', borderRadius: 'var(--radius-pill)', padding: '4px 10px', fontSize: '11px', fontWeight: '600', color: 'var(--muted)', flexShrink: 0 }}>Want to Make</div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '16px', padding: '10px 16px', borderTop: '1px solid var(--parchment)' }}>
+                          {(() => { const eng = friendEngagement[`save-${item.id}`] || { likes: 0, comments: 0 }; return (<>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 21C12 21 3 14.5 3 8.5C3 5.42 5.42 3 8.5 3C10.24 3 11.91 3.81 13 5.08C14.09 3.81 15.76 3 17.5 3C20.58 3 23 5.42 23 8.5C23 14.5 12 21 12 21Z" stroke="var(--muted)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                              <span style={{ fontSize: '12px', color: 'var(--muted)', fontWeight: '600' }}>{eng.likes > 0 ? `${eng.likes} ` : ''}Like</span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" stroke="var(--muted)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                              <span style={{ fontSize: '12px', color: 'var(--muted)', fontWeight: '600' }}>{eng.comments > 0 ? `${eng.comments} ` : ''}Comment</span>
+                            </div>
+                          </>)})()}
+                        </div>
+                      </div>
+                    )
+                  }
+
+                  const recipe = item.recipes
+                  if (!recipe) return null
+                  const eng = friendEngagement[`cook-${item.id}`] || { likes: 0, comments: 0 }
+                  const verdictMap = {
+                    would_make_again: { bg: '#EEF4E5', border: '#7A8C6E', color: '#4A5E42', label: 'Would Make Again' },
+                    it_was_fine: { bg: '#FBF0E6', border: '#E8A87C', color: '#C4713A', label: 'It Was Fine' },
+                    never_again: { bg: '#F4E8E8', border: '#C47070', color: '#9B4040', label: 'Never Again' },
+                  }
+                  const v = verdictMap[item.verdict]
+                  return (
+                    <div key={`cook-${item.id}`} onClick={() => onSelectCook(item)} style={{
+                      background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)',
+                      border: '1px solid var(--parchment)', overflow: 'hidden', cursor: 'pointer'
+                    }}>
+                      {(item.photo_urls?.[0] || recipe.image_url) && (
+                        <img src={item.photo_urls?.[0] || recipe.image_url} alt="" style={{ width: '100%', height: '160px', objectFit: 'cover', display: 'block' }} onError={e => e.target.style.display = 'none'} />
+                      )}
+                      <div style={{ padding: '14px 16px' }}>
+                        {v && (
+                          <div style={{ display: 'inline-flex', alignItems: 'center', background: v.bg, border: '1px solid ' + v.border, borderRadius: 'var(--radius-pill)', padding: '4px 10px', fontSize: '11px', fontWeight: '600', color: v.color, marginBottom: '6px' }}>{v.label}</div>
+                        )}
+                        <div style={{ fontFamily: 'var(--font-display)', fontSize: '16px', fontWeight: '500', color: 'var(--ink)', marginBottom: '4px' }}>{recipe.title}</div>
+                        <div style={{ fontSize: '11px', color: 'var(--muted)' }}>{new Date(item.cooked_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
+                        {item.notes && <div style={{ fontSize: '13px', color: 'var(--charcoal)', lineHeight: '1.55', fontStyle: 'italic', marginTop: '8px' }}>"{item.notes}"</div>}
+                      </div>
+                      <div style={{ display: 'flex', gap: '16px', padding: '10px 16px', borderTop: '1px solid var(--parchment)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 21C12 21 3 14.5 3 8.5C3 5.42 5.42 3 8.5 3C10.24 3 11.91 3.81 13 5.08C14.09 3.81 15.76 3 17.5 3C20.58 3 23 5.42 23 8.5C23 14.5 12 21 12 21Z" stroke="var(--muted)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                          <span style={{ fontSize: '12px', color: 'var(--muted)', fontWeight: '600' }}>{eng.likes > 0 ? `${eng.likes} ` : ''}Like</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" stroke="var(--muted)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                          <span style={{ fontSize: '12px', color: 'var(--muted)', fontWeight: '600' }}>{eng.comments > 0 ? `${eng.comments} ` : ''}Comment</span>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             )}
           </div>
