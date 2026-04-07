@@ -375,7 +375,7 @@ export default function FriendProfile({ userId, session, onBack, onSelectCook, o
     const saves = await supabase.from('recipes').select('*').eq('user_id', userId)
       .eq('status', 'want_to_make').order('created_at', { ascending: false }).limit(30)
 
-    const cookItems = (cooks || []).filter(c => c.recipes).map(c => ({ ...c, _type: 'cook', _date: c.cooked_at }))
+    const cookItems = (cooks || []).filter(c => c.recipes).map(c => ({ ...c, profiles: profile, _type: 'cook', _date: c.cooked_at }))
     const saveItems = (saves.data || []).map(r => ({ ...r, _type: 'save', _date: r.created_at }))
     const merged = [...cookItems, ...saveItems].sort((a, b) => new Date(b._date) - new Date(a._date))
     setFriendActivity(merged)
