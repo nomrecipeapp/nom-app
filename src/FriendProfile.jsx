@@ -856,24 +856,40 @@ export default function FriendProfile({ userId, session, onBack, onSelectCook, o
                   <div key={recipe.id} onClick={() => handleRecipeTap(recipe)} style={{
                     background: 'var(--warm-white)', borderRadius: 'var(--radius-md)',
                     border: '1px solid var(--parchment)', padding: '16px 18px',
-                    cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '14px'
+                    cursor: 'pointer'
                   }}>
-                    {recipe.image_url && (
-                      <div style={{ width: '52px', height: '52px', borderRadius: 'var(--radius-sm)', background: 'var(--parchment)', flexShrink: 0, overflow: 'hidden' }}>
-                        <img src={recipe.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                          onError={e => e.target.parentElement.style.display = 'none'} />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                      {recipe.image_url && (
+                        <div style={{ width: '52px', height: '52px', borderRadius: 'var(--radius-sm)', background: 'var(--parchment)', flexShrink: 0, overflow: 'hidden' }}>
+                          <img src={recipe.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                            onError={e => e.target.parentElement.style.display = 'none'} />
+                        </div>
+                      )}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontFamily: 'var(--font-display)', fontSize: '16px', fontWeight: '500', color: 'var(--ink)', marginBottom: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{recipe.title}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          {recipe.source_name && <span style={{ fontSize: '11px', color: 'var(--muted)' }}>{recipe.source_name}</span>}
+                          {recipe.cook_time && <span style={{ fontSize: '11px', color: 'var(--muted)' }}>· {recipe.cook_time}</span>}
+                        </div>
+                      </div>
+                      <div style={{ ...verdictStyle[recipe.status], padding: '4px 10px', borderRadius: 'var(--radius-pill)', fontSize: '11px', fontWeight: '600', flexShrink: 0 }}>
+                        {statusLabel[recipe.status]}
+                      </div>
+                    </div>
+                    {friendCircleMap[recipe.id] && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '10px', paddingTop: '10px', borderTop: '1px solid var(--parchment)' }}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                          <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" stroke="var(--clay)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          <circle cx="9" cy="7" r="4" stroke="var(--clay)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke="var(--clay)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                        <span style={{ fontSize: '11px', color: 'var(--muted)' }}>
+                          <span style={{ fontWeight: '600', color: 'var(--clay)' }}>
+                            {friendCircleMap[recipe.id]} {friendCircleMap[recipe.id] === 1 ? 'friend' : 'friends'}
+                          </span> also have this
+                        </span>
                       </div>
                     )}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontFamily: 'var(--font-display)', fontSize: '16px', fontWeight: '500', color: 'var(--ink)', marginBottom: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{recipe.title}</div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        {recipe.source_name && <span style={{ fontSize: '11px', color: 'var(--muted)' }}>{recipe.source_name}</span>}
-                        {recipe.cook_time && <span style={{ fontSize: '11px', color: 'var(--muted)' }}>· {recipe.cook_time}</span>}
-                      </div>
-                    </div>
-                    <div style={{ ...verdictStyle[recipe.status], padding: '4px 10px', borderRadius: 'var(--radius-pill)', fontSize: '11px', fontWeight: '600', flexShrink: 0 }}>
-                      {statusLabel[recipe.status]}
-                    </div>
                   </div>
                 ))}
               </div>
