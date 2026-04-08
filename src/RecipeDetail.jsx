@@ -63,6 +63,14 @@ export default function RecipeDetail({ recipe: initialRecipe, session, onBack, o
   // Cook history menu state
   const [openCookMenuId, setOpenCookMenuId] = useState(null)
   const [deletingCookId, setDeletingCookId] = useState(null)
+  const [editingCookId, setEditingCookId] = useState(null)
+  const [editCookForm, setEditCookForm] = useState(null)
+  const editCookPhotoInputRef = useRef(null)
+  const [editCookPhotoFiles, setEditCookPhotoFiles] = useState([])
+  const [editCookPhotoPreviews, setEditCookPhotoPreviews] = useState([])
+  const [editCookUploading, setEditCookUploading] = useState(false)
+  const [editCookSaving, setEditCookSaving] = useState(false)
+  const [editCookError, setEditCookError] = useState(null)
 
   useEffect(() => {
     fetchUserTags()
@@ -254,6 +262,69 @@ export default function RecipeDetail({ recipe: initialRecipe, session, onBack, o
     setDeletingCookId(null)
   }
 
+  function startEditCook(cook) {
+  setEditingCookId(cook.id)
+  setEditCookForm({
+    verdict: cook.verdict || null,
+    flavor: cook.flavor || 0,
+    effort: cook.effort || 0,
+    would_share: cook.would_share || 0,
+    true_to_recipe: cook.true_to_recipe || 0,
+    notes: cook.notes || '',
+    existingPhotos: cook.photo_urls || [],
+  })
+  setEditCookPhotoFiles([])
+  setEditCookPhotoPreviews([])
+  setEditCookError(null)
+  setOpenCookMenuId(null)
+}
+
+async function saveEditCook() {
+  if (!editCookForm.verdict) { setEditCookError('Please select a verdict.'); return }
+  setEditCookSaving(true)
+  setEditCookError(null)
+
+  let newPhotoUrls = []
+  if (editCookPhotoFiles.length > 0) {
+    setEditCookUploading(true)
+    try {
+      newPhotoUrls = await Promise.all(
+        editCookPhotoFiles.map(f => uploadFileToStorage(f, 'cook-photos'))
+      )
+    } catch (err) {
+      setEditCookError('Photo upload failed. Try again.')
+      setEditCookUploading(false)
+      setEditCookSaving(false)
+      return
+    }
+    setEditCookUploading(false)
+  }
+
+  const allPhotos = [...editCookForm.existingPhotos, ...newPhotoUrls]
+  const newStatus = editCookForm.verdict === 'never_again' ? 'never_again' : 'cooked'
+
+  await supabase.from('cooks').update({
+    verdict: editCookForm.verdict,
+    flavor: editCookForm.flavor || null,
+    effort: editCookForm.effort || null,
+    would_share: editCookForm.would_share || null,
+    true_to_recipe: editCookForm.true_to_recipe || null,
+    notes: editCookForm.notes || null,
+    photo_urls: allPhotos.length > 0 ? allPhotos : null,
+  }).eq('id', editingCookId)
+
+    await supabase.from('recipes')
+      .update({ status: newStatus }).eq('id', recipe.id)
+
+    setEditingCookId(null)
+    setEditCookForm(null)
+    setEditCookPhotoFiles([])
+    setEditCookPhotoPreviews([])
+    setEditCookSaving(false)
+    await fetchCooks()
+    onUpdate()
+  }
+
   // ---- LOG COOK ----
 
   async function logCook() {
@@ -362,6 +433,104 @@ export default function RecipeDetail({ recipe: initialRecipe, session, onBack, o
   const fieldLabel = {
     display: 'block', fontSize: '12px', fontWeight: '600',
     color: 'var(--charcoal)', marginBottom: '6px', letterSpacing: '0.04em'
+  }
+
+// ---- EDIT COOK MODE ----
+  if (editingCookId && editCookForm) {
+    return (
+      <div style={{ minHeight: '100vh', background: 'var(--cream)', paddingBottom: '40px' }}>
+        <div style={{ maxWidth: '480px', margin: '0 auto' }}>
+          <div style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--parchment)', marginTop: '54px' }}>
+            <button onClick={() => { setEditingCookId(null); setEditCookForm(null) }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '600', color: 'var(--muted)', padding: 0 }}>Cancel</button>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: '17px', fontWeight: '700', color: 'var(--ink)' }}>Edit Cook</div>
+            <div style={{ width: '48px' }} />
+          </div>
+
+          <div style={{ padding: '24px 20px 120px 20px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+
+            {/* Photos */}
+            <div>
+              <div style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '12px' }}>Photos</div>
+              <input ref={editCookPhotoInputRef} type="file" accept="image/*" multiple style={{ display: 'none' }}
+                onChange={e => {
+                  const files = Array.from(e.target.files || [])
+                  if (files.length === 0) return
+                  setEditCookPhotoFiles(prev => [...prev, ...files])
+                  setEditCookPhotoPreviews(prev => [...prev, ...files.map(f => URL.createObjectURL(f))])
+                }}
+              />
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                {editCookForm.existingPhotos.map((url, i) => (
+                  <div key={`existing-${i}`} style={{ position: 'relative', width: '80px', height: '80px', borderRadius: 'var(--radius-md)', overflow: 'hidden', flexShrink: 0 }}>
+                    <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <button onClick={() => setEditCookForm(f => ({ ...f, existingPhotos: f.existingPhotos.filter((_, j) => j !== i) }))}
+                      style={{ position: 'absolute', top: '4px', right: '4px', width: '20px', height: '20px', borderRadius: '50%', background: 'rgba(0,0,0,0.55)', border: 'none', color: 'white', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>×</button>
+                  </div>
+                ))}
+                {editCookPhotoPreviews.map((src, i) => (
+                  <div key={`new-${i}`} style={{ position: 'relative', width: '80px', height: '80px', borderRadius: 'var(--radius-md)', overflow: 'hidden', flexShrink: 0 }}>
+                    <img src={src} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <button onClick={() => {
+                      setEditCookPhotoFiles(prev => prev.filter((_, j) => j !== i))
+                      setEditCookPhotoPreviews(prev => prev.filter((_, j) => j !== i))
+                    }} style={{ position: 'absolute', top: '4px', right: '4px', width: '20px', height: '20px', borderRadius: '50%', background: 'rgba(0,0,0,0.55)', border: 'none', color: 'white', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>×</button>
+                  </div>
+                ))}
+                <button onClick={() => editCookPhotoInputRef.current?.click()} style={{ width: '80px', height: '80px', borderRadius: 'var(--radius-md)', border: '1.5px dashed var(--tan)', background: 'var(--parchment)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round"/></svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Verdict */}
+            <div>
+              <div style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '12px' }}>The Verdict</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {verdictOptions.map(v => (
+                  <button key={v.value} onClick={() => setEditCookForm(f => ({ ...f, verdict: v.value }))} style={{ padding: '14px 16px', borderRadius: 'var(--radius-md)', border: `2px solid ${editCookForm.verdict === v.value ? v.border : 'var(--parchment)'}`, background: editCookForm.verdict === v.value ? v.bg : 'var(--cream)', cursor: 'pointer', textAlign: 'left', transition: 'all 0.15s' }}>
+                    <div style={{ fontFamily: 'var(--font-display)', fontSize: '15px', fontWeight: '500', color: editCookForm.verdict === v.value ? v.color : 'var(--ink)' }}>{v.label}</div>
+                    <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '2px' }}>{v.sub}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Nuance scores */}
+            <div>
+              <div style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '12px' }}>Nuance Scores</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                {nuanceCategories.map(cat => (
+                  <div key={cat.key} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <span style={{ fontSize: '13px', fontWeight: '500', color: 'var(--charcoal)', width: '130px', flexShrink: 0 }}>{cat.label}</span>
+                    <div style={{ display: 'flex', gap: '6px', flex: 1 }}>
+                      {[1,2,3,4,5].map(n => (
+                        <button key={n} onClick={() => setEditCookForm(f => ({ ...f, [cat.key]: n }))} style={{ width: '32px', height: '32px', borderRadius: '50%', border: `2px solid ${editCookForm[cat.key] >= n ? 'var(--clay)' : 'var(--tan)'}`, background: editCookForm[cat.key] >= n ? 'var(--clay)' : 'transparent', color: editCookForm[cat.key] >= n ? 'var(--cream)' : 'var(--muted)', fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: '600', cursor: 'pointer', transition: 'all 0.15s' }}>{n}</button>
+                      ))}
+                    </div>
+                    <span style={{ fontFamily: 'var(--font-display)', fontSize: '15px', fontWeight: '700', color: 'var(--clay)', width: '28px', textAlign: 'right' }}>{editCookForm[cat.key] > 0 ? `${editCookForm[cat.key]}/5` : '—'}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Notes */}
+            <div>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--charcoal)', marginBottom: '6px' }}>Cook Notes</label>
+              <textarea value={editCookForm.notes} onChange={e => setEditCookForm(f => ({ ...f, notes: e.target.value }))} rows={3} placeholder="What did you tweak? Would you change anything?" style={{ width: '100%', padding: '10px 14px', border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-md)', background: 'var(--cream)', fontFamily: 'var(--font-body)', fontSize: '14px', color: 'var(--ink)', outline: 'none', resize: 'vertical', boxSizing: 'border-box' }} />
+            </div>
+
+            {editCookError && <div style={{ background: '#FDE8E8', border: '1px solid #F5C0C0', borderRadius: 'var(--radius-md)', padding: '10px 14px', fontSize: '13px', color: '#B85252' }}>{editCookError}</div>}
+
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button onClick={saveEditCook} disabled={editCookSaving} style={{ flex: 1, padding: '13px', background: editCookSaving ? 'var(--tan)' : 'var(--clay)', color: 'var(--cream)', border: 'none', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '600', cursor: editCookSaving ? 'not-allowed' : 'pointer' }}>{editCookUploading ? 'Uploading photos...' : editCookSaving ? 'Saving...' : 'Save Changes'}</button>
+              <button onClick={() => { setEditingCookId(null); setEditCookForm(null) }} style={{ padding: '13px 20px', background: 'transparent', color: 'var(--muted)', border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>Cancel</button>
+            </div>
+
+          </div>
+        </div>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    )
   }
 
   // ---- EDIT MODE ----
@@ -744,6 +913,12 @@ export default function RecipeDetail({ recipe: initialRecipe, session, onBack, o
                             style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', fontSize: '16px', padding: '0 2px', lineHeight: 1, fontWeight: '700' }}>⋯</button>
                           {openCookMenuId === cook.id && (
                             <div onClick={e => e.stopPropagation()} style={{ position: 'absolute', top: '100%', right: 0, background: 'var(--warm-white)', border: '1px solid var(--parchment)', borderRadius: 'var(--radius-md)', marginTop: '4px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 50, minWidth: '120px', overflow: 'hidden' }}>
+                              <button
+                                onClick={() => startEditCook(cook)}
+                                style={{ width: '100%', padding: '10px 16px', background: 'none', border: 'none', textAlign: 'left', fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '500', color: 'var(--ink)', cursor: 'pointer', borderBottom: '1px solid var(--parchment)' }}
+                                onMouseEnter={e => e.currentTarget.style.background = 'var(--parchment)'}
+                                onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                              >Edit</button>
                               <button
                                 onClick={() => deleteCook(cook.id)}
                                 style={{ width: '100%', padding: '10px 16px', background: 'none', border: 'none', textAlign: 'left', fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '500', color: '#B85252', cursor: 'pointer' }}
