@@ -405,12 +405,16 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
           {stripPhotos.map((photo, i) => (
             <div key={i} onClick={() => openOverlay(i)} style={{ position: 'relative', flexShrink: 0, width: '85vw', maxWidth: '400px', height: '240px', borderRadius: 'var(--radius-lg)', overflow: 'hidden', marginRight: '10px', cursor: 'pointer', background: 'var(--parchment)' }}>
               <img src={photo.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} onError={e => e.target.style.display = 'none'} />
-              {!photo.isStock && (
-                <div style={{ position: 'absolute', bottom: '10px', left: '10px', width: '28px', height: '28px', borderRadius: '50%', border: '2px solid white', overflow: 'hidden', background: 'linear-gradient(135deg, var(--clay), var(--ember))', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  {profile?.avatar_url
-                    ? <img src={profile.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => e.target.style.display = 'none'} />
-                    : <span style={{ fontFamily: 'var(--font-display)', fontSize: '10px', fontWeight: '700', color: 'var(--cream)' }}>{(profile?.full_name || profile?.username || '?')[0].toUpperCase()}</span>
-                  }
+              {!photo.isStock && profile && (
+                <div onClick={e => { e.stopPropagation(); onSelectUser && onSelectUser(cook.user_id) }}
+                  style={{ position: 'absolute', bottom: '10px', left: '10px', display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(0,0,0,0.45)', borderRadius: 'var(--radius-pill)', padding: '4px 10px 4px 4px', cursor: 'pointer' }}>
+                  <div style={{ width: '22px', height: '22px', borderRadius: '50%', border: '1.5px solid white', overflow: 'hidden', background: 'linear-gradient(135deg, var(--clay), var(--ember))', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    {profile?.avatar_url
+                      ? <img src={profile.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => e.target.style.display = 'none'} />
+                      : <span style={{ fontFamily: 'var(--font-display)', fontSize: '9px', fontWeight: '700', color: 'var(--cream)' }}>{(profile?.full_name || profile?.username || '?')[0].toUpperCase()}</span>
+                    }
+                  </div>
+                  <span style={{ fontSize: '11px', fontWeight: '600', color: 'white' }}>Made by {profile?.full_name || profile?.username}</span>
                 </div>
               )}
               {photo.isStock && (
