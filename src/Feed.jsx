@@ -605,11 +605,47 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
                     </div>
                   </div>
                 </div>
-                {(item.photo_urls?.[0] || recipe.image_url) && (
-                  <img src={item.photo_urls?.[0] || recipe.image_url} alt=""
-                    style={{ width: '100%', height: '200px', objectFit: 'cover', display: 'block' }}
-                    onError={e => e.target.style.display = 'none'} />
-                )}
+                {(() => {
+                  const cookPhotos = (item.photo_urls || []).map(url => ({ url, isStock: false }))
+                  const stockPhoto = recipe.image_url ? [{ url: recipe.image_url, isStock: true }] : []
+                  const stripPhotos = cookPhotos.length > 0 ? [...cookPhotos, ...stockPhoto] : stockPhoto
+                  if (stripPhotos.length === 0) return null
+                  if (stripPhotos.length === 1) {
+                    return (
+                      <div style={{ position: 'relative' }}>
+                        <img src={stripPhotos[0].url} alt="" style={{ width: '100%', height: '200px', objectFit: 'cover', display: 'block' }} onError={e => e.target.style.display = 'none'} />
+                        {!stripPhotos[0].isStock && profile?.avatar_url && (
+                          <div style={{ position: 'absolute', bottom: '10px', left: '10px', width: '28px', height: '28px', borderRadius: '50%', border: '2px solid white', overflow: 'hidden' }}>
+                            <img src={profile.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => e.target.style.display = 'none'} />
+                          </div>
+                        )}
+                      </div>
+                    )
+                  }
+                  return (
+                    <div onClick={e => e.stopPropagation()} style={{ overflowX: 'auto', display: 'flex', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch', paddingLeft: '12px', paddingRight: '4px' }}>
+                      {stripPhotos.map((photo, pi) => (
+                        <div key={pi} style={{ position: 'relative', flexShrink: 0, width: '80vw', maxWidth: '340px', height: '200px', borderRadius: 'var(--radius-md)', overflow: 'hidden', marginRight: '8px', background: 'var(--parchment)' }}>
+                          <img src={photo.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} onError={e => e.target.style.display = 'none'} />
+                          {!photo.isStock && (
+                            <div style={{ position: 'absolute', bottom: '8px', left: '8px', width: '26px', height: '26px', borderRadius: '50%', border: '2px solid white', overflow: 'hidden', background: 'linear-gradient(135deg, var(--clay), var(--ember))', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                              {profile?.avatar_url
+                                ? <img src={profile.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => e.target.style.display = 'none'} />
+                                : <span style={{ fontFamily: 'var(--font-display)', fontSize: '9px', fontWeight: '700', color: 'var(--cream)' }}>{(profile?.full_name || profile?.username || '?')[0].toUpperCase()}</span>
+                              }
+                            </div>
+                          )}
+                          {photo.isStock && (
+                            <div style={{ position: 'absolute', bottom: '8px', left: '8px', background: 'rgba(0,0,0,0.45)', borderRadius: 'var(--radius-pill)', padding: '3px 8px' }}>
+                              <span style={{ fontSize: '10px', fontWeight: '600', color: 'white' }}>Recipe photo</span>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                      <div style={{ flexShrink: 0, width: '4px' }} />
+                    </div>
+                  )
+                })()}
                 <div style={{ padding: '14px 16px' }}>
                   {v && (
                     <div style={{
