@@ -17,7 +17,7 @@ const verdictStyle = {
   never_again: { background: '#F4E8E8', color: '#9B4040', border: '1px solid #C47070' }
 }
 
-const SORT_OPTIONS = ['Newest', 'Oldest', 'A→Z']
+const SORT_OPTIONS = ['Newest', 'Oldest', 'A→Z', 'Cook Score', 'Friends Have It']
 
 export default function Cookbook({ session, onAddRecipe, onSelectRecipe, defaultFilter, onSelectUser, savedScrollY, onScrollChange }) {
   const [recipes, setRecipes] = useState([])
@@ -27,6 +27,7 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
   const [search, setSearch] = useState('')
   const [sortIndex, setSortIndex] = useState(0)
   const [circleFriendsMap, setCircleFriendsMap] = useState({})
+  const [cookScoresMap, setCookScoresMap] = useState({})
   const [circleModal, setCircleModal] = useState(null)
   const headerRef = useRef(null)
   const [headerHeight, setHeaderHeight] = useState(0)
@@ -71,8 +72,31 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
     if (data) {
       setRecipes(data)
       fetchCircleFriendsForRecipes(data)
+      fetchCookScores(data)
     }
     setLoading(false)
+  }
+
+  async function fetchCookScores(recipeList) {
+    const recipeIds = recipeList.map(r => r.id)
+    if (recipeIds.length === 0) return
+    const { data: cooks } = await supabase
+      .from('cooks')
+      .select('recipe_id, flavor, effort, would_share, true_to_recipe')
+      .in('recipe_id', recipeIds)
+    if (!cooks || cooks.length === 0) return
+    const map = {}
+    for (const cook of cooks) {
+      const scores = [cook.flavor, cook.effort, cook.would_share, cook.true_to_recipe].filter(Boolean)
+      if (scores.length === 0) continue
+      if (!map[cook.recipe_id]) map[cook.recipe_id] = []
+      map[cook.recipe_id].push(...scores)
+    }
+    const avgMap = {}
+    for (const [recipeId, scores] of Object.entries(map)) {
+      avgMap[recipeId] = scores.reduce((a, b) => a + b, 0) / scores.length
+    }
+    setCookScoresMap(avgMap)
   }
 
   async function fetchCircleFriendsForRecipes(recipeList) {
@@ -142,6 +166,8 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
     .sort((a, b) => {
       if (SORT_OPTIONS[sortIndex] === 'A→Z') return a.title.localeCompare(b.title)
       if (SORT_OPTIONS[sortIndex] === 'Oldest') return new Date(a.created_at) - new Date(b.created_at)
+      if (SORT_OPTIONS[sortIndex] === 'Cook Score') return (cookScoresMap[b.id] || 0) - (cookScoresMap[a.id] || 0)
+      if (SORT_OPTIONS[sortIndex] === 'Friends Have It') return (circleFriendsMap[b.id]?.count || 0) - (circleFriendsMap[a.id]?.count || 0)
       return new Date(b.created_at) - new Date(a.created_at)
     })
 

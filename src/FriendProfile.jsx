@@ -244,6 +244,8 @@ export default function FriendProfile({ userId, session, onBack, onSelectCook, o
   const [friendActivity, setFriendActivity] = useState([])
   const [friendEngagement, setFriendEngagement] = useState({})
   const [friendActivityLoading, setFriendActivityLoading] = useState(false)
+  const [friendCookScoresMap, setFriendCookScoresMap] = useState({})
+  const [friendCircleMap, setFriendCircleMap] = useState({})
 
   useEffect(() => {
     setFollowCounts({ following: 0, followers: 0 })
@@ -306,7 +308,53 @@ export default function FriendProfile({ userId, session, onBack, onSelectCook, o
       .select('*')
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
-    if (data) setAllRecipes(data)
+    if (data) {
+      setAllRecipes(data)
+      fetchFriendCookScores(data)
+      fetchFriendCircleCounts(data)
+    }
+  }
+
+  async function fetchFriendCookScores(recipeList) {
+    const recipeIds = recipeList.map(r => r.id)
+    if (recipeIds.length === 0) return
+    const { data: cooks } = await supabase
+      .from('cooks').select('recipe_id, flavor, effort, would_share, true_to_recipe')
+      .in('recipe_id', recipeIds).eq('user_id', userId)
+    if (!cooks || cooks.length === 0) return
+    const map = {}
+    for (const cook of cooks) {
+      const scores = [cook.flavor, cook.effort, cook.would_share, cook.true_to_recipe].filter(Boolean)
+      if (scores.length === 0) continue
+      if (!map[cook.recipe_id]) map[cook.recipe_id] = []
+      map[cook.recipe_id].push(...scores)
+    }
+    const avgMap = {}
+    for (const [recipeId, scores] of Object.entries(map)) {
+      avgMap[recipeId] = scores.reduce((a, b) => a + b, 0) / scores.length
+    }
+    setFriendCookScoresMap(avgMap)
+  }
+
+  async function fetchFriendCircleCounts(recipeList) {
+    const { data: following } = await supabase
+      .from('follows').select('following_id')
+      .eq('follower_id', session.user.id).eq('status', 'approved')
+    if (!following || following.length === 0) return
+    const followingIds = following.map(f => f.following_id)
+    const canonicalIds = recipeList.filter(r => r.canonical_id).map(r => r.canonical_id)
+    if (canonicalIds.length === 0) return
+    const { data: matches } = await supabase
+      .from('recipes').select('user_id, canonical_id')
+      .in('canonical_id', canonicalIds).in('user_id', followingIds)
+    if (!matches || matches.length === 0) return
+    const map = {}
+    for (const recipe of recipeList) {
+      if (!recipe.canonical_id) continue
+      const count = matches.filter(m => m.canonical_id === recipe.canonical_id).length
+      if (count > 0) map[recipe.id] = count
+    }
+    setFriendCircleMap(map)
   }
 
   async function fetchCooks() {
@@ -479,6 +527,8 @@ export default function FriendProfile({ userId, session, onBack, onSelectCook, o
     .sort((a, b) => {
       if (cookbookSort === 'alpha') return a.title.localeCompare(b.title)
       if (cookbookSort === 'oldest') return new Date(a.created_at) - new Date(b.created_at)
+      if (cookbookSort === 'score') return (friendCookScoresMap[b.id] || 0) - (friendCookScoresMap[a.id] || 0)
+      if (cookbookSort === 'friends') return (friendCircleMap[b.id] || 0) - (friendCircleMap[a.id] || 0)
       return new Date(b.created_at) - new Date(a.created_at)
     })
 
@@ -786,6 +836,8 @@ export default function FriendProfile({ userId, session, onBack, onSelectCook, o
                 <option value="newest">Newest</option>
                 <option value="oldest">Oldest</option>
                 <option value="alpha">A→Z</option>
+                <option value="score">Cook Score</option>
+                <option value="friends">Friends Have It</option>
               </select>
             </div>
 
