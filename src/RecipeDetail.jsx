@@ -693,28 +693,92 @@ async function saveEditCook() {
       <input ref={thumbnailInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleThumbnailChange} />
       <input ref={cookPhotoInputRef} type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={handleCookPhotoChange} />
 
-      {/* Hero image */}
-      {recipe.image_url ? (
-        <div style={{ height: '220px', background: 'var(--parchment)', position: 'relative', overflow: 'hidden', marginTop: '54px' }}>
-          <img src={recipe.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-            onError={e => { e.target.style.display = 'none'; e.target.parentElement.style.display = 'none' }} />
-          <button onClick={() => thumbnailInputRef.current?.click()} disabled={thumbnailUploading} style={{ position: 'absolute', top: '12px', right: '12px', width: '32px', height: '32px', borderRadius: '50%', background: 'rgba(28,26,23,0.55)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', backdropFilter: 'blur(4px)' }}>
-            {thumbnailUploading
-              ? <div style={{ width: '14px', height: '14px', border: '2px solid rgba(255,255,255,0.4)', borderTop: '2px solid white', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
-              : <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            }
-          </button>
-          <div style={{ position: 'absolute', bottom: '16px', left: '16px', background: status.bg, border: `1px solid ${status.border}`, color: status.color, borderRadius: 'var(--radius-pill)', padding: '5px 12px', fontSize: '11px', fontWeight: '600' }}>{status.label}</div>
-        </div>
-      ) : (
-        <div style={{ paddingTop: '70px', padding: '70px 24px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <button onClick={() => thumbnailInputRef.current?.click()} disabled={thumbnailUploading} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--parchment)', border: '1.5px dashed var(--tan)', borderRadius: 'var(--radius-pill)', padding: '7px 14px', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600', color: 'var(--muted)', cursor: 'pointer' }}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round"/></svg>
-            {thumbnailUploading ? 'Uploading...' : 'Add photo'}
-          </button>
-          <button onClick={() => { setEditForm({ title: recipe.title || '', source_name: recipe.source_name || '', source_url: recipe.source_url || '', image_url: recipe.image_url || '', cook_time: recipe.cook_time || '', difficulty: recipe.difficulty || '', ingredients: recipe.ingredients || '', instructions: recipe.instructions || '', notes: recipe.notes || '', tags: recipe.tags || [] }); setEditing(true) }} style={{ background: 'var(--parchment)', border: 'none', borderRadius: 'var(--radius-pill)', padding: '6px 14px', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600', color: 'var(--charcoal)', cursor: 'pointer' }}>Edit</button>
-        </div>
-      )}
+      {/* Hero strip or fallback */}
+      {(() => {
+        const stockCard = recipe.image_url ? [{ url: recipe.image_url, isStock: true, profile: null, isMe: false }] : []
+        const myPhotos = cooks.flatMap(c => (c.photo_urls || []).map(url => ({ url, isStock: false, profile: null, isMe: true })))
+        const circlePhotos = circleCooks
+          .filter(c => c.photo_urls?.length > 0)
+          .map(c => ({ url: c.photo_urls[0], isStock: false, profile: c.profiles, isMe: false }))
+        const stripPhotos = [...stockCard, ...myPhotos, ...circlePhotos]
+        const hasCookPhotos = myPhotos.length > 0 || circlePhotos.length > 0
+
+        if (!hasCookPhotos) {
+          // Fallback: stock hero as today
+          return recipe.image_url ? (
+            <div style={{ height: '220px', background: 'var(--parchment)', position: 'relative', overflow: 'hidden', marginTop: '54px' }}>
+              <img src={recipe.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                onError={e => { e.target.style.display = 'none'; e.target.parentElement.style.display = 'none' }} />
+              <button onClick={() => thumbnailInputRef.current?.click()} disabled={thumbnailUploading} style={{ position: 'absolute', top: '12px', right: '12px', width: '32px', height: '32px', borderRadius: '50%', background: 'rgba(28,26,23,0.55)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', backdropFilter: 'blur(4px)' }}>
+                {thumbnailUploading
+                  ? <div style={{ width: '14px', height: '14px', border: '2px solid rgba(255,255,255,0.4)', borderTop: '2px solid white', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+                  : <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                }
+              </button>
+              <div style={{ position: 'absolute', bottom: '16px', left: '16px', background: status.bg, border: `1px solid ${status.border}`, color: status.color, borderRadius: 'var(--radius-pill)', padding: '5px 12px', fontSize: '11px', fontWeight: '600' }}>{status.label}</div>
+            </div>
+          ) : (
+            <div style={{ paddingTop: '70px', padding: '70px 24px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <button onClick={() => thumbnailInputRef.current?.click()} disabled={thumbnailUploading} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--parchment)', border: '1.5px dashed var(--tan)', borderRadius: 'var(--radius-pill)', padding: '7px 14px', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600', color: 'var(--muted)', cursor: 'pointer' }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round"/></svg>
+                {thumbnailUploading ? 'Uploading...' : 'Add photo'}
+              </button>
+              <button onClick={() => { setEditForm({ title: recipe.title || '', source_name: recipe.source_name || '', source_url: recipe.source_url || '', image_url: recipe.image_url || '', cook_time: recipe.cook_time || '', difficulty: recipe.difficulty || '', ingredients: recipe.ingredients || '', instructions: recipe.instructions || '', notes: recipe.notes || '', tags: recipe.tags || [] }); setEditing(true) }} style={{ background: 'var(--parchment)', border: 'none', borderRadius: 'var(--radius-pill)', padding: '6px 14px', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600', color: 'var(--charcoal)', cursor: 'pointer' }}>Edit</button>
+            </div>
+          )
+        }
+
+        // Strip with cook photos
+        return (
+          <div style={{ marginTop: '54px', position: 'relative' }}>
+            <div style={{ overflowX: 'auto', display: 'flex', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch', paddingLeft: '16px', paddingBottom: '4px' }}>
+              {stripPhotos.map((photo, i) => {
+                const allUrls = stripPhotos.map(p => p.url)
+                return (
+                  <div key={i} onClick={() => openOverlay(allUrls, i)} style={{ position: 'relative', flexShrink: 0, width: '85vw', maxWidth: '400px', height: '240px', borderRadius: 'var(--radius-lg)', overflow: 'hidden', marginRight: '10px', cursor: 'pointer', background: 'var(--parchment)' }}>
+                    <img src={photo.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} onError={e => e.target.style.display = 'none'} />
+                    {photo.isStock && (
+                      <>
+                        <div style={{ position: 'absolute', bottom: '10px', left: '10px', background: 'rgba(0,0,0,0.45)', borderRadius: 'var(--radius-pill)', padding: '3px 8px' }}>
+                          <span style={{ fontSize: '10px', fontWeight: '600', color: 'white' }}>Recipe photo</span>
+                        </div>
+                        <button onClick={e => { e.stopPropagation(); thumbnailInputRef.current?.click() }} disabled={thumbnailUploading} style={{ position: 'absolute', top: '10px', right: '10px', width: '30px', height: '30px', borderRadius: '50%', background: 'rgba(28,26,23,0.55)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                        </button>
+                        <div style={{ position: 'absolute', bottom: '16px', right: '10px', background: status.bg, border: `1px solid ${status.border}`, color: status.color, borderRadius: 'var(--radius-pill)', padding: '5px 12px', fontSize: '11px', fontWeight: '600' }}>{status.label}</div>
+                      </>
+                    )}
+                    {photo.isMe && (
+                      <div style={{ position: 'absolute', bottom: '10px', left: '10px', display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(0,0,0,0.45)', borderRadius: 'var(--radius-pill)', padding: '4px 10px 4px 4px' }}>
+                        <div style={{ width: '22px', height: '22px', borderRadius: '50%', border: '1.5px solid white', overflow: 'hidden', background: 'linear-gradient(135deg, var(--clay), var(--ember))', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          {session.user.avatar_url
+                            ? <img src={session.user.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            : <span style={{ fontFamily: 'var(--font-display)', fontSize: '9px', fontWeight: '700', color: 'var(--cream)' }}>{(session.user.email || '?')[0].toUpperCase()}</span>
+                          }
+                        </div>
+                        <span style={{ fontSize: '11px', fontWeight: '600', color: 'white' }}>Made by You</span>
+                      </div>
+                    )}
+                    {!photo.isStock && !photo.isMe && photo.profile && (
+                      <div onClick={e => { e.stopPropagation(); onSelectUser && onSelectUser(photo.profile.id) }}
+                        style={{ position: 'absolute', bottom: '10px', left: '10px', display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(0,0,0,0.45)', borderRadius: 'var(--radius-pill)', padding: '4px 10px 4px 4px', cursor: 'pointer' }}>
+                        <div style={{ width: '22px', height: '22px', borderRadius: '50%', border: '1.5px solid white', overflow: 'hidden', background: 'linear-gradient(135deg, var(--clay), var(--ember))', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          {photo.profile.avatar_url
+                            ? <img src={photo.profile.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => e.target.style.display = 'none'} />
+                            : <span style={{ fontFamily: 'var(--font-display)', fontSize: '9px', fontWeight: '700', color: 'var(--cream)' }}>{(photo.profile.full_name || photo.profile.username || '?')[0].toUpperCase()}</span>
+                          }
+                        </div>
+                        <span style={{ fontSize: '11px', fontWeight: '600', color: 'white' }}>Made by {photo.profile.full_name || photo.profile.username}</span>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+              <div style={{ flexShrink: 0, width: '6px' }} />
+            </div>
+          </div>
+        )
+      })()}
 
       <div style={{ maxWidth: '480px', margin: '0 auto', padding: '24px' }}>
 
