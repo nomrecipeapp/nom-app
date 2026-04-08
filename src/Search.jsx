@@ -32,9 +32,12 @@ export default function Search({ session, onSelectUser, onSelectSave, onSelectCo
   const [loadingViewed, setLoadingViewed] = useState(true)
   const searchRef = useRef(null)
   const debounceRef = useRef(null)
+  const [suggestions, setSuggestions] = useState([])
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false)
 
   useEffect(() => {
     fetchRecentlyViewed()
+    fetchSuggestions()
   }, [])
 
   useEffect(() => {
@@ -49,6 +52,42 @@ export default function Search({ session, onSelectUser, onSelectSave, onSelectCo
     }, 300)
     return () => clearTimeout(debounceRef.current)
   }, [query])
+
+  async function fetchSuggestions() {
+    setLoadingSuggestions(true)
+    // Get people I already follow or have requested
+    const { data: myFollows } = await supabase
+      .from('follows').select('following_id, status')
+      .eq('follower_id', session.user.id)
+    const alreadyFollowing = new Set((myFollows || []).map(f => f.following_id))
+    alreadyFollowing.add(session.user.id)
+
+    // Get my followers
+    const { data: myFollowers } = await supabase
+      .from('follows').select('follower_id')
+      .eq('following_id', session.user.id).eq('status', 'approved')
+    if (!myFollowers || myFollowers.length === 0) { setLoadingSuggestions(false); return }
+
+    // Get who my followers follow
+    const followerIds = myFollowers.map(f => f.follower_id)
+    const { data: friendsOfFriends } = await supabase
+      .from('follows').select('following_id')
+      .in('follower_id', followerIds).eq('status', 'approved')
+    if (!friendsOfFriends || friendsOfFriends.length === 0) { setLoadingSuggestions(false); return }
+
+    // Deduplicate and filter out already following
+    const candidateIds = [...new Set(friendsOfFriends.map(f => f.following_id))]
+      .filter(id => !alreadyFollowing.has(id))
+      .slice(0, 8)
+
+    if (candidateIds.length === 0) { setLoadingSuggestions(false); return }
+
+    const { data: profiles } = await supabase
+      .from('profiles').select('id, full_name, username, avatar_url')
+      .in('id', candidateIds)
+    setSuggestions(profiles || [])
+    setLoadingSuggestions(false)
+  }
 
 async function fetchRecentlyViewed() {
     setLoadingViewed(true)
@@ -312,6 +351,32 @@ async function fetchRecentlyViewed() {
           </div>
         )}
       </div>
+
+  {/* People you might know */}
+      {!query && suggestions.length > 0 && (
+        <div style={{ marginBottom: '24px' }}>
+          <div style={{ padding: '0 20px 10px', fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--muted)' }}>People You Might Know</div>
+          {suggestions.map(person => (
+            <div key={person.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 20px', borderBottom: '1px solid var(--parchment)', cursor: 'pointer' }}
+              onClick={() => onSelectUser(person.id)}>
+              {person.avatar_url
+                ? <img src={person.avatar_url} alt="" style={{ width: '38px', height: '38px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} onError={e => e.target.style.display = 'none'} />
+                : <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--clay), var(--ember))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: '700', color: 'var(--cream)', flexShrink: 0 }}>{(person.full_name || person.username || '?')[0].toUpperCase()}</div>
+              }
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: '14px', fontWeight: '600', color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{person.full_name || person.username}</div>
+                {person.username && person.full_name && <div style={{ fontSize: '12px', color: 'var(--muted)' }}>@{person.username}</div>}
+              </div>
+              <button onClick={e => {
+                e.stopPropagation()
+                supabase.from('follows').insert({ follower_id: session.user.id, following_id: person.id, status: 'pending' })
+                supabase.from('notifications').insert({ recipient_id: person.id, actor_id: session.user.id, type: 'follow_request' })
+                setSuggestions(prev => prev.filter(p => p.id !== person.id))
+              }} style={{ padding: '7px 14px', background: 'transparent', border: '1.5px solid var(--clay)', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600', color: 'var(--clay)', cursor: 'pointer', flexShrink: 0 }}>Follow</button>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Empty state — recent searches + recently viewed */}
       {!showDropdown && query.length < 2 && (
