@@ -42,6 +42,10 @@ export default function FriendRecipeDetail({ recipe, session, onBack, scrollToCo
   const [editingBody, setEditingBody] = useState('')
   const [myProfile, setMyProfile] = useState(null)
   const [savedByProfile, setSavedByProfile] = useState(null)
+  const [circleCookPhotos, setCircleCookPhotos] = useState([])
+  const [overlayPhotos, setOverlayPhotos] = useState(null)
+  const [overlayIndex, setOverlayIndex] = useState(0)
+  const touchStartX = useRef(null)
 
   // Mention state
   const [mentionQuery, setMentionQuery] = useState(null)
@@ -54,6 +58,22 @@ export default function FriendRecipeDetail({ recipe, session, onBack, scrollToCo
   const targetType = 'save'
   const targetId = recipe.id
 
+  const stockPhoto = recipe?.image_url ? [{ url: recipe.image_url, isStock: true, profile: null }] : []
+  const stripPhotos = [...stockPhoto, ...circleCookPhotos]
+  const showStrip = circleCookPhotos.length > 0
+
+  function openOverlay(index) { setOverlayPhotos(stripPhotos.map(p => p.url)); setOverlayIndex(index) }
+  function closeOverlay() { setOverlayPhotos(null); setOverlayIndex(0) }
+  function overlayNext() { setOverlayIndex(i => (i + 1) % overlayPhotos.length) }
+  function overlayPrev() { setOverlayIndex(i => (i - 1 + overlayPhotos.length) % overlayPhotos.length) }
+  function handleOverlayTouchStart(e) { touchStartX.current = e.touches[0].clientX }
+  function handleOverlayTouchEnd(e) {
+    if (touchStartX.current === null) return
+    const diff = touchStartX.current - e.changedTouches[0].clientX
+    if (Math.abs(diff) > 40) { diff > 0 ? overlayNext() : overlayPrev() }
+    touchStartX.current = null
+  }
+
 useEffect(() => {
   fetchMyProfile()
   fetchLikes()
@@ -63,6 +83,7 @@ useEffect(() => {
   fetchCircleFriends()
   upsertView()
   fetchSavedByProfile()
+  fetchCircleCookPhotos()
 }, [recipe.id])
 
   useEffect(() => {
@@ -115,6 +136,72 @@ async function fetchSavedByProfile() {
       .eq('id', recipe.user_id)
       .single()
     if (data) setSavedByProfile(data)
+  }
+
+async function fetchCircleCookPhotos() {
+    if (!recipe?.canonical_id) return
+
+    // Find your own recipe for this canonical_id first
+    const { data: myRecipe } = await supabase
+      .from('recipes').select('id')
+      .eq('canonical_id', recipe.canonical_id)
+      .eq('user_id', session.user.id)
+      .maybeSingle()
+
+    const { data: myCooks } = myRecipe ? await supabase
+      .from('cooks').select('id, user_id, photo_urls')
+      .eq('recipe_id', myRecipe.id)
+      .not('photo_urls', 'is', null)
+      .order('cooked_at', { ascending: false }) : { data: [] }
+
+    const { data: myProfile } = await supabase
+      .from('profiles').select('id, full_name, username, avatar_url')
+      .eq('id', session.user.id).single()
+
+    const myPhotos = []
+    if (myCooks?.length) {
+      for (const cook of myCooks) {
+        if (!cook.photo_urls?.length) continue
+        myPhotos.push({ url: cook.photo_urls[0], isStock: false, profile: myProfile })
+        break // just first cook
+      }
+    }
+
+    // Fetch circle friends' cooks
+    const { data: following } = await supabase
+      .from('follows').select('following_id')
+      .eq('follower_id', session.user.id).eq('status', 'approved')
+    
+    const friendPhotos = []
+    if (following && following.length > 0) {
+      const followingIds = following.map(f => f.following_id)
+      const { data: matchingRecipes } = await supabase
+        .from('recipes').select('id, user_id')
+        .eq('canonical_id', recipe.canonical_id).in('user_id', followingIds)
+      if (matchingRecipes && matchingRecipes.length > 0) {
+        const recipeIds = matchingRecipes.map(r => r.id)
+        const { data: cooksData } = await supabase
+          .from('cooks').select('id, user_id, photo_urls')
+          .in('recipe_id', recipeIds)
+          .not('photo_urls', 'is', null)
+          .order('cooked_at', { ascending: false })
+        if (cooksData?.length) {
+          const userIds = [...new Set(cooksData.map(c => c.user_id))]
+          const { data: profiles } = await supabase
+            .from('profiles').select('id, full_name, username, avatar_url').in('id', userIds)
+          const seen = new Set()
+          for (const cook of cooksData) {
+            if (!cook.photo_urls?.length) continue
+            if (seen.has(cook.user_id)) continue
+            seen.add(cook.user_id)
+            const profile = profiles?.find(p => p.id === cook.user_id)
+            friendPhotos.push({ url: cook.photo_urls[0], isStock: false, profile })
+          }
+        }
+      }
+    }
+
+    setCircleCookPhotos([...myPhotos, ...friendPhotos])
   }
 
   async function upsertView() {
@@ -332,15 +419,52 @@ async function fetchSavedByProfile() {
   return (
     <div style={{ maxWidth: '480px', margin: '0 auto', paddingBottom: '100px' }}>
 
-  <div style={{ marginTop: '54px' }} />
-  {recipe.image_url && (
-    <img
-      src={recipe.image_url}
-      alt=""
-      style={{ width: '100%', height: '260px', objectFit: 'cover', display: 'block' }}
-      onError={e => e.target.style.display = 'none'}
-    />
-  )}
+  {/* Fullscreen overlay */}
+      {overlayPhotos && (
+        <div onClick={closeOverlay} onTouchStart={handleOverlayTouchStart} onTouchEnd={handleOverlayTouchEnd}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.92)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <button onClick={closeOverlay} style={{ position: 'absolute', top: '20px', right: '20px', background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '50%', width: '36px', height: '36px', color: 'white', fontSize: '20px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+          <img src={overlayPhotos[overlayIndex]} alt="" onClick={e => e.stopPropagation()} style={{ maxWidth: '92vw', maxHeight: '82vh', objectFit: 'contain', borderRadius: '8px' }} />
+          {overlayPhotos.length > 1 && (
+            <>
+              <button onClick={e => { e.stopPropagation(); overlayPrev() }} style={{ position: 'absolute', left: '12px', background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '50%', width: '40px', height: '40px', color: 'white', fontSize: '20px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</button>
+              <button onClick={e => { e.stopPropagation(); overlayNext() }} style={{ position: 'absolute', right: '12px', background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '50%', width: '40px', height: '40px', color: 'white', fontSize: '20px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
+              <div style={{ position: 'absolute', bottom: '24px', display: 'flex', gap: '6px' }}>
+                {overlayPhotos.map((_, i) => (
+                  <div key={i} style={{ width: '6px', height: '6px', borderRadius: '50%', background: i === overlayIndex ? 'white' : 'rgba(255,255,255,0.35)' }} />
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      <div style={{ marginTop: '54px' }} />
+      {showStrip ? (
+        <div style={{ overflowX: 'auto', display: 'flex', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch', paddingLeft: '16px', paddingBottom: '4px' }}>
+          {stripPhotos.map((photo, i) => (
+            <div key={i} onClick={() => openOverlay(i)} style={{ position: 'relative', flexShrink: 0, width: '85vw', maxWidth: '400px', height: '240px', borderRadius: 'var(--radius-lg)', overflow: 'hidden', marginRight: '10px', cursor: 'pointer', background: 'var(--parchment)' }}>
+              <img src={photo.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} onError={e => e.target.style.display = 'none'} />
+              {!photo.isStock && photo.profile && (
+                <div style={{ position: 'absolute', bottom: '10px', left: '10px', width: '28px', height: '28px', borderRadius: '50%', border: '2px solid white', overflow: 'hidden', background: 'linear-gradient(135deg, var(--clay), var(--ember))', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {photo.profile.avatar_url
+                    ? <img src={photo.profile.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => e.target.style.display = 'none'} />
+                    : <span style={{ fontFamily: 'var(--font-display)', fontSize: '10px', fontWeight: '700', color: 'var(--cream)' }}>{(photo.profile.full_name || photo.profile.username || '?')[0].toUpperCase()}</span>
+                  }
+                </div>
+              )}
+              {photo.isStock && (
+                <div style={{ position: 'absolute', bottom: '10px', left: '10px', background: 'rgba(0,0,0,0.45)', borderRadius: 'var(--radius-pill)', padding: '3px 8px' }}>
+                  <span style={{ fontSize: '10px', fontWeight: '600', color: 'white' }}>Recipe photo</span>
+                </div>
+              )}
+            </div>
+          ))}
+          <div style={{ flexShrink: 0, width: '6px' }} />
+        </div>
+      ) : recipe?.image_url ? (
+        <img src={recipe.image_url} alt="" style={{ width: '100%', height: '260px', objectFit: 'cover', display: 'block' }} onError={e => e.target.style.display = 'none'} />
+      ) : null}
 
       <div style={{ padding: '20px 20px 0' }}>
         <div style={{ marginBottom: '14px' }}>
