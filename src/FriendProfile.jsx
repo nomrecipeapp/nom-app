@@ -256,14 +256,12 @@ export default function FriendProfile({ userId, session, onBack, onSelectCook, o
   }, [userId])
 
   async function fetchFollowCounts() {
-    console.log('fetchFollowCounts for userId:', userId)
     const { count: followingCount } = await supabase
       .from('follows').select('*', { count: 'exact', head: true })
       .eq('follower_id', userId).eq('status', 'approved')
     const { count: followersCount } = await supabase
       .from('follows').select('*', { count: 'exact', head: true })
       .eq('following_id', userId).eq('status', 'approved')
-    console.log('followingCount:', followingCount, 'followersCount:', followersCount)
     setFollowCounts({ following: followingCount || 0, followers: followersCount || 0 })
   }
 
@@ -581,7 +579,12 @@ export default function FriendProfile({ userId, session, onBack, onSelectCook, o
         {/* Not following state */}
         {followStatus !== 'approved' && (
           <div style={{ textAlign: 'center', padding: '32px 20px', color: 'var(--muted)' }}>
-            <div style={{ fontSize: '28px', marginBottom: '12px' }}>🔒</div>
+            <div style={{ marginBottom: '12px', display: 'flex', justifyContent: 'center' }}>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                <rect x="3" y="11" width="18" height="11" rx="2" stroke="var(--muted)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M7 11V7a5 5 0 0110 0v4" stroke="var(--muted)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </div>
             <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: '500', color: 'var(--ink)', marginBottom: '8px' }}>Private Cookbook</div>
             <div style={{ fontSize: '13px', lineHeight: '1.6' }}>
               Follow {profile?.full_name || 'this cook'} to see what they're making.
