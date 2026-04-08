@@ -345,10 +345,24 @@ async function fetchSavedByProfile() {
       <div style={{ padding: '20px 20px 0' }}>
         <div style={{ marginBottom: '14px' }}>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: '24px', fontWeight: '700', color: 'var(--ink)', lineHeight: '1.2', marginBottom: '10px' }}>{recipe.title}</div>
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center', marginBottom: '12px' }}>
-            {recipe.source_name && <div style={{ background: 'var(--parchment)', borderRadius: 'var(--radius-pill)', padding: '3px 10px', fontSize: '11px', fontWeight: '500', color: 'var(--charcoal)' }}>{recipe.source_name}</div>}
-            {recipe.cook_time && <div style={{ fontSize: '11px', color: 'var(--muted)' }}>{recipe.cook_time}</div>}
-            {recipe.difficulty && <div style={{ fontSize: '11px', color: 'var(--muted)' }}>· {recipe.difficulty}</div>}
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+              {recipe.source_name && <div style={{ background: 'var(--parchment)', borderRadius: 'var(--radius-pill)', padding: '3px 10px', fontSize: '11px', fontWeight: '500', color: 'var(--charcoal)' }}>{recipe.source_name}</div>}
+              {recipe.cook_time && <div style={{ fontSize: '11px', color: 'var(--muted)' }}>{recipe.cook_time}</div>}
+              {recipe.difficulty && <div style={{ fontSize: '11px', color: 'var(--muted)' }}>· {recipe.difficulty}</div>}
+            </div>
+            <button onClick={() => {
+              const fullUrl = `https://www.nomrecipeapp.com/?recipe=${recipe.id}`
+              if (navigator.share) {
+                navigator.share({ title: recipe.title, url: fullUrl }).catch(() => {})
+              } else {
+                navigator.clipboard.writeText(fullUrl).then(() => alert('Link copied!'))
+              }
+            }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13" stroke="var(--muted)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
           </div>
           {savedByProfile && recipe.user_id !== session.user.id && (
             <div onClick={() => onSelectUser && onSelectUser(savedByProfile.id)} style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
@@ -548,6 +562,17 @@ async function fetchSavedByProfile() {
                 const canEdit = isCommentAuthor
                 const canDelete = isCommentAuthor || isPostOwner
                 const showMenu = canEdit || canDelete
+
+                function shareContent(url, title) {
+                  const fullUrl = `https://www.nomrecipeapp.com${url}`
+                  if (navigator.share) {
+                    navigator.share({ title, url: fullUrl }).catch(() => {})
+                  } else {
+                    navigator.clipboard.writeText(fullUrl).then(() => {
+                      alert('Link copied!')
+                    }).catch(() => {})
+                  }
+                }
 
                 return (
                   <div key={comment.id} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>

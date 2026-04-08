@@ -644,6 +644,17 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
                 const canDelete = isCommentAuthor || isPostOwner
                 const showMenu = canEdit || canDelete
 
+                function shareContent(url, title) {
+                    const fullUrl = `https://www.nomrecipeapp.com${url}`
+                    if (navigator.share) {
+                      navigator.share({ title, url: fullUrl }).catch(() => {})
+                    } else {
+                      navigator.clipboard.writeText(fullUrl).then(() => {
+                        alert('Link copied!')
+                      }).catch(() => {})
+                    }
+                  }
+
                 return (
                   <div key={comment.id} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
                     {comment.profiles?.avatar_url ? (

@@ -43,11 +43,17 @@ export default function App() {
   const [prefillInviteCode, setPrefillInviteCode] = useState('')
   const [settingsVisible, setSettingsVisible] = useState(false)
   const [midSignup, setMidSignup] = useState(false)
+  const [pendingRecipeId, setPendingRecipeId] = useState(null)
+  const [pendingCookId, setPendingCookId] = useState(null)
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const code = params.get('code')
     if (code) setPrefillInviteCode(code.toUpperCase())
+    const recipe = params.get('recipe')
+    if (recipe) setPendingRecipeId(recipe)
+    const cook = params.get('cook')
+    if (cook) setPendingCookId(cook)
   }, [])
 
   useEffect(() => {
@@ -87,6 +93,59 @@ export default function App() {
     const interval = setInterval(() => fetchUnreadCount(session.user.id), 30000)
     return () => clearInterval(interval)
   }, [session])
+
+  useEffect(() => {
+    if (!session || !onboardingComplete) return
+    if (!pendingRecipeId && !pendingCookId) return
+
+    async function handlePendingShare() {
+      if (pendingCookId) {
+        const { data: cook } = await supabase
+          .from('cooks').select('*, recipes(*), profiles(*)')
+          .eq('id', pendingCookId).single()
+        if (!cook) return
+        setPendingCookId(null)
+        window.history.replaceState({}, '', window.location.pathname)
+        if (cook.user_id === session.user.id) {
+          setRecipeBackScreen('feed')
+          setSelectedRecipe(cook.recipes)
+          setScreen('recipe')
+          return
+        }
+        const { data: follow } = await supabase.from('follows')
+          .select('status').eq('follower_id', session.user.id)
+          .eq('following_id', cook.user_id).eq('status', 'approved').maybeSingle()
+        if (follow) {
+          goToSocialRecipe(cook)
+        } else {
+          goToFriendProfile(cook.user_id)
+        }
+      } else if (pendingRecipeId) {
+        const { data: recipe } = await supabase
+          .from('recipes').select('*')
+          .eq('id', pendingRecipeId).single()
+        if (!recipe) return
+        setPendingRecipeId(null)
+        window.history.replaceState({}, '', window.location.pathname)
+        if (recipe.user_id === session.user.id) {
+          setRecipeBackScreen('feed')
+          setSelectedRecipe(recipe)
+          setScreen('recipe')
+          return
+        }
+        const { data: follow } = await supabase.from('follows')
+          .select('status').eq('follower_id', session.user.id)
+          .eq('following_id', recipe.user_id).eq('status', 'approved').maybeSingle()
+        if (follow) {
+          goToFriendRecipeDetail(recipe)
+        } else {
+          goToFriendProfile(recipe.user_id)
+        }
+      }
+    }
+
+    handlePendingShare()
+  }, [session, onboardingComplete, pendingRecipeId, pendingCookId])
 
   async function fetchUnreadCount(userId) {
     const { count } = await supabase

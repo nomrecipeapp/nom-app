@@ -720,10 +720,25 @@ async function saveEditCook() {
 
         <div style={{ marginBottom: '24px' }}>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: '28px', fontWeight: '700', color: 'var(--ink)', lineHeight: '1.15', letterSpacing: '-0.5px', marginBottom: '10px' }}>{recipe.title}</div>
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-            {recipe.source_name && <span style={{ background: 'var(--parchment)', borderRadius: 'var(--radius-pill)', padding: '4px 10px', fontSize: '11px', fontWeight: '500', color: 'var(--charcoal)' }}>{recipe.source_name}</span>}
-            {recipe.cook_time && <span style={{ fontSize: '12px', color: 'var(--muted)' }}>{recipe.cook_time}</span>}
-            {recipe.difficulty && <span style={{ fontSize: '12px', color: 'var(--muted)' }}>· {recipe.difficulty}</span>}
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+              {recipe.source_name && <span style={{ background: 'var(--parchment)', borderRadius: 'var(--radius-pill)', padding: '4px 10px', fontSize: '11px', fontWeight: '500', color: 'var(--charcoal)' }}>{recipe.source_name}</span>}
+              {recipe.cook_time && <span style={{ fontSize: '12px', color: 'var(--muted)' }}>{recipe.cook_time}</span>}
+              {recipe.difficulty && <span style={{ fontSize: '12px', color: 'var(--muted)' }}>· {recipe.difficulty}</span>}
+            </div>
+            <button onClick={() => {
+              const url = `/?recipe=${recipe.id}`
+              const fullUrl = `https://www.nomrecipeapp.com${url}`
+              if (navigator.share) {
+                navigator.share({ title: recipe.title, url: fullUrl }).catch(() => {})
+              } else {
+                navigator.clipboard.writeText(fullUrl).then(() => alert('Link copied!'))
+              }
+            }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13" stroke="var(--muted)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
           </div>
         </div>
 
@@ -900,6 +915,16 @@ async function saveEditCook() {
               {cooks.map((cook, i) => {
                 const v = verdictOptions.find(v => v.value === cook.verdict)
                 const isDeleting = deletingCookId === cook.id
+                function shareContent(url, title) {
+                  const fullUrl = `https://www.nomrecipeapp.com${url}`
+                  if (navigator.share) {
+                    navigator.share({ title, url: fullUrl }).catch(() => {})
+                  } else {
+                    navigator.clipboard.writeText(fullUrl).then(() => {
+                      alert('Link copied!')
+                    }).catch(() => {})
+                  }
+                }
                 return (
                   <div key={cook.id} style={{ paddingBottom: i < cooks.length - 1 ? '12px' : '0', borderBottom: i < cooks.length - 1 ? '1px solid var(--parchment)' : 'none', opacity: isDeleting ? 0.4 : 1 }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
