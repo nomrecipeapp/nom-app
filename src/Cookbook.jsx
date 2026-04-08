@@ -403,7 +403,7 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
                       <span style={{ fontSize: '11px', color: 'var(--muted)' }}>
                         <span style={{ fontWeight: '600', color: 'var(--clay)' }}>
                           {circleFriendsMap[recipe.id].count} {circleFriendsMap[recipe.id].count === 1 ? 'friend' : 'friends'}
-                        </span> made this too
+                        </span> have this
                       </span>
                     </div>
                   )}
