@@ -54,6 +54,9 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
   const [editingCommentId, setEditingCommentId] = useState(null)
   const [editingBody, setEditingBody] = useState('')
   const [myProfile, setMyProfile] = useState(null)
+  const [overlayPhotos, setOverlayPhotos] = useState(null)
+  const [overlayIndex, setOverlayIndex] = useState(0)
+  const touchStartX = useRef(null)
 
   // Mention state
   const [mentionQuery, setMentionQuery] = useState(null)
@@ -65,10 +68,29 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
 
   const recipe = cook.recipes
   const profile = cook.profiles
-  console.log('cook.profiles:', cook.profiles)
   const v = verdictStyles[cook.verdict]
   const targetType = 'cook'
   const targetId = cook.id
+
+  // Build photo strip
+  const cookPhotos = (cook.photo_urls || []).map(url => ({ url, isStock: false }))
+  const stockPhoto = recipe?.image_url ? [{ url: recipe.image_url, isStock: true }] : []
+  const stripPhotos = [...cookPhotos, ...stockPhoto]
+  const showStrip = cookPhotos.length > 0
+
+  // Overlay helpers
+  function openOverlay(index) { setOverlayPhotos(stripPhotos.map(p => p.url)); setOverlayIndex(index) }
+  function closeOverlay() { setOverlayPhotos(null); setOverlayIndex(0) }
+  function overlayNext() { setOverlayIndex(i => (i + 1) % overlayPhotos.length) }
+  function overlayPrev() { setOverlayIndex(i => (i - 1 + overlayPhotos.length) % overlayPhotos.length) }
+  function handleOverlayTouchStart(e) { touchStartX.current = e.touches[0].clientX }
+  function handleOverlayTouchEnd(e) {
+    if (touchStartX.current === null) return
+    const diff = touchStartX.current - e.changedTouches[0].clientX
+    if (Math.abs(diff) > 40) { diff > 0 ? overlayNext() : overlayPrev() }
+    touchStartX.current = null
+  }
+  
 
   useEffect(() => {
   fetchMyProfile()
@@ -357,9 +379,52 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
   return (
     <div style={{ maxWidth: '480px', margin: '0 auto', paddingBottom: '100px' }}>
 
-      {(cook.photo_urls?.[0] || recipe.image_url) ? (
+      {/* Fullscreen overlay */}
+      {overlayPhotos && (
+        <div onClick={closeOverlay} onTouchStart={handleOverlayTouchStart} onTouchEnd={handleOverlayTouchEnd}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.92)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <button onClick={closeOverlay} style={{ position: 'absolute', top: '20px', right: '20px', background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '50%', width: '36px', height: '36px', color: 'white', fontSize: '20px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+          <img src={overlayPhotos[overlayIndex]} alt="" onClick={e => e.stopPropagation()} style={{ maxWidth: '92vw', maxHeight: '82vh', objectFit: 'contain', borderRadius: '8px' }} />
+          {overlayPhotos.length > 1 && (
+            <>
+              <button onClick={e => { e.stopPropagation(); overlayPrev() }} style={{ position: 'absolute', left: '12px', background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '50%', width: '40px', height: '40px', color: 'white', fontSize: '20px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</button>
+              <button onClick={e => { e.stopPropagation(); overlayNext() }} style={{ position: 'absolute', right: '12px', background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '50%', width: '40px', height: '40px', color: 'white', fontSize: '20px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
+              <div style={{ position: 'absolute', bottom: '24px', display: 'flex', gap: '6px' }}>
+                {overlayPhotos.map((_, i) => (
+                  <div key={i} style={{ width: '6px', height: '6px', borderRadius: '50%', background: i === overlayIndex ? 'white' : 'rgba(255,255,255,0.35)' }} />
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Photo strip or hero */}
+      {showStrip ? (
+        <div style={{ marginTop: '54px', overflowX: 'auto', display: 'flex', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch', paddingLeft: '16px', paddingBottom: '4px' }}>
+          {stripPhotos.map((photo, i) => (
+            <div key={i} onClick={() => openOverlay(i)} style={{ position: 'relative', flexShrink: 0, width: '85vw', maxWidth: '400px', height: '240px', borderRadius: 'var(--radius-lg)', overflow: 'hidden', marginRight: '10px', cursor: 'pointer', background: 'var(--parchment)' }}>
+              <img src={photo.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} onError={e => e.target.style.display = 'none'} />
+              {!photo.isStock && (
+                <div style={{ position: 'absolute', bottom: '10px', left: '10px', width: '28px', height: '28px', borderRadius: '50%', border: '2px solid white', overflow: 'hidden', background: 'linear-gradient(135deg, var(--clay), var(--ember))', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  {profile?.avatar_url
+                    ? <img src={profile.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => e.target.style.display = 'none'} />
+                    : <span style={{ fontFamily: 'var(--font-display)', fontSize: '10px', fontWeight: '700', color: 'var(--cream)' }}>{(profile?.full_name || profile?.username || '?')[0].toUpperCase()}</span>
+                  }
+                </div>
+              )}
+              {photo.isStock && (
+                <div style={{ position: 'absolute', bottom: '10px', left: '10px', background: 'rgba(0,0,0,0.45)', borderRadius: 'var(--radius-pill)', padding: '3px 8px' }}>
+                  <span style={{ fontSize: '10px', fontWeight: '600', color: 'white' }}>Recipe photo</span>
+                </div>
+              )}
+            </div>
+          ))}
+          <div style={{ flexShrink: 0, width: '6px' }} />
+        </div>
+      ) : recipe?.image_url ? (
         <div style={{ marginTop: '54px' }}>
-          <img src={cook.photo_urls?.[0] || recipe.image_url} alt="" style={{ width: '100%', height: '260px', objectFit: 'cover', display: 'block' }} />
+          <img src={recipe.image_url} alt="" style={{ width: '100%', height: '260px', objectFit: 'cover', display: 'block' }} onError={e => e.target.style.display = 'none'} />
         </div>
       ) : (
         <div style={{ height: '54px' }} />
@@ -368,10 +433,24 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
       <div style={{ padding: '20px 20px 0' }}>
         <div style={{ marginBottom: '14px' }}>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: '24px', fontWeight: '700', color: 'var(--ink)', lineHeight: '1.2', marginBottom: '10px' }}>{recipe.title}</div>
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-            {recipe.source_name && <div style={{ background: 'var(--parchment)', borderRadius: 'var(--radius-pill)', padding: '3px 10px', fontSize: '11px', fontWeight: '500', color: 'var(--charcoal)' }}>{recipe.source_name}</div>}
-            {recipe.cook_time && <div style={{ fontSize: '11px', color: 'var(--muted)' }}>{recipe.cook_time}</div>}
-            {recipe.difficulty && <div style={{ fontSize: '11px', color: 'var(--muted)' }}>· {recipe.difficulty}</div>}
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+              {recipe.source_name && <div style={{ background: 'var(--parchment)', borderRadius: 'var(--radius-pill)', padding: '3px 10px', fontSize: '11px', fontWeight: '500', color: 'var(--charcoal)' }}>{recipe.source_name}</div>}
+              {recipe.cook_time && <div style={{ fontSize: '11px', color: 'var(--muted)' }}>{recipe.cook_time}</div>}
+              {recipe.difficulty && <div style={{ fontSize: '11px', color: 'var(--muted)' }}>· {recipe.difficulty}</div>}
+            </div>
+            <button onClick={() => {
+              const fullUrl = `https://www.nomrecipeapp.com/?cook=${cook.id}`
+              if (navigator.share) {
+                navigator.share({ title: recipe.title, url: fullUrl }).catch(() => {})
+              } else {
+                navigator.clipboard.writeText(fullUrl).then(() => alert('Link copied!'))
+              }
+            }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13" stroke="var(--muted)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
           </div>
         </div>
 
@@ -441,14 +520,6 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
         {v && (
           <div style={{ marginBottom: '14px' }}>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: v.bg, border: '1px solid ' + v.border, borderRadius: 'var(--radius-pill)', padding: '6px 14px', fontSize: '12px', fontWeight: '600', color: v.color }}>{v.label}</div>
-          </div>
-        )}
-
-        {cook.photo_urls && cook.photo_urls.length > 1 && (
-          <div style={{ display: 'flex', gap: '6px', marginBottom: '12px', overflowX: 'auto' }}>
-            {cook.photo_urls.slice(1).map((url, i) => (
-              <img key={i} src={url} alt="" style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: 'var(--radius-md)', flexShrink: 0 }} />
-            ))}
           </div>
         )}
 
