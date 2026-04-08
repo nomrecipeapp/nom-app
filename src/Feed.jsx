@@ -505,25 +505,23 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
             <div style={{ textAlign: 'left' }}>
               <div style={{ fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '12px' }}>People You Might Know</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                {suggestions.map(person => (
-                  <div key={person.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 0', borderBottom: '1px solid var(--parchment)', cursor: 'pointer' }}
-                    onClick={() => onSelectUser && onSelectUser(person.id)}>
-                    {person.avatar_url
-                      ? <img src={person.avatar_url} alt="" style={{ width: '38px', height: '38px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} onError={e => e.target.style.display = 'none'} />
-                      : <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--clay), var(--ember))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: '700', color: 'var(--cream)', flexShrink: 0 }}>{(person.full_name || person.username || '?')[0].toUpperCase()}</div>
-                    }
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: '14px', fontWeight: '600', color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{person.full_name || person.username}</div>
-                      {person.username && person.full_name && <div style={{ fontSize: '12px', color: 'var(--muted)' }}>@{person.username}</div>}
-                    </div>
-                    <button onClick={e => {
-                      e.stopPropagation()
-                      supabase.from('follows').insert({ follower_id: session.user.id, following_id: person.id, status: 'pending' })
-                      supabase.from('notifications').insert({ recipient_id: person.id, actor_id: session.user.id, type: 'follow_request' })
-                      setSuggestions(prev => prev.filter(p => p.id !== person.id))
-                    }} style={{ padding: '7px 14px', background: 'transparent', border: '1.5px solid var(--clay)', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600', color: 'var(--clay)', cursor: 'pointer', flexShrink: 0 }}>Follow</button>
-                  </div>
-                ))}
+                <div style={{ display: 'flex', gap: '12px', overflowX: 'auto', padding: '0 20px 4px', scrollbarWidth: 'none' }}>
+              {suggestions.map(person => (
+                <div key={person.id} onClick={() => onSelectUser(person.id)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', flexShrink: 0, width: '80px', cursor: 'pointer' }}>
+                  {person.avatar_url
+                    ? <img src={person.avatar_url} alt="" style={{ width: '56px', height: '56px', borderRadius: '50%', objectFit: 'cover' }} onError={e => e.target.style.display = 'none'} />
+                    : <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--clay), var(--ember))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: '700', color: 'var(--cream)' }}>{(person.full_name || person.username || '?')[0].toUpperCase()}</div>
+                  }
+                  <div style={{ fontSize: '11px', fontWeight: '600', color: 'var(--ink)', textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%' }}>{person.full_name || person.username}</div>
+                  <button onClick={e => {
+                    e.stopPropagation()
+                    supabase.from('follows').insert({ follower_id: session.user.id, following_id: person.id, status: 'pending' })
+                    supabase.from('notifications').insert({ recipient_id: person.id, actor_id: session.user.id, type: 'follow_request' })
+                    setSuggestions(prev => prev.filter(p => p.id !== person.id))
+                  }} style={{ padding: '5px 10px', background: 'transparent', border: '1.5px solid var(--clay)', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)', fontSize: '11px', fontWeight: '600', color: 'var(--clay)', cursor: 'pointer' }}>Follow</button>
+                </div>
+              ))}
+            </div>
               </div>
             </div>
           )}
