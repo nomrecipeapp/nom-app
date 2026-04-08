@@ -165,10 +165,21 @@ export default function AddRecipe({ session, onSave, onCancel }) {
     try {
       // Convert all files to base64
       const images = await Promise.all(files.map(file => new Promise((resolve, reject) => {
-        const reader = new FileReader()
-        reader.onload = () => resolve({ base64: reader.result.split(',')[1], mediaType: file.type || 'image/jpeg' })
-        reader.onerror = reject
-        reader.readAsDataURL(file)
+        const img = new Image()
+        const objectUrl = URL.createObjectURL(file)
+        img.onload = () => {
+          URL.revokeObjectURL(objectUrl)
+          const canvas = document.createElement('canvas')
+          const MAX = 1200
+          const scale = Math.min(1, MAX / Math.max(img.width, img.height))
+          canvas.width = Math.round(img.width * scale)
+          canvas.height = Math.round(img.height * scale)
+          canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height)
+          const base64 = canvas.toDataURL('image/jpeg', 0.82).split(',')[1]
+          resolve({ base64, mediaType: 'image/jpeg' })
+        }
+        img.onerror = reject
+        img.src = objectUrl
       })))
 
       const response = await fetch('/api/scan-recipe', {
