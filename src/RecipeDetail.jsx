@@ -813,11 +813,11 @@ async function saveEditCook() {
         {circleFriendsCount > 0 && (
           <div onClick={() => setShowCircleModal(true)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--parchment)', borderRadius: 'var(--radius-md)', padding: '10px 14px', marginBottom: '12px', cursor: 'pointer' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <div style={{ display: 'flex' }}>
-                {circleFriendAvatars.map((p, i) => (
-                  <div key={p.id} style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--clay), var(--ember))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-display)', fontSize: '9px', fontWeight: '700', color: 'var(--cream)', marginLeft: i === 0 ? '0' : '-6px', border: '2px solid var(--parchment)', flexShrink: 0 }}>{(p.full_name || p.username || '?')[0].toUpperCase()}</div>
-                ))}
-              </div>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" stroke="var(--clay)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <circle cx="9" cy="7" r="4" stroke="var(--clay)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke="var(--clay)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
               <span style={{ fontSize: '12px', color: 'var(--charcoal)' }}>
                 <span style={{ fontWeight: '600', color: 'var(--clay)' }}>{circleFriendsCount} {circleFriendsCount === 1 ? 'friend' : 'friends'}</span> also {circleFriendsCount === 1 ? 'has' : 'have'} this
               </span>

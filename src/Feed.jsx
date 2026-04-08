@@ -339,17 +339,11 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
       display: 'flex', alignItems: 'center', gap: '6px',
       padding: '8px 16px', borderTop: '1px solid var(--parchment)', cursor: 'pointer'
     }}>
-      <div style={{ display: 'flex' }}>
-        {circleFriendsMap[key].avatars.map((p, i) => (
-          <div key={p.id} style={{
-            width: '18px', height: '18px', borderRadius: '50%',
-            background: 'linear-gradient(135deg, var(--clay), var(--ember))',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontFamily: 'var(--font-display)', fontSize: '7px', fontWeight: '700', color: 'var(--cream)',
-            marginLeft: i === 0 ? '0' : '-4px', border: '1.5px solid var(--warm-white)', flexShrink: 0
-          }}>{(p.full_name || p.username || '?')[0].toUpperCase()}</div>
-        ))}
-      </div>
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+        <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" stroke="var(--clay)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+        <circle cx="9" cy="7" r="4" stroke="var(--clay)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+        <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke="var(--clay)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
       <span style={{ fontSize: '11px', color: 'var(--muted)' }}>
         {circleFriendsMap[key].iHaveIt ? (
           <>
