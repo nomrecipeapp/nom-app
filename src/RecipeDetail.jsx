@@ -313,7 +313,6 @@ async function saveEditCook() {
   const newStatus = editCookForm.verdict === 'never_again' ? 'never_again' : 'cooked'
 
   try {
-    console.log('saving cook id:', editingCookId, 'form:', editCookForm)
     const { error: cookUpdateError } = await supabase.from('cooks').update({
       verdict: editCookForm.verdict,
       flavor: editCookForm.flavor || null,
