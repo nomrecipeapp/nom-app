@@ -143,7 +143,7 @@ async function fetchRecentlyViewed() {
         const uids = [...new Set(recipeRows.map(r => r.user_id))]
         const { data: profs } = await supabase
           .from('profiles')
-          .select('id, full_name, username')
+          .select('id, full_name, username, avatar_url')
           .in('id', uids)
         recipes = recipeRows.map(r => ({
           ...r,

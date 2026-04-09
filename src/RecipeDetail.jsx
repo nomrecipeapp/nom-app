@@ -158,7 +158,7 @@ export default function RecipeDetail({ recipe: initialRecipe, session, onBack, o
     setCircleCooks(deduped)
     const allFriendIds = [...new Set(matchingRecipes.map(r => r.user_id))]
     const { data: teaserProfiles } = await supabase
-      .from('profiles').select('id, full_name, username').in('id', allFriendIds.slice(0, 3))
+      .from('profiles').select('id, full_name, username, avatar_url').in('id', allFriendIds.slice(0, 3))
     setCircleFriendsCount(allFriendIds.length)
     setCircleFriendAvatars(teaserProfiles || [])
   }
@@ -176,7 +176,7 @@ export default function RecipeDetail({ recipe: initialRecipe, session, onBack, o
     if (!matchingRecipes || matchingRecipes.length === 0) return
     const userIds = [...new Set(matchingRecipes.map(r => r.user_id))]
     const { data: profiles } = await supabase
-      .from('profiles').select('id, full_name, username').in('id', userIds.slice(0, 3))
+      .from('profiles').select('id, full_name, username, avatar_url').in('id', userIds.slice(0, 3))
     setCircleFriendsCount(userIds.length)
     setCircleFriendAvatars(profiles || [])
   }

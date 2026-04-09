@@ -22,7 +22,7 @@ export default function LikesModal({ targetType, targetId, onClose, onSelectUser
     const userIds = data.map(l => l.user_id)
     const { data: profiles } = await supabase
       .from('profiles')
-      .select('id, full_name, username')
+      .select('id, full_name, username, avatar_url')
       .in('id', userIds)
 
     setLikers(profiles || [])

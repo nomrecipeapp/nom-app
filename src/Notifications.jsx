@@ -55,7 +55,7 @@ export default function Notifications({ session, onSelectUser, onSelectCook, onS
     const actorIds = [...new Set(data.map(n => n.actor_id))]
     const { data: profiles } = await supabase
       .from('profiles')
-      .select('id, full_name, username')
+      .select('id, full_name, username, avatar_url')
       .in('id', actorIds)
 
     const recipeIds = data.filter(n => n.recipe_id).map(n => n.recipe_id)
@@ -101,7 +101,7 @@ export default function Notifications({ session, onSelectUser, onSelectCook, onS
       if (cook) {
         const { data: profile } = await supabase
           .from('profiles')
-          .select('id, full_name, username')
+          .select('id, full_name, username, avatar_url')
           .eq('id', cook.user_id)
           .single()
         onClose()

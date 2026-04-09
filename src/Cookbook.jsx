@@ -113,7 +113,7 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
     if (!matchingRecipes || matchingRecipes.length === 0) return
     const allUserIds = [...new Set(matchingRecipes.map(r => r.user_id))]
     const { data: profiles } = await supabase
-      .from('profiles').select('id, full_name, username').in('id', allUserIds)
+      .from('profiles').select('id, full_name, username, avatar_url').in('id', allUserIds)
     const map = {}
     for (const r of recipeList) {
       if (!r.source_url) continue

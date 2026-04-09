@@ -117,7 +117,7 @@ useEffect(() => {
     const otherIds = userIds.filter(id => id !== recipe.user_id)
     if (otherIds.length === 0) return
     const { data: profiles } = await supabase
-      .from('profiles').select('id, full_name, username').in('id', userIds.slice(0, 3))
+      .from('profiles').select('id, full_name, username, avatar_url').in('id', userIds.slice(0, 3))
     setCircleFriendsCount(userIds.length)
     setCircleFriendAvatars(profiles || [])
   }
