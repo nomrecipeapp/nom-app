@@ -469,6 +469,23 @@ export default function Settings({ session, onBack }) {
 
             <Divider />
 
+            {/* Adding Recipes */}
+            <div style={{ background: 'var(--cream)' }}>
+              <SectionHeader label="Adding Recipes" />
+              <div style={{ padding: '4px 20px 16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {[
+                  { q: 'What ways can I add a recipe?', a: 'Three ways: paste a URL from any recipe website, scan a photo of a recipe (cookbook, screenshot, handwritten card), or enter it manually.' },
+                  { q: 'Which recipe websites work with URL import?', a: 'Most major food sites work — NYT Cooking, Serious Eats, Food Network, Bon Appétit, Smitten Kitchen, and more. Older blogs may import the title and image but not ingredients or steps — you can fill those in manually on the review screen.' },
+                  { q: 'Can I scan a recipe from a photo?', a: 'Yes. Take a screenshot or photo of any recipe — a cookbook page, a website screenshot, or even a handwritten card. If the recipe spans multiple pages, select all the photos at once and Nom will combine them.' },
+                  { q: 'Can I import from TikTok or Instagram?', a: 'Not yet — direct TikTok and Instagram import is coming soon. For now, screenshot the recipe or video and use "From Photo" to scan it in.' },
+                ].map((item, i, arr) => (
+                  <FaqItem key={i} question={item.q} answer={item.a} isLast={i === arr.length - 1} />
+                ))}
+              </div>
+            </div>
+
+            <Divider />
+
             {/* Invite Friends */}
             <div style={{ background: 'var(--cream)' }}>
             <SectionHeader label="Invite Friends" />
