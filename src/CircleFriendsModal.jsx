@@ -35,7 +35,7 @@ export default function CircleFriendsModal({ sourceUrl, canonicalId, session, on
 
     const userIds = [...new Set(matchingRecipes.map(r => r.user_id))]
     const { data: profiles } = await supabase
-      .from('profiles').select('id, full_name, username').in('id', userIds)
+      .from('profiles').select('id, full_name, username, avatar_url').in('id', userIds)
 
     // For each friend, get their most recent cook if they have one
     const recipeIds = matchingRecipes.map(r => r.id)
@@ -114,8 +114,15 @@ export default function CircleFriendsModal({ sourceUrl, canonicalId, session, on
                     width: '36px', height: '36px', borderRadius: '50%', flexShrink: 0,
                     background: 'linear-gradient(135deg, var(--clay), var(--ember))',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: '700', color: 'var(--cream)'
-                  }}>{name[0].toUpperCase()}</div>
+                    fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: '700', color: 'var(--cream)',
+                    overflow: 'hidden', position: 'relative'
+                  }}>
+                    {f.profile?.avatar_url
+                      ? <img src={f.profile.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }} onError={e => e.target.style.display = 'none'} />
+                      : null
+                    }
+                    <span>{name[0].toUpperCase()}</span>
+                  </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: '14px', fontWeight: '600', color: 'var(--ink)', marginBottom: '2px' }}>{name}</div>
                     {f.notes && <div style={{ fontSize: '11px', color: 'var(--muted)', fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>"{f.notes}"</div>}
