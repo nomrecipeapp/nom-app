@@ -476,19 +476,31 @@ export default function FriendProfile({ userId, session, onBack, onSelectCook, o
   }
 
   async function sendFollowRequest() {
-  await supabase.from('follows').insert({
-    follower_id: session.user.id,
-    following_id: userId,
-    status: 'pending'
-  })
-  setFollowStatus('pending')
-  // Notify the person being requested
-  await supabase.from('notifications').insert({
-    recipient_id: userId,
-    actor_id: session.user.id,
-    type: 'follow_request',
-  })
-}
+    const { data: targetProfile } = await supabase
+      .from('profiles').select('is_private').eq('id', userId).single()
+    const isPrivate = targetProfile?.is_private !== false
+    const status = isPrivate ? 'pending' : 'approved'
+    await supabase.from('follows').insert({
+      follower_id: session.user.id,
+      following_id: userId,
+      status
+    })
+    setFollowStatus(status)
+    if (isPrivate) {
+      await supabase.from('notifications').insert({
+        recipient_id: userId,
+        actor_id: session.user.id,
+        type: 'follow_request',
+      })
+    }
+    if (status === 'approved') {
+      fetchCooks()
+      fetchStats()
+      fetchWantToMake()
+      fetchAllRecipes()
+      fetchFriendActivity()
+    }
+  }
   async function unfollow() {
     if (!confirm('Unfollow this cook?')) return
     await supabase.from('follows')

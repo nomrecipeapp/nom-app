@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from './supabase'
 
 export default function Settings({ session, onBack }) {
-  const [profile, setProfile] = useState({ full_name: '', username: '', email: '' })
+  const [profile, setProfile] = useState({ full_name: '', username: '', email: '', is_private: true })
   const [loading, setLoading] = useState(true)
 
   // Edit modal state
@@ -29,7 +29,7 @@ export default function Settings({ session, onBack }) {
   async function fetchProfile() {
     const { data } = await supabase
       .from('profiles')
-      .select('full_name, username, avatar_url')
+      .select('full_name, username, avatar_url, is_private')
       .eq('id', session.user.id)
       .single()
     if (data) {
@@ -120,6 +120,12 @@ export default function Settings({ session, onBack }) {
     await supabase.auth.signOut()
   }
 
+  async function togglePrivacy() {
+    const newVal = !profile.is_private
+    await supabase.from('profiles').update({ is_private: newVal }).eq('id', session.user.id)
+    setProfile(p => ({ ...p, is_private: newVal }))
+  }
+
   async function handleDeleteAccount() {
     if (deleteText !== 'delete') return
     setDeleting(true)
@@ -146,6 +152,21 @@ export default function Settings({ session, onBack }) {
     username: 'Username',
     email: 'Email Address',
     password: 'Password',
+  }
+
+  function FaqItem({ question, answer, isLast }) {
+    const [open, setOpen] = useState(false)
+    return (
+      <div style={{ borderBottom: isLast ? 'none' : '1px solid var(--parchment)', paddingBottom: isLast ? '0' : '12px' }}>
+        <button onClick={() => setOpen(o => !o)} style={{ width: '100%', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: 0, textAlign: 'left' }}>
+          <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--ink)' }}>{question}</div>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, transform: open ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>
+            <path d="M6 9l6 6 6-6" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </button>
+        {open && <div style={{ fontSize: '12px', color: 'var(--muted)', lineHeight: '1.6', marginTop: '8px' }}>{answer}</div>}
+      </div>
+    )
   }
 
   function SettingsRow({ iconBg, icon, label, value, onTap, danger }) {
@@ -408,9 +429,43 @@ export default function Settings({ session, onBack }) {
           {/* Privacy */}
           <div style={{ background: 'var(--cream)' }}>
             <SectionHeader label="Privacy" />
-            <SettingsRow iconBg="#E2EBD8" icon={<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1l1.5 3H12l-2.7 2 1 3.3L7 7.5 3.7 9.3l1-3.3L2 4h3.5L7 1z" stroke="#4A5E42" strokeWidth="1.2" strokeLinejoin="round"/></svg>} label="Want to Make" value="Private" onTap={() => {}} />
-            <SettingsRow iconBg="#E2EBD8" icon={<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="5" r="2.5" stroke="#4A5E42" strokeWidth="1.3"/><path d="M2 13c0-2.5 2-4 5-4s5 1.5 5 4" stroke="#4A5E42" strokeWidth="1.3" strokeLinecap="round"/></svg>} label="Profile visibility" value="Anyone can request" onTap={() => {}} />
+            <div style={{ padding: '12px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ width: '30px', height: '30px', borderRadius: '8px', background: '#E2EBD8', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="5" r="2.5" stroke="#4A5E42" strokeWidth="1.3"/><path d="M2 13c0-2.5 2-4 5-4s5 1.5 5 4" stroke="#4A5E42" strokeWidth="1.3" strokeLinecap="round"/></svg>
+                </div>
+                <div>
+                  <div style={{ fontSize: '13px', fontWeight: '500', color: 'var(--ink)' }}>Private profile</div>
+                  <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '1px' }}>{profile.is_private ? 'Follow requests need your approval' : 'Anyone can follow you without approval'}</div>
+                </div>
+              </div>
+              <button onClick={togglePrivacy} style={{
+                width: '44px', height: '26px', borderRadius: '13px', border: 'none',
+                background: profile.is_private ? 'var(--clay)' : 'var(--tan)',
+                cursor: 'pointer', position: 'relative', transition: 'background 0.2s', flexShrink: 0
+              }}>
+                <div style={{ position: 'absolute', top: '3px', left: profile.is_private ? '21px' : '3px', width: '20px', height: '20px', borderRadius: '50%', background: 'white', transition: 'left 0.2s' }} />
+              </button>
+            </div>
           </div>
+
+            <Divider />
+
+            {/* How Nom Works */}
+            <div style={{ background: 'var(--cream)' }}>
+              <SectionHeader label="How Nom Works" />
+              <div style={{ padding: '4px 20px 16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {[
+                  { q: 'Who can see my cookbook?', a: 'Only people you approve to follow you. Your recipes, cooks, and notes are always private unless you choose to follow someone back.' },
+                  { q: 'What does following someone mean?', a: 'When you follow someone and they approve, you can see their cookbook and cook logs in your Feed. They can see yours too if they follow you back.' },
+                  { q: 'Are my cook logs public?', a: 'Cook logs are visible to your approved followers in their Feed. There\'s no way to hide individual cooks — if you want something private, don\'t log it.' },
+                  { q: 'What is "Want to Make"?', a: 'Recipes you\'ve saved but haven\'t cooked yet. These are visible to your approved followers in your cookbook.' },
+                  { q: 'Can I remove a follower?', a: 'Not yet — this is coming soon. For now you can block someone from following you by keeping your profile private and not approving their request.' },
+                ].map((item, i, arr) => (
+                  <FaqItem key={i} question={item.q} answer={item.a} isLast={i === arr.length - 1} />
+                ))}
+              </div>
+            </div>
 
             <Divider />
 
