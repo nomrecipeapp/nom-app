@@ -313,7 +313,7 @@ async function saveEditCook() {
   const newStatus = editCookForm.verdict === 'never_again' ? 'never_again' : 'cooked'
 
   try {
-    await supabase.from('cooks').update({
+    const { error: cookUpdateError } = await supabase.from('cooks').update({
       verdict: editCookForm.verdict,
       flavor: editCookForm.flavor || null,
       effort: editCookForm.effort || null,
@@ -322,6 +322,7 @@ async function saveEditCook() {
       notes: editCookForm.notes || null,
       photo_urls: allPhotos.length > 0 ? allPhotos : null,
     }).eq('id', editingCookId)
+    if (cookUpdateError) throw new Error(cookUpdateError.message)
 
     await supabase.from('recipes')
       .update({ status: newStatus }).eq('id', recipe.id)
