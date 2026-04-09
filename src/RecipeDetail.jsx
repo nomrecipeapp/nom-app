@@ -42,6 +42,7 @@ export default function RecipeDetail({ recipe: initialRecipe, session, onBack, o
   const [circleFriendAvatars, setCircleFriendAvatars] = useState([])
   const [showCircleModal, setShowCircleModal] = useState(false)
   const [availableTags, setAvailableTags] = useState(PRESET_TAGS)
+  const [myProfile, setMyProfile] = useState(null)
 
   // Cook photo state
   const [cookPhotoFiles, setCookPhotoFiles] = useState([])
@@ -74,6 +75,7 @@ export default function RecipeDetail({ recipe: initialRecipe, session, onBack, o
 
   useEffect(() => {
     fetchUserTags()
+    fetchMyProfile()
   }, [])
 
   async function fetchUserTags() {
@@ -81,6 +83,13 @@ export default function RecipeDetail({ recipe: initialRecipe, session, onBack, o
     if (!data) return
     const customTags = [...new Set(data.flatMap(r => r.tags || []).filter(t => !PRESET_TAGS.includes(t)))]
     if (customTags.length > 0) setAvailableTags([...PRESET_TAGS, ...customTags])
+  }
+
+  async function fetchMyProfile() {
+    const { data } = await supabase.from('profiles')
+      .select('id, full_name, username, avatar_url')
+      .eq('id', session.user.id).single()
+    if (data) setMyProfile(data)
   }
 
   const [editForm, setEditForm] = useState({
@@ -303,15 +312,16 @@ async function saveEditCook() {
   const allPhotos = [...editCookForm.existingPhotos, ...newPhotoUrls]
   const newStatus = editCookForm.verdict === 'never_again' ? 'never_again' : 'cooked'
 
-  await supabase.from('cooks').update({
-    verdict: editCookForm.verdict,
-    flavor: editCookForm.flavor || null,
-    effort: editCookForm.effort || null,
-    would_share: editCookForm.would_share || null,
-    true_to_recipe: editCookForm.true_to_recipe || null,
-    notes: editCookForm.notes || null,
-    photo_urls: allPhotos.length > 0 ? allPhotos : null,
-  }).eq('id', editingCookId)
+  try {
+    await supabase.from('cooks').update({
+      verdict: editCookForm.verdict,
+      flavor: editCookForm.flavor || null,
+      effort: editCookForm.effort || null,
+      would_share: editCookForm.would_share || null,
+      true_to_recipe: editCookForm.true_to_recipe || null,
+      notes: editCookForm.notes || null,
+      photo_urls: allPhotos.length > 0 ? allPhotos : null,
+    }).eq('id', editingCookId)
 
     await supabase.from('recipes')
       .update({ status: newStatus }).eq('id', recipe.id)
@@ -320,10 +330,13 @@ async function saveEditCook() {
     setEditCookForm(null)
     setEditCookPhotoFiles([])
     setEditCookPhotoPreviews([])
-    setEditCookSaving(false)
     await fetchCooks()
     onUpdate()
+  } catch(err) {
+    setEditCookError('Failed to save. Try again.')
   }
+  setEditCookSaving(false)
+}
 
   // ---- LOG COOK ----
 
@@ -715,7 +728,10 @@ async function saveEditCook() {
                   : <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
                 }
               </button>
-              <div style={{ position: 'absolute', bottom: '16px', left: '16px', background: status.bg, border: `1px solid ${status.border}`, color: status.color, borderRadius: 'var(--radius-pill)', padding: '5px 12px', fontSize: '11px', fontWeight: '600' }}>{status.label}</div>
+              <div style={{ position: 'absolute', bottom: '10px', left: '10px', background: 'rgba(0,0,0,0.45)', borderRadius: 'var(--radius-pill)', padding: '3px 8px' }}>
+                <span style={{ fontSize: '10px', fontWeight: '600', color: 'white' }}>Recipe photo</span>
+              </div>
+              <div style={{ position: 'absolute', bottom: '16px', right: '10px', background: status.bg, border: `1px solid ${status.border}`, color: status.color, borderRadius: 'var(--radius-pill)', padding: '5px 12px', fontSize: '11px', fontWeight: '600' }}>{status.label}</div>
             </div>
           ) : (
             <div style={{ paddingTop: '70px', padding: '70px 24px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -751,9 +767,9 @@ async function saveEditCook() {
                     {photo.isMe && (
                       <div style={{ position: 'absolute', bottom: '10px', left: '10px', display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(0,0,0,0.45)', borderRadius: 'var(--radius-pill)', padding: '4px 10px 4px 4px' }}>
                         <div style={{ width: '22px', height: '22px', borderRadius: '50%', border: '1.5px solid white', overflow: 'hidden', background: 'linear-gradient(135deg, var(--clay), var(--ember))', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                          {session.user.avatar_url
-                            ? <img src={session.user.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                            : <span style={{ fontFamily: 'var(--font-display)', fontSize: '9px', fontWeight: '700', color: 'var(--cream)' }}>{(session.user.email || '?')[0].toUpperCase()}</span>
+                          {myProfile?.avatar_url
+                            ? <img src={myProfile.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => e.target.style.display = 'none'} />
+                            : <span style={{ fontFamily: 'var(--font-display)', fontSize: '9px', fontWeight: '700', color: 'var(--cream)' }}>{(myProfile?.full_name || myProfile?.username || session.user.email || '?')[0].toUpperCase()}</span>
                           }
                         </div>
                         <span style={{ fontSize: '11px', fontWeight: '600', color: 'white' }}>Made by You</span>
