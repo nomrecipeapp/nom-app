@@ -146,7 +146,7 @@ export default function RecipeDetail({ recipe: initialRecipe, session, onBack, o
     if (!cooksData || cooksData.length === 0) return
     const userIds = [...new Set(cooksData.map(c => c.user_id))]
     const { data: profiles } = await supabase
-      .from('profiles').select('id, full_name, username').in('id', userIds)
+      .from('profiles').select('id, full_name, username, avatar_url').in('id', userIds)
     const cooksWithProfiles = cooksData.map(c => ({
       ...c, profiles: profiles?.find(p => p.id === c.user_id) || null
     }))
@@ -313,6 +313,7 @@ async function saveEditCook() {
   const newStatus = editCookForm.verdict === 'never_again' ? 'never_again' : 'cooked'
 
   try {
+    console.log('saving cook id:', editingCookId, 'form:', editCookForm)
     const { error: cookUpdateError } = await supabase.from('cooks').update({
       verdict: editCookForm.verdict,
       flavor: editCookForm.flavor || null,
