@@ -23,7 +23,7 @@ function removeRecentSearch(term) {
 
 export default function Search({ session, onSelectUser, onSelectSave, onSelectCook, onSelectRecipe }) {
   const [query, setQuery] = useState('')
-  const [dropdownResults, setDropdownResults] = useState({ people: [], recipes: [] })
+  const [dropdownResults, setDropdownResults] = useState({ people: [], myRecipes: [], recipes: [] })
   const [showDropdown, setShowDropdown] = useState(false)
   const [loading, setLoading] = useState(false)
   const [followStates, setFollowStates] = useState({})
@@ -43,7 +43,7 @@ export default function Search({ session, onSelectUser, onSelectSave, onSelectCo
   useEffect(() => {
     if (query.length < 2) {
       setShowDropdown(false)
-      setDropdownResults({ people: [], recipes: [] })
+      setDropdownResults({ people: [], myRecipes: [], recipes: [] })
       return
     }
     clearTimeout(debounceRef.current)
@@ -116,6 +116,14 @@ async function fetchRecentlyViewed() {
   async function runSearch(q) {
     setLoading(true)
 
+    const { data: myRecipeRows = [] } = await supabase
+      .from('recipes')
+      .select('*')
+      .eq('user_id', session.user.id)
+      .ilike('title', `%${q}%`)
+      .order('created_at', { ascending: false })
+      .limit(5)
+
     const { data: people = [] } = await supabase
       .from('profiles')
       .select('*')
@@ -163,7 +171,7 @@ async function fetchRecentlyViewed() {
       setFollowStates(states)
     }
 
-    setDropdownResults({ people, recipes })
+    setDropdownResults({ people, myRecipes: myRecipeRows, recipes })
     setShowDropdown(true)
     setLoading(false)
   }
@@ -223,7 +231,7 @@ async function fetchRecentlyViewed() {
     }
   }
 
-  const hasDropdownResults = dropdownResults.people.length > 0 || dropdownResults.recipes.length > 0
+  const hasDropdownResults = dropdownResults.people.length > 0 || dropdownResults.myRecipes.length > 0 || dropdownResults.recipes.length > 0
 
   return (
     <div style={{ maxWidth: '480px', margin: '0 auto', padding: '0 16px 100px' }}>
@@ -309,6 +317,45 @@ async function fetchRecentlyViewed() {
                         )}
                       </div>
                     ))}
+                  </div>
+                )}
+                {dropdownResults.myRecipes.length > 0 && (
+                  <div>
+                    <div style={{ padding: '10px 16px 6px', fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--muted)' }}>In Your Cookbook</div>
+                    {dropdownResults.myRecipes.map(recipe => {
+                      const statusStyles = {
+                        cooked: { bg: '#EEF4E5', color: '#4A5E42', label: 'Cooked' },
+                        want_to_make: { bg: 'var(--parchment)', color: 'var(--charcoal)', label: 'Want to Make' },
+                        never_again: { bg: '#F4E8E8', color: '#9B4040', label: 'Never Again' },
+                      }
+                      const s = statusStyles[recipe.status] || statusStyles.want_to_make
+                      return (
+                        <div key={recipe.id} onClick={() => { setShowDropdown(false); setQuery(''); onSelectRecipe && onSelectRecipe(recipe) }} style={{
+                          display: 'flex', alignItems: 'center', gap: '10px',
+                          padding: '10px 16px', cursor: 'pointer',
+                          borderBottom: '1px solid var(--parchment)'
+                        }}
+                          onMouseEnter={e => e.currentTarget.style.background = 'var(--warm-white)'}
+                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                        >
+                          <div style={{
+                            width: '36px', height: '36px', borderRadius: 'var(--radius-sm)',
+                            overflow: 'hidden', flexShrink: 0,
+                            background: 'linear-gradient(135deg, var(--clay), var(--ember))',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            position: 'relative'
+                          }}>
+                            {recipe.image_url && <img src={recipe.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }} onError={e => e.target.style.display = 'none'} />}
+                            <span style={{ fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: '700', color: 'var(--cream)', position: 'relative' }}>{(recipe.title || '?')[0].toUpperCase()}</span>
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{recipe.title}</div>
+                            {recipe.source_name && <div style={{ fontSize: '11px', color: 'var(--muted)' }}>{recipe.source_name}</div>}
+                          </div>
+                          <div style={{ background: s.bg, color: s.color, borderRadius: 'var(--radius-pill)', padding: '3px 8px', fontSize: '10px', fontWeight: '600', flexShrink: 0 }}>{s.label}</div>
+                        </div>
+                      )
+                    })}
                   </div>
                 )}
                 {dropdownResults.recipes.length > 0 && (
