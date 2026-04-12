@@ -66,6 +66,7 @@ export default function Profile({ session, onBack, onSelectRecipe, onSelectCook,
   const [activityFeed, setActivityFeed] = useState([])
   const [activityEngagement, setActivityEngagement] = useState({})
   const [activityLoading, setActivityLoading] = useState(false)
+  const [activityLoaded, setActivityLoaded] = useState(false)
 
   const avatarInputRef = useRef(null)
   const [avatarUploading, setAvatarUploading] = useState(false)
@@ -75,7 +76,6 @@ export default function Profile({ session, onBack, onSelectRecipe, onSelectCook,
     // Header batch renders immediately, lists fill in behind
     Promise.all([fetchProfile(), fetchStats(), fetchFollowCounts()])
     fetchProfileLists()
-    fetchActivityFeed()
   }, [])
 
   useEffect(() => {
@@ -381,7 +381,13 @@ export default function Profile({ session, onBack, onSelectRecipe, onSelectCook,
           borderBottom: '2px solid var(--parchment)',
         }}>
           {['stats', 'activity'].map(tab => (
-            <button key={tab} onClick={() => setActiveTab(tab)} style={{
+            <button key={tab} onClick={() => {
+              setActiveTab(tab)
+              if (tab === 'activity' && !activityLoaded) {
+                setActivityLoaded(true)
+                fetchActivityFeed()
+              }
+            }} style={{
               flex: 1, padding: '12px',
               background: 'none', border: 'none',
               borderBottom: activeTab === tab ? '2px solid var(--clay)' : '2px solid transparent',
