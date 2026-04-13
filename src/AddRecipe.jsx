@@ -743,7 +743,7 @@ export default function AddRecipe({ session, onSave, onCancel }) {
                 <input value={sourceName} onChange={e => setSourceName(e.target.value)} placeholder="e.g. Grandma's recipe, NYT Cooking" style={inputStyle} />
               </div>
               <div>
-                <label style={labelStyle}>Image URL (optional)</label>
+                <label style={labelStyle}>Image URL (optional) <span style={{ fontWeight: '400', color: 'var(--muted)', fontSize: '11px' }}>— this is the recipe photo. Want to add a photo of your own cook? Toggle below and add it there.</span></label>
                 <input value={url} onChange={e => setUrl(e.target.value)} placeholder="https://..." style={inputStyle} />
               </div>
               <div style={{ display: 'flex', gap: '12px' }}>
