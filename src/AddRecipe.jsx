@@ -35,6 +35,10 @@ export default function AddRecipe({ session, onSave, onCancel }) {
   const photoInputRef = useRef(null)
   const reviewPhotoInputRef = useRef(null)
   const [reviewPhotoUploading, setReviewPhotoUploading] = useState(false)
+  const cookPhotoInputRef = useRef(null)
+  const [cookPhotoFiles, setCookPhotoFiles] = useState([])
+  const [cookPhotoPreviews, setCookPhotoPreviews] = useState([])
+  const [cookPhotoUploading, setCookPhotoUploading] = useState(false)
 
   // Verdict state
   const [verdict, setVerdict] = useState(null)
@@ -261,6 +265,28 @@ export default function AddRecipe({ session, onSave, onCancel }) {
     if (saveError) { setError(saveError.message); setLoading(false); return }
 
     if (logCookNow && saved) {
+      let cookPhotoUrls = []
+      if (cookPhotoFiles.length > 0) {
+        setCookPhotoUploading(true)
+        try {
+          cookPhotoUrls = await Promise.all(
+            cookPhotoFiles.map(async f => {
+              const ext = f.name.split('.').pop() || 'jpg'
+              const path = `${session.user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+              const { error } = await supabase.storage.from('cook-photos').upload(path, f, { upsert: false })
+              if (error) throw error
+              const { data } = supabase.storage.from('cook-photos').getPublicUrl(path)
+              return data.publicUrl
+            })
+          )
+        } catch (err) {
+          setError('Cook photo upload failed. Try again.')
+          setLoading(false)
+          setCookPhotoUploading(false)
+          return
+        }
+        setCookPhotoUploading(false)
+      }
       await supabase.from('cooks').insert({
         user_id: session.user.id,
         recipe_id: saved.id,
@@ -269,7 +295,8 @@ export default function AddRecipe({ session, onSave, onCancel }) {
         effort: scores.effort || null,
         would_share: scores.would_share || null,
         true_to_recipe: scores.true_to_recipe || null,
-        notes: cookNotes || null
+        notes: cookNotes || null,
+        photo_urls: cookPhotoUrls.length > 0 ? cookPhotoUrls : null
       })
       onSave(saved, true)
     } else {
@@ -308,6 +335,32 @@ export default function AddRecipe({ session, onSave, onCancel }) {
 
   const verdictAndScoresUI = (logCookFlag) => logCookFlag && (
     <div style={{ background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--parchment)', padding: '20px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      <div>
+        <div style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '4px' }}>Your Cook Photo</div>
+        <div style={{ fontSize: '11px', color: 'var(--muted)', marginBottom: '12px' }}>A photo of how yours turned out — different from the recipe image above.</div>
+        <input ref={cookPhotoInputRef} type="file" accept="image/*" multiple style={{ display: 'none' }}
+          onChange={e => {
+            const files = Array.from(e.target.files || [])
+            if (files.length === 0) return
+            setCookPhotoFiles(prev => [...prev, ...files])
+            setCookPhotoPreviews(prev => [...prev, ...files.map(f => URL.createObjectURL(f))])
+          }}
+        />
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          {cookPhotoPreviews.map((src, i) => (
+            <div key={i} style={{ position: 'relative', width: '80px', height: '80px', borderRadius: 'var(--radius-md)', overflow: 'hidden', flexShrink: 0 }}>
+              <img src={src} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <button onClick={() => {
+                setCookPhotoFiles(prev => prev.filter((_, j) => j !== i))
+                setCookPhotoPreviews(prev => prev.filter((_, j) => j !== i))
+              }} style={{ position: 'absolute', top: '4px', right: '4px', width: '20px', height: '20px', borderRadius: '50%', background: 'rgba(0,0,0,0.55)', border: 'none', color: 'white', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>×</button>
+            </div>
+          ))}
+          <button onClick={() => cookPhotoInputRef.current?.click()} style={{ width: '80px', height: '80px', borderRadius: 'var(--radius-md)', border: '1.5px dashed var(--tan)', background: 'var(--parchment)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round"/></svg>
+          </button>
+        </div>
+      </div>
       <div>
         <div style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '12px' }}>The Verdict</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -386,7 +439,7 @@ export default function AddRecipe({ session, onSave, onCancel }) {
           </div>
         </div>
                 <div>
-          <label style={labelStyle}>Image (optional)</label>
+          <label style={labelStyle}>Image (optional) <span style={{ fontWeight: '400', color: 'var(--muted)', fontSize: '11px' }}>— this is the recipe photo. Want to add a photo of your own cook? Toggle below and add it there.</span></label>
           <input
             ref={reviewPhotoInputRef}
             type="file"
@@ -517,7 +570,7 @@ export default function AddRecipe({ session, onSave, onCancel }) {
             <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--ink)', marginBottom: '2px' }}>Already made this?</div>
             <div style={{ fontSize: '12px', color: 'var(--muted)' }}>Log a cook right away</div>
           </div>
-          <button onClick={() => { setRecipe({ ...recipe, logCookNow: !recipe?.logCookNow }); setVerdict(null); setScores({ flavor: 0, effort: 0, would_share: 0, true_to_recipe: 0 }); setCookNotes('') }} style={{
+          <button onClick={() => { setRecipe({ ...recipe, logCookNow: !recipe?.logCookNow }); setVerdict(null); setScores({ flavor: 0, effort: 0, would_share: 0, true_to_recipe: 0 }); setCookNotes(''); setCookPhotoFiles([]); setCookPhotoPreviews([]) }} style={{
             width: '44px', height: '26px', borderRadius: '13px', border: 'none',
             background: recipe?.logCookNow ? 'var(--clay)' : 'var(--tan)',
             cursor: 'pointer', position: 'relative', transition: 'background 0.2s', flexShrink: 0
@@ -728,7 +781,7 @@ export default function AddRecipe({ session, onSave, onCancel }) {
                 <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--ink)', marginBottom: '2px' }}>Already made this?</div>
                 <div style={{ fontSize: '12px', color: 'var(--muted)' }}>Log a cook right away</div>
               </div>
-              <button onClick={() => { setManualLogCook(v => !v); setVerdict(null); setScores({ flavor: 0, effort: 0, would_share: 0, true_to_recipe: 0 }); setCookNotes('') }} style={{
+              <button onClick={() => { setManualLogCook(v => !v); setVerdict(null); setScores({ flavor: 0, effort: 0, would_share: 0, true_to_recipe: 0 }); setCookNotes(''); setCookPhotoFiles([]); setCookPhotoPreviews([]) }} style={{
                 width: '44px', height: '26px', borderRadius: '13px', border: 'none',
                 background: manualLogCook ? 'var(--clay)' : 'var(--tan)',
                 cursor: 'pointer', position: 'relative', transition: 'background 0.2s', flexShrink: 0
