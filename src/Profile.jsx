@@ -62,6 +62,7 @@ export default function Profile({ session, onBack, onSelectRecipe, onSelectCook,
   const [recentCooks, setRecentCooks] = useState([])
   const [topRated, setTopRated] = useState([])
   const [wantToMake, setWantToMake] = useState([])
+  const [listsLoading, setListsLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('stats')
   const [activityFeed, setActivityFeed] = useState([])
   const [activityEngagement, setActivityEngagement] = useState({})
@@ -72,10 +73,8 @@ export default function Profile({ session, onBack, onSelectRecipe, onSelectCook,
   const [avatarUploading, setAvatarUploading] = useState(false)
 
   useEffect(() => {
-    // Load header data and recipe lists in two parallel batches
-    // Header batch renders immediately, lists fill in behind
     Promise.all([fetchProfile(), fetchStats(), fetchFollowCounts()])
-    fetchProfileLists()
+      .then(() => fetchProfileLists())
   }, [])
 
   useEffect(() => {
@@ -112,10 +111,10 @@ export default function Profile({ session, onBack, onSelectRecipe, onSelectCook,
   }
 
   async function fetchProfileLists() {
-    // One query for all cooks + recipes, one for want to make — replaces 3 separate queries
+    setListsLoading(true)
     const [{ data: cooksData }, { data: wantData }] = await Promise.all([
       supabase.from('cooks').select('*, recipes(*)').eq('user_id', session.user.id)
-        .order('cooked_at', { ascending: false }).limit(100),
+        .order('cooked_at', { ascending: false }).limit(20),
       supabase.from('recipes').select('*').eq('user_id', session.user.id)
         .eq('status', 'want_to_make').order('created_at', { ascending: false }).limit(5)
     ])
@@ -146,6 +145,7 @@ export default function Profile({ session, onBack, onSelectRecipe, onSelectCook,
     }
 
     if (wantData) setWantToMake(wantData)
+    setListsLoading(false)
   }
 
   async function fetchActivityFeed() {
@@ -402,6 +402,20 @@ export default function Profile({ session, onBack, onSelectRecipe, onSelectCook,
         </div>
 
         {activeTab === 'stats' && <>
+          {listsLoading ? (
+            <div style={{ padding: '0 20px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              {[1,2,3].map(i => (
+                <div key={i}>
+                  <div style={{ height: '12px', width: '80px', background: 'var(--parchment)', borderRadius: '6px', marginBottom: '16px' }} />
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    {[1,2,3,4,5].map(j => (
+                      <div key={j} style={{ width: '88px', height: '88px', borderRadius: 'var(--radius-md)', background: 'var(--parchment)', flexShrink: 0 }} />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : <>
           {/* Recently Cooked */}
           {recentCooks.length > 0 && (
             <div style={{ marginBottom: '20px' }}>
@@ -481,6 +495,7 @@ export default function Profile({ session, onBack, onSelectRecipe, onSelectCook,
               </div>
             </div>
           )}
+        </>}
         </>}
 
         {activeTab === 'activity' && (
