@@ -160,11 +160,21 @@ export default function Onboarding({ onComplete, session, prefillInviteCode }) {
       const res = await fetch(`https://api.spoonacular.com/recipes/extract?url=${encodeURIComponent(recipeUrl)}&apiKey=${apiKey}`)
       const data = await res.json()
       if (data.code === 402) { setImportError('Daily import limit reached. Try again tomorrow or add manually.'); setImporting(false); return }
+      const ingredients = data.extendedIngredients
+        ? data.extendedIngredients.map(i => i.original).join('\n')
+        : ''
+      const instructions = data.analyzedInstructions?.[0]?.steps
+        ? data.analyzedInstructions[0].steps.map((s, i) => `${i + 1}. ${s.step}`).join('\n')
+        : data.instructions || ''
+
       setImportedRecipe({
         title: data.title || 'Untitled Recipe',
         source_url: recipeUrl,
         source_name: data.sourceName || new URL(recipeUrl).hostname.replace('www.', ''),
         image_url: data.image || null,
+        ingredients,
+        instructions,
+        cook_time: data.readyInMinutes ? `${data.readyInMinutes} min` : '',
       })
     } catch {
       setImportError("Couldn't fetch that URL. Try another link.")
@@ -174,10 +184,19 @@ export default function Onboarding({ onComplete, session, prefillInviteCode }) {
 
   async function saveFirstRecipe() {
     if (!importedRecipe || !userId) return
+    const canonicalId = crypto.randomUUID()
     await supabase.from('recipes').insert({
-      user_id: userId, title: importedRecipe.title,
-      source_url: importedRecipe.source_url, source_name: importedRecipe.source_name,
-      image_url: importedRecipe.image_url, status: 'want_to_make'
+      user_id: userId,
+      title: importedRecipe.title,
+      source_url: importedRecipe.source_url,
+      source_name: importedRecipe.source_name,
+      image_url: importedRecipe.image_url,
+      ingredients: importedRecipe.ingredients || null,
+      instructions: importedRecipe.instructions || null,
+      cook_time: importedRecipe.cook_time || null,
+      status: 'want_to_make',
+      canonical_id: canonicalId,
+      tags: [],
     })
     setStep(5)
   }
