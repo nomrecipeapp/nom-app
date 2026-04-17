@@ -92,6 +92,41 @@ export default function AddRecipe({ session, onSave, onCancel }) {
 
     setDuplicate(null)
 
+    // Detect TikTok or Instagram URLs and use social import
+    const isSocial = url.includes('tiktok.com') || url.includes('instagram.com')
+    if (isSocial) {
+      try {
+        const res = await fetch('/api/import-social', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url })
+        })
+        const data = await res.json()
+        if (data.error) {
+          setError(data.message || 'Could not import this post. Try screenshotting the caption and using From Photo instead.')
+          setLoading(false)
+          return
+        }
+        setRecipe({
+          title: data.title || '',
+          source_url: url,
+          source_name: data.source_name || (url.includes('tiktok.com') ? 'TikTok' : 'Instagram'),
+          image_url: data.image_url || null,
+          cook_time: data.cook_time || '',
+          difficulty: data.difficulty || '',
+          ingredients: data.ingredients || '',
+          instructions: data.instructions || '',
+          notes: '',
+          tags: [],
+          logCookNow: false
+        })
+      } catch (e) {
+        setError('Could not import this post. Try screenshotting the caption and using From Photo instead.')
+      }
+      setLoading(false)
+      return
+    }
+
     try {
       const apiKey = import.meta.env.VITE_SPOONACULAR_KEY
       const res = await fetch(`https://api.spoonacular.com/recipes/extract?url=${encodeURIComponent(url)}&apiKey=${apiKey}`)
@@ -637,7 +672,7 @@ export default function AddRecipe({ session, onSave, onCancel }) {
             <input type="url" value={url}
               onChange={e => { setUrl(e.target.value); setDuplicate(null) }}
               onBlur={e => checkDuplicate(e.target.value)}
-              placeholder="https://www.seriouseats.com/..." style={{ ...inputStyle, marginBottom: '16px' }} />
+              placeholder="https://www.seriouseats.com or TikTok/Instagram link..." style={{ ...inputStyle, marginBottom: '16px' }} />
 
             {duplicate && (
               <div style={{ background: '#FBF0E6', border: '1px solid #E8A87C', borderRadius: 'var(--radius-md)', padding: '12px 14px', marginBottom: '16px' }}>
