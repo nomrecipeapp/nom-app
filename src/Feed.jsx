@@ -607,7 +607,7 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
                   if (stripPhotos.length === 1) {
                     return (
                       <div style={{ position: 'relative' }}>
-                        <img src={stripPhotos[0].url} alt="" style={{ width: '100%', height: '200px', objectFit: 'cover', display: 'block' }} onError={e => e.target.style.display = 'none'} />
+                        <img src={stripPhotos[0].url} alt="" style={{ width: '100%', height: '200px', objectFit: 'cover', display: 'block' }} onError={e => { e.target.style.display = 'none'; e.target.parentElement.style.display = 'none' }} />
                         {stripPhotos[0].isStock ? (
                           <div style={{ position: 'absolute', bottom: '10px', left: '10px', background: 'rgba(0,0,0,0.45)', borderRadius: 'var(--radius-pill)', padding: '3px 8px' }}>
                             <span style={{ fontSize: '10px', fontWeight: '600', color: 'white' }}>Recipe photo</span>
@@ -631,7 +631,7 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
                     <div onClick={e => e.stopPropagation()} style={{ overflowX: 'auto', display: 'flex', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch', paddingLeft: '12px', paddingRight: '4px' }}>
                       {stripPhotos.map((photo, pi) => (
                         <div key={pi} style={{ position: 'relative', flexShrink: 0, width: '80vw', maxWidth: '340px', height: '200px', borderRadius: 'var(--radius-md)', overflow: 'hidden', marginRight: '8px', background: 'var(--parchment)' }}>
-                          <img src={photo.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} onError={e => e.target.style.display = 'none'} />
+                          <img src={photo.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} onError={e => { e.target.style.display = 'none'; e.target.parentElement.style.display = 'none' }} />
                           {!photo.isStock && profile && (
                             <div onClick={e => { e.stopPropagation(); onSelectUser && onSelectUser(item.user_id) }}
                               style={{ position: 'absolute', bottom: '8px', left: '8px', display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(0,0,0,0.45)', borderRadius: 'var(--radius-pill)', padding: '4px 10px 4px 4px', cursor: 'pointer' }}>
