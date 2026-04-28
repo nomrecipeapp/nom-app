@@ -138,13 +138,30 @@ export default function AddRecipe({ session, onSave, onCancel }) {
         return
       }
 
-      const ingredients = data.extendedIngredients
+      let ingredients = data.extendedIngredients
         ? data.extendedIngredients.map(i => i.original).join('\n')
         : ''
-      const instructions = data.analyzedInstructions?.[0]?.steps
+      let instructions = data.analyzedInstructions?.[0]?.steps
         ? data.analyzedInstructions[0].steps.map((s, i) => `${i + 1}. ${s.step}`).join('\n')
         : data.instructions || ''
       const cookTime = data.readyInMinutes ? `${data.readyInMinutes} min` : ''
+
+      // If Spoonacular didn't find ingredients or instructions, try Claude fallback
+      const spoonacularFailed = !ingredients || !instructions
+      if (spoonacularFailed) {
+        try {
+          const claudeRes = await fetch('/api/extract-recipe-url', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url })
+          })
+          const claudeData = await claudeRes.json()
+          if (!claudeData.error) {
+            ingredients = claudeData.ingredients || ingredients
+            instructions = claudeData.instructions || instructions
+          }
+        } catch { /* silent fail — proceed with whatever Spoonacular got */ }
+      }
 
       // Try Spoonacular image first, fall back to OG image if needed
       const spoonacularImageIsGeneric = data.image && (
