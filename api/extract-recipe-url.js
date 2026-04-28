@@ -5,24 +5,41 @@ export default async function handler(req, res) {
   if (!url) return res.status(400).json({ error: 'URL required' })
 
   try {
-    // Fetch the page content
-    const pageRes = await fetch(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-      }
-    })
+    let text = ''
 
-    const html = await pageRes.text()
-
-    // Strip HTML tags and collapse whitespace to get readable text
-    const text = html
-      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
-      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
-      .replace(/<[^>]+>/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim()
-      .slice(0, 15000) // cap to avoid token overflow
+    // Substack: use their API to get full post content without needing JS rendering
+    const substackMatch = url.match(/https?:\/\/([^/]+)\/p\/([^/?]+)/)
+    if (substackMatch && url.includes('substack.com')) {
+      const subdomain = substackMatch[1]
+      const slug = substackMatch[2]
+      const apiUrl = `https://${subdomain}/api/v1/posts/${slug}`
+      const apiRes = await fetch(apiUrl, {
+        headers: { 'Accept': 'application/json' }
+      })
+      const apiData = await apiRes.json()
+      const bodyHtml = apiData.body_html || apiData.truncated_body_text || ''
+      text = bodyHtml
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 15000)
+    } else {
+      // Generic fetch for all other URLs
+      const pageRes = await fetch(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        }
+      })
+      const html = await pageRes.text()
+      text = html
+        .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+        .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 15000)
+    }
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
