@@ -22,7 +22,7 @@ export default async function handler(req, res) {
         .replace(/<[^>]+>/g, ' ')
         .replace(/\s+/g, ' ')
         .trim()
-        .slice(0, 15000)
+        .slice(0, 60000)
     } else {
       // Generic fetch for all other URLs
       const pageRes = await fetch(url, {
@@ -38,7 +38,7 @@ export default async function handler(req, res) {
         .replace(/<[^>]+>/g, ' ')
         .replace(/\s+/g, ' ')
         .trim()
-        .slice(0, 15000)
+        .slice(0, 60000)
     }
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
