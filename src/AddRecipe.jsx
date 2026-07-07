@@ -245,9 +245,9 @@ export default function AddRecipe({ session, onSave, onCancel }) {
       })
 
       const data = await response.json()
+      console.log('FULL API response:', JSON.stringify(data))
       const text = data.content?.[0]?.text || ''
       const clean = text.replace(/```json|```/g, '').trim()
-      console.log('Claude response:', text)
       const parsed = JSON.parse(clean)
 
       setRecipe({
