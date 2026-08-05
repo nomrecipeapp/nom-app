@@ -22,3 +22,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Capacitor iOS (generated project — commit ios/App itself, not build output)
+ios/App/Pods
+ios/App/build
+ios/.build

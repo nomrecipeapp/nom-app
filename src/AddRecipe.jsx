@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { supabase } from './supabase'
+import { supabase, API_BASE } from './supabase'
 
 const verdictOptions = [
   { value: 'would_make_again', label: 'Would Make Again', sub: 'A keeper', bg: '#EEF4E5', border: '#7A8C6E', color: '#4A5E42' },
@@ -96,7 +96,7 @@ export default function AddRecipe({ session, onSave, onCancel }) {
     const isSocial = url.includes('tiktok.com') || url.includes('instagram.com')
     if (isSocial) {
       try {
-        const res = await fetch('/api/import-social', {
+        const res = await fetch(`${API_BASE}/api/import-social`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ url })
@@ -150,7 +150,7 @@ export default function AddRecipe({ session, onSave, onCancel }) {
       const spoonacularFailed = !ingredients || !instructions
       if (spoonacularFailed) {
         try {
-          const claudeRes = await fetch('/api/extract-recipe-url', {
+          const claudeRes = await fetch(`${API_BASE}/api/extract-recipe-url`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ url })
@@ -173,7 +173,7 @@ export default function AddRecipe({ session, onSave, onCancel }) {
       let imageUrl = (data.image && !spoonacularImageIsGeneric) ? data.image : null
       if (!imageUrl) {
         try {
-          const ogRes = await fetch('/api/fetch-og-image', {
+          const ogRes = await fetch(`${API_BASE}/api/fetch-og-image`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ url })
@@ -238,7 +238,7 @@ export default function AddRecipe({ session, onSave, onCancel }) {
         img.src = objectUrl
       })))
 
-      const response = await fetch('/api/scan-recipe', {
+      const response = await fetch(`${API_BASE}/api/scan-recipe`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ images })
@@ -521,7 +521,7 @@ export default function AddRecipe({ session, onSave, onCancel }) {
                 onError={async e => {
                   e.target.onerror = null // prevent loop
                   try {
-                    const ogRes = await fetch('/api/fetch-og-image', {
+                    const ogRes = await fetch(`${API_BASE}/api/fetch-og-image`, {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ url: recipe.source_url })

@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react'
+import { Capacitor } from '@capacitor/core'
+import { StatusBar, Style } from '@capacitor/status-bar'
 import { supabase } from './supabase'
 import Auth from './Auth'
 import Onboarding from './Onboarding'
@@ -45,6 +47,14 @@ export default function App() {
   const [midSignup, setMidSignup] = useState(false)
   const [pendingRecipeId, setPendingRecipeId] = useState(null)
   const [pendingCookId, setPendingCookId] = useState(null)
+
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return
+    // Dark status bar content (icons/clock) reads correctly against the
+    // app's light --cream background. setBackgroundColor is Android-only
+    // in this plugin — iOS shows the page background through the overlay.
+    StatusBar.setStyle({ style: Style.Dark })
+  }, [])
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -259,7 +269,7 @@ export default function App() {
           height: '54px', background: 'var(--cream)',
           borderBottom: '1px solid var(--parchment)',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '0 16px', zIndex: 200,
+          padding: '0 16px', paddingTop: 'env(safe-area-inset-top, 0px)', zIndex: 200,
         }}>
           <div style={{ width: '72px' }}>
             {screen === 'feed' ? (
@@ -333,7 +343,7 @@ export default function App() {
             height: '54px', background: 'var(--cream)',
             borderBottom: '1px solid var(--parchment)',
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            padding: '0 16px', zIndex: 301
+            padding: '0 16px', paddingTop: 'env(safe-area-inset-top, 0px)', zIndex: 301
           }}>
             <button onClick={() => setSettingsVisible(false)} style={{
               display: 'flex', alignItems: 'center', gap: '5px',
@@ -508,7 +518,7 @@ export default function App() {
           position: 'fixed', bottom: 0, left: 0, right: 0,
           background: 'var(--warm-white)', borderTop: '1px solid var(--parchment)',
           display: 'flex', justifyContent: 'space-evenly', alignItems: 'center',
-          padding: '12px 0 20px', zIndex: 100
+          padding: '12px 0 20px', paddingBottom: 'calc(20px + env(safe-area-inset-bottom, 0px))', zIndex: 100
         }}>
           <button onClick={() => setScreen('feed')} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '4px 0', flex: 1 }}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
