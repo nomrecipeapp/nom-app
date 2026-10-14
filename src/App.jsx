@@ -80,6 +80,16 @@ export default function App() {
         setLoading(false)
         return
       }
+      // On log out (or account delete), forget the last person's app state
+      // so the next sign-up starts fresh at onboarding
+      if (event === 'SIGNED_OUT') {
+        setSession(null)
+        setOnboardingComplete(false)
+        setSettingsVisible(false)
+        setScreen('feed')
+        setPrevScreen('feed')
+        return
+      }
       // During signup, the SIGNED_IN event fires before we finish onboarding
       // We use user_metadata to detect this — new users won't have onboarding_complete set
       if (event === 'SIGNED_IN' && !session?.user?.user_metadata?.onboarding_complete) {
