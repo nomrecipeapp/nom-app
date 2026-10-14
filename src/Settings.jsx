@@ -21,6 +21,7 @@ export default function Settings({ session, onBack }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleteText, setDeleteText] = useState('')
   const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState(null)
 
   useEffect(() => {
     fetchProfile()
@@ -129,10 +130,19 @@ export default function Settings({ session, onBack }) {
   async function handleDeleteAccount() {
     if (deleteText !== 'delete') return
     setDeleting(true)
+    setDeleteError(null)
+    let failed = false
     try {
-      await supabase.rpc('delete_user')
+      const { error } = await supabase.rpc('delete_user')
+      if (error) { console.error('Delete failed:', error); failed = true }
     } catch (e) {
       console.error('Delete failed:', e)
+      failed = true
+    }
+    if (failed) {
+      setDeleteError("We couldn't delete your account. Please try again, or email nom.recipeapp@gmail.com and we'll do it for you.")
+      setDeleting(false)
+      return
     }
     sessionStorage.removeItem('nom_onboarding_step')
     sessionStorage.removeItem('nom_onboarding_user')
@@ -380,8 +390,9 @@ export default function Settings({ session, onBack }) {
               <div style={{ fontSize: '12px', fontWeight: '600', color: '#A05050', marginBottom: '8px' }}>Type <strong>delete</strong> to confirm</div>
               <input type="text" value={deleteText} onChange={e => setDeleteText(e.target.value)} placeholder="delete" autoFocus style={{ ...inputStyle, border: '1.5px solid #F0C8C8' }} />
             </div>
+            {deleteError && <div style={{ background: '#FDE8E8', border: '1px solid #F5C0C0', borderRadius: 'var(--radius-md)', padding: '10px 14px', fontSize: '13px', color: '#B85252', marginBottom: '12px' }}>{deleteError}</div>}
             <button onClick={handleDeleteAccount} disabled={deleteText !== 'delete' || deleting} style={{ width: '100%', padding: '14px', background: deleteText === 'delete' ? '#C05050' : 'var(--parchment)', color: deleteText === 'delete' ? 'white' : 'var(--muted)', border: 'none', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: '600', cursor: deleteText === 'delete' ? 'pointer' : 'not-allowed', marginBottom: '10px', transition: 'all 0.15s' }}>{deleting ? 'Deleting...' : 'Delete My Account'}</button>
-            <button onClick={() => { setShowDeleteConfirm(false); setDeleteText('') }} style={{ width: '100%', padding: '12px', background: 'none', border: 'none', fontFamily: 'var(--font-body)', fontSize: '13px', color: 'var(--muted)', cursor: 'pointer' }}>Cancel</button>
+            <button onClick={() => { setShowDeleteConfirm(false); setDeleteText(''); setDeleteError(null) }} style={{ width: '100%', padding: '12px', background: 'none', border: 'none', fontFamily: 'var(--font-body)', fontSize: '13px', color: 'var(--muted)', cursor: 'pointer' }}>Cancel</button>
           </div>
         </div>
       )}
