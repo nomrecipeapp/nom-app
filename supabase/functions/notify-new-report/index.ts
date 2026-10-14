@@ -1,5 +1,6 @@
 // Emails nom.recipeapp@gmail.com whenever someone files a report.
-// Triggered by a Database Webhook on INSERT into public.reports.
+// Triggered by a Database Webhook on INSERT into public.reports (deployed with verify_jwt = false;
+// the report is re-read from the database so fake calls can't send email).
 // Uses RESEND_API_KEY (already set) plus SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY (built in).
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
@@ -44,9 +45,11 @@ function personLabel(p: { full_name?: string; username?: string } | null, id: st
 }
 
 Deno.serve(async (req) => {
-  const payload = await req.json()
-  const r = payload.record
-  if (!r) return new Response('no record', { status: 400 })
+  // Only trust reports that really exist in the database (the webhook just tells us which one)
+  let payload: { record?: { id?: string } } = {}
+  try { payload = await req.json() } catch (_e) { /* ignore */ }
+  const r = await fetchOne('reports', '*', payload.record?.id ?? null)
+  if (!r) return new Response('report not found', { status: 404 })
 
   const [reporter, reported] = await Promise.all([
     fetchOne('profiles', 'full_name,username', r.reporter_id),

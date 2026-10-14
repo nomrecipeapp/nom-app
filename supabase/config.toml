@@ -23,6 +23,6 @@ entrypoint = "./functions/welcome-email/index.ts"
 
 [functions.notify-new-report]
 enabled = true
-verify_jwt = true
+verify_jwt = false
 import_map = "./functions/notify-new-report/deno.json"
 entrypoint = "./functions/notify-new-report/index.ts"
