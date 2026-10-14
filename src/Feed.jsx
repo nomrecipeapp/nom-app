@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from './supabase'
+import { getHiddenContent, isHidden } from './moderation'
 import LikesModal from './LikesModal'
 import CircleFriendsModal from './CircleFriendsModal'
 
@@ -141,18 +142,20 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
 
     const ids = [...follows.map(f => f.following_id), session.user.id]
 
-    const [{ data: cooks }, { data: saves }, { data: profiles }] = await Promise.all([
+    const [{ data: cooks }, { data: saves }, { data: profiles }, hidden] = await Promise.all([
       supabase.from('cooks').select('*, recipes(*)').in('user_id', ids).order('cooked_at', { ascending: false }).limit(40),
       supabase.from('recipes').select('*').in('user_id', ids).eq('status', 'want_to_make').order('created_at', { ascending: false }).limit(40),
-      supabase.from('profiles').select('*').in('id', ids)
+      supabase.from('profiles').select('*').in('id', ids),
+      getHiddenContent(session.user.id),
     ])
 
-    const cookItems = (cooks || []).map(c => ({
+    // Hide posts I've reported and anything from people I've blocked
+    const cookItems = (cooks || []).filter(c => !isHidden(hidden, 'cook', c.id, c.user_id)).map(c => ({
       ...c, _type: 'cook', _date: c.cooked_at,
       profiles: profiles?.find(p => p.id === c.user_id) || null
     }))
 
-    const saveItems = (saves || []).map(r => ({
+    const saveItems = (saves || []).filter(r => !isHidden(hidden, 'save', r.id, r.user_id)).map(r => ({
       ...r, _type: 'save', _date: r.created_at,
       profiles: profiles?.find(p => p.id === r.user_id) || null
     }))

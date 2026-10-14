@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from './supabase'
+import { listBlocked, unblockUser } from './moderation'
 
 export default function Settings({ session, onBack }) {
   const [profile, setProfile] = useState({ full_name: '', username: '', email: '', is_private: true })
@@ -22,6 +23,11 @@ export default function Settings({ session, onBack }) {
   const [deleteText, setDeleteText] = useState('')
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState(null)
+
+  // Blocked accounts
+  const [showBlocked, setShowBlocked] = useState(false)
+  const [blocked, setBlocked] = useState([])
+  const [blockedLoading, setBlockedLoading] = useState(false)
 
   useEffect(() => {
     fetchProfile()
@@ -125,6 +131,19 @@ export default function Settings({ session, onBack }) {
     const newVal = !profile.is_private
     await supabase.from('profiles').update({ is_private: newVal }).eq('id', session.user.id)
     setProfile(p => ({ ...p, is_private: newVal }))
+  }
+
+  async function openBlocked() {
+    setShowBlocked(true)
+    setBlockedLoading(true)
+    setBlocked(await listBlocked(session.user.id))
+    setBlockedLoading(false)
+  }
+
+  async function handleUnblock(personId) {
+    const err = await unblockUser(session.user.id, personId)
+    if (err) { alert("We couldn't unblock them. Please try again."); return }
+    setBlocked(b => b.filter(p => p.id !== personId))
   }
 
   async function handleDeleteAccount() {
@@ -378,6 +397,44 @@ export default function Settings({ session, onBack }) {
         </div>
       )}
 
+      {/* Blocked accounts sheet */}
+      {showBlocked && (
+        <div onClick={() => setShowBlocked(false)} style={{ position: 'fixed', inset: 0, zIndex: 500, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--cream)', borderRadius: '20px 20px 0 0', width: '100%', maxWidth: '480px', padding: '24px 24px 40px', maxHeight: '75vh', overflowY: 'auto', boxSizing: 'border-box' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: '700', color: 'var(--ink)' }}>Blocked accounts</div>
+              <button onClick={() => setShowBlocked(false)} aria-label="Close" style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'var(--parchment)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1 1l8 8M9 1l-8 8" stroke="var(--charcoal)" strokeWidth="1.5" strokeLinecap="round"/></svg>
+              </button>
+            </div>
+            <div style={{ fontSize: '12px', color: 'var(--muted)', marginBottom: '16px' }}>Blocked people can't find you or request to follow you.</div>
+            {blockedLoading ? (
+              <div style={{ fontSize: '13px', color: 'var(--muted)', textAlign: 'center', padding: '20px 0' }}>Loading...</div>
+            ) : blocked.length === 0 ? (
+              <div style={{ fontSize: '13px', color: 'var(--muted)', textAlign: 'center', padding: '20px 0' }}>You haven't blocked anyone.</div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                {blocked.map((p, i) => {
+                  const name = p.full_name || p.username || 'Nom user'
+                  return (
+                    <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 0', borderBottom: i < blocked.length - 1 ? '1px solid var(--parchment)' : 'none' }}>
+                      {p.avatar_url
+                        ? <img src={p.avatar_url} alt="" style={{ width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+                        : <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--clay), var(--ember))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: '700', color: 'var(--cream)', flexShrink: 0 }}>{name[0].toUpperCase()}</div>}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--ink)' }}>{name}</div>
+                        {p.username && <div style={{ fontSize: '11px', color: 'var(--muted)' }}>@{p.username}</div>}
+                      </div>
+                      <button onClick={() => handleUnblock(p.id)} style={{ padding: '7px 14px', background: 'transparent', color: 'var(--charcoal)', border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600', cursor: 'pointer', flexShrink: 0 }}>Unblock</button>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Delete account confirmation modal */}
       {showDeleteConfirm && (
         <div onClick={() => setShowDeleteConfirm(false)} style={{ position: 'fixed', inset: 0, zIndex: 500, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
@@ -458,6 +515,7 @@ export default function Settings({ session, onBack }) {
                 <div style={{ position: 'absolute', top: '3px', left: profile.is_private ? '21px' : '3px', width: '20px', height: '20px', borderRadius: '50%', background: 'white', transition: 'left 0.2s' }} />
               </button>
             </div>
+            <SettingsRow iconBg="#E2EBD8" icon={<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="5.5" stroke="var(--forest)" strokeWidth="1.3"/><path d="M3.1 3.1l7.8 7.8" stroke="var(--forest)" strokeWidth="1.3" strokeLinecap="round"/></svg>} label="Blocked accounts" onTap={openBlocked} />
           </div>
 
             <Divider />
@@ -471,7 +529,7 @@ export default function Settings({ session, onBack }) {
                   { q: 'What does following someone mean?', a: 'When you follow someone and they approve, you can see their cookbook and cook logs in your Feed. They can see yours too if they follow you back.' },
                   { q: 'Are my cook logs public?', a: 'Cook logs are visible to your approved followers in their Feed. There\'s no way to hide individual cooks — if you want something private, don\'t log it.' },
                   { q: 'What is "Want to Make"?', a: 'Recipes you\'ve saved but haven\'t cooked yet. These are visible to your approved followers in your cookbook.' },
-                  { q: 'Can I remove a follower?', a: 'Not yet — this is coming soon. For now you can block someone from following you by keeping your profile private and not approving their request.' },
+                  { q: 'Can I block or report someone?', a: 'Yes. Tap the three dots next to the Follow button on their profile to report or block them. You can also report a post or comment from its three-dot menu. Blocking removes them as a follower and stops them from finding you. We review every report within 24 hours. Manage blocked accounts in Privacy above.' },
                 ].map((item, i, arr) => (
                   <FaqItem key={i} question={item.q} answer={item.a} isLast={i === arr.length - 1} />
                 ))}

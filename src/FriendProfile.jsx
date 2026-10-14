@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react'
+import ModerationSheet, { MoreMenuSheet } from './ModerationSheet'
+import { getHiddenContent, hasBlocked, unblockUser } from './moderation'
 import { supabase } from './supabase'
 
 const verdictStyles = {
@@ -246,16 +248,53 @@ export default function FriendProfile({ userId, session, onBack, onSelectCook, o
   const [friendActivityLoading, setFriendActivityLoading] = useState(false)
   const [friendCookScoresMap, setFriendCookScoresMap] = useState({})
   const [friendCircleMap, setFriendCircleMap] = useState({})
+  const [blockState, setBlockState] = useState(null) // null | 'blockedByMe' | 'blockedMe'
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false)
+  const [moderation, setModeration] = useState(null)
 
   useEffect(() => {
     setFollowCounts({ following: 0, followers: 0 })
     setFollowStatus(null)
     setProfile(null)
     setLoading(true)
+    setBlockState(null)
     fetchProfile()
     fetchFollowStatus()
     fetchFollowCounts()
+    fetchBlockState()
   }, [userId])
+
+  async function fetchBlockState() {
+    if (await hasBlocked(session.user.id, userId)) { setBlockState('blockedByMe'); return }
+    const hidden = await getHiddenContent(session.user.id)
+    setBlockState(hidden.blockedIds.has(userId) ? 'blockedMe' : null)
+  }
+
+  function clearFriendContent() {
+    setFollowStatus(null)
+    setCooks([])
+    setRecentCooks([])
+    setTopRated([])
+    setAllRecipes([])
+    setStats({ saved: 0, cooked: 0 })
+  }
+
+  async function handleUnblock() {
+    setProfileMenuOpen(false)
+    const err = await unblockUser(session.user.id, userId)
+    if (err) { alert("We couldn't unblock them. Please try again."); return }
+    setBlockState(null)
+    fetchFollowCounts()
+  }
+
+  function handleModerationClose({ blocked }) {
+    setModeration(null)
+    if (blocked) {
+      setBlockState('blockedByMe')
+      clearFriendContent()
+      fetchFollowCounts()
+    }
+  }
 
   async function fetchFollowCounts() {
     const { count: followingCount } = await supabase
@@ -594,8 +633,16 @@ export default function FriendProfile({ userId, session, onBack, onSelectCook, o
             <div style={{ fontSize: '12px', color: 'var(--muted)', marginBottom: '16px' }}>@{profile.username}</div>
           )}
 
-          <div style={{ marginBottom: '20px' }}>
-            {followStatus === 'approved' ? (
+          <div style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {blockState === 'blockedByMe' ? (
+              <button onClick={handleUnblock} style={{
+                padding: '10px 32px', background: 'transparent', color: '#C05050',
+                border: '1.5px solid #F0C8C8', borderRadius: 'var(--radius-pill)',
+                fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '600', cursor: 'pointer'
+              }}>Unblock</button>
+            ) : blockState === 'blockedMe' ? (
+              <div style={{ fontSize: '13px', color: 'var(--muted)', padding: '10px 0' }}>This account isn't available</div>
+            ) : followStatus === 'approved' ? (
               <button onClick={unfollow} style={{
                 padding: '10px 32px', background: 'var(--ink)', color: 'var(--cream)',
                 border: 'none', borderRadius: 'var(--radius-pill)',
@@ -614,7 +661,28 @@ export default function FriendProfile({ userId, session, onBack, onSelectCook, o
                 fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '600', cursor: 'pointer'
               }}>Request to Follow</button>
             )}
+            {userId !== session.user.id && (
+              <button onClick={() => setProfileMenuOpen(true)} aria-label="More options" style={{
+                width: '40px', height: '40px', borderRadius: '50%', background: 'var(--parchment)',
+                border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+              }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="var(--charcoal)"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>
+              </button>
+            )}
           </div>
+
+          {profileMenuOpen && (
+            <MoreMenuSheet onClose={() => setProfileMenuOpen(false)} actions={[
+              { label: 'Report profile', onTap: () => { setProfileMenuOpen(false); setModeration({ mode: 'report', target: { type: 'profile', id: userId, userId, name: profile?.full_name || profile?.username } }) } },
+              blockState === 'blockedByMe'
+                ? { label: `Unblock ${profile?.full_name || profile?.username || ''}`.trim(), onTap: handleUnblock }
+                : { label: `Block ${profile?.full_name || profile?.username || ''}`.trim(), danger: true, onTap: () => { setProfileMenuOpen(false); setModeration({ mode: 'block', target: { type: 'profile', id: userId, userId, name: profile?.full_name || profile?.username } }) } },
+            ]} />
+          )}
+
+          {moderation && (
+            <ModerationSheet mode={moderation.mode} target={moderation.target} session={session} onClose={handleModerationClose} />
+          )}
 
           {followStatus === 'approved' && (
             <div style={{ display: 'flex', width: '100%', borderTop: '1px solid var(--parchment)', borderBottom: '1px solid var(--parchment)' }}>

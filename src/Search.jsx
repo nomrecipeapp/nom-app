@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from './supabase'
+import { getHiddenContent } from './moderation'
 
 const RECENT_SEARCHES_KEY = 'nom_recent_searches'
 
@@ -76,8 +77,9 @@ export default function Search({ session, onSelectUser, onSelectSave, onSelectCo
     if (!friendsOfFriends || friendsOfFriends.length === 0) { setLoadingSuggestions(false); return }
 
     // Deduplicate and filter out already following
+    const hidden = await getHiddenContent(session.user.id)
     const candidateIds = [...new Set(friendsOfFriends.map(f => f.following_id))]
-      .filter(id => !alreadyFollowing.has(id))
+      .filter(id => !alreadyFollowing.has(id) && !hidden.blockedIds.has(id))
       .slice(0, 8)
 
     if (candidateIds.length === 0) { setLoadingSuggestions(false); return }
@@ -124,12 +126,14 @@ async function fetchRecentlyViewed() {
       .order('created_at', { ascending: false })
       .limit(5)
 
-    const { data: people = [] } = await supabase
+    const { data: peopleRows } = await supabase
       .from('profiles')
       .select('*')
       .or(`username.ilike.%${q}%,full_name.ilike.%${q}%`)
       .neq('id', session.user.id)
-      .limit(5)
+      .limit(8)
+    const hidden = await getHiddenContent(session.user.id)
+    const people = (peopleRows || []).filter(p => !hidden.blockedIds.has(p.id)).slice(0, 5)
 
     let recipes = []
     const { data: follows } = await supabase

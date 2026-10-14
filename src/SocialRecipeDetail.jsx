@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from './supabase'
 import LikesModal from './LikesModal'
 import CircleFriendsModal from './CircleFriendsModal'
+import ModerationSheet, { MoreMenuSheet } from './ModerationSheet'
+import { getHiddenContent, isHidden } from './moderation'
 
 const verdictStyles = {
   would_make_again: { bg: '#EEF4E5', border: '#7A8C6E', color: '#4A5E42', label: 'Would Make Again' },
@@ -51,6 +53,8 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
   const [circleFriendsCount, setCircleFriendsCount] = useState(0)
   const [circleFriendAvatars, setCircleFriendAvatars] = useState([])
   const [openMenuId, setOpenMenuId] = useState(null)
+  const [moderation, setModeration] = useState(null) // { mode, target }
+  const [postMenuOpen, setPostMenuOpen] = useState(false)
   const [editingCommentId, setEditingCommentId] = useState(null)
   const [editingBody, setEditingBody] = useState('')
   const [myProfile, setMyProfile] = useState(null)
@@ -174,11 +178,13 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
     const { data } = await supabase.from('comments').select('*')
       .eq('target_type', targetType).eq('target_id', targetId)
       .order('created_at', { ascending: true })
-    if (!data || data.length === 0) { setComments([]); setLoadingComments(false); return }
-    const userIds = [...new Set(data.map(c => c.user_id))]
+    const hidden = await getHiddenContent(session.user.id)
+    const visible = (data || []).filter(c => !isHidden(hidden, 'comment', c.id, c.user_id))
+    if (visible.length === 0) { setComments([]); setLoadingComments(false); return }
+    const userIds = [...new Set(visible.map(c => c.user_id))]
     const { data: profiles } = await supabase.from('profiles')
       .select('id, full_name, username, avatar_url').in('id', userIds)
-    const enriched = data.map(c => ({ ...c, profiles: profiles?.find(p => p.id === c.user_id) || null }))
+    const enriched = visible.map(c => ({ ...c, profiles: profiles?.find(p => p.id === c.user_id) || null }))
     setComments(enriched)
     setAllCommenters(profiles || [])
     setLoadingComments(false)
@@ -371,6 +377,18 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
     setSaving(false); setSaved(true)
   }
 
+  const postOwnerName = profile?.full_name || profile?.username || 'this cook'
+  const canModeratePost = cook.user_id !== session.user.id
+
+  function handleModerationClose({ reported, blocked }) {
+    const target = moderation?.target
+    setModeration(null)
+    if (!target) return
+    const postGone = (target.type !== 'comment' && reported) || (blocked && target.userId === cook.user_id)
+    if (postGone) { onBack && onBack(); return }
+    if (reported || blocked) fetchComments()
+  }
+
   if (!recipe) return null
 
   const allCommentProfiles = [...followingProfiles, ...allCommenters]
@@ -443,6 +461,7 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
               {recipe.cook_time && <div style={{ fontSize: '11px', color: 'var(--muted)' }}>{recipe.cook_time}</div>}
               {recipe.difficulty && <div style={{ fontSize: '11px', color: 'var(--muted)' }}>· {recipe.difficulty}</div>}
             </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
             <button onClick={() => {
               const fullUrl = `https://www.nomrecipeapp.com/?cook=${cook.id}`
               if (navigator.share) {
@@ -455,8 +474,25 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
                 <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13" stroke="var(--muted)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </button>
+            {canModeratePost && (
+              <button onClick={() => setPostMenuOpen(true)} aria-label="More options" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0 2px 4px', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="var(--muted)"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>
+              </button>
+            )}
+            </div>
           </div>
         </div>
+
+        {postMenuOpen && (
+          <MoreMenuSheet onClose={() => setPostMenuOpen(false)} actions={[
+            { label: 'Report post', onTap: () => { setPostMenuOpen(false); setModeration({ mode: 'report', target: { type: 'cook', id: cook.id, userId: cook.user_id, name: postOwnerName } }) } },
+            { label: `Block ${postOwnerName}`, danger: true, onTap: () => { setPostMenuOpen(false); setModeration({ mode: 'block', target: { type: 'profile', id: cook.user_id, userId: cook.user_id, name: postOwnerName } }) } },
+          ]} />
+        )}
+
+        {moderation && (
+          <ModerationSheet mode={moderation.mode} target={moderation.target} session={session} onClose={handleModerationClose} />
+        )}
 
         {showCircleModal && (
           <CircleFriendsModal
@@ -711,7 +747,8 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
                 const isPostOwner = (targetType === 'cook' ? cook?.user_id : recipe?.user_id) === session.user.id
                 const canEdit = isCommentAuthor
                 const canDelete = isCommentAuthor || isPostOwner
-                const showMenu = canEdit || canDelete
+                const canReport = !isCommentAuthor
+                const showMenu = canEdit || canDelete || canReport
 
                 function shareContent(url, title) {
                     const fullUrl = `https://www.nomrecipeapp.com${url}`
@@ -796,7 +833,7 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
                               width: '100%', padding: '10px 16px', background: 'none', border: 'none',
                               textAlign: 'left', fontFamily: 'var(--font-body)', fontSize: '13px',
                               fontWeight: '500', color: 'var(--ink)', cursor: 'pointer',
-                              borderBottom: canDelete ? '1px solid var(--parchment)' : 'none'
+                              borderBottom: (canDelete || canReport) ? '1px solid var(--parchment)' : 'none'
                             }}
                               onMouseEnter={e => e.currentTarget.style.background = 'var(--parchment)'}
                               onMouseLeave={e => e.currentTarget.style.background = 'none'}
@@ -806,11 +843,19 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
                             <button onClick={() => deleteComment(comment.id)} style={{
                               width: '100%', padding: '10px 16px', background: 'none', border: 'none',
                               textAlign: 'left', fontFamily: 'var(--font-body)', fontSize: '13px',
-                              fontWeight: '500', color: '#B85252', cursor: 'pointer'
+                              fontWeight: '500', color: '#B85252', cursor: 'pointer',
+                              borderBottom: canReport ? '1px solid var(--parchment)' : 'none'
                             }}
                               onMouseEnter={e => e.currentTarget.style.background = '#FDE8E8'}
                               onMouseLeave={e => e.currentTarget.style.background = 'none'}
                             >Delete</button>
+                          )}
+                          {canReport && (
+                            <button onClick={() => { setOpenMenuId(null); setModeration({ mode: 'report', target: { type: 'comment', id: comment.id, userId: comment.user_id, name } }) }} style={{
+                              width: '100%', padding: '10px 16px', background: 'none', border: 'none',
+                              textAlign: 'left', fontFamily: 'var(--font-body)', fontSize: '13px',
+                              fontWeight: '500', color: 'var(--ink)', cursor: 'pointer'
+                            }}>Report</button>
                           )}
                         </div>
                       )}
