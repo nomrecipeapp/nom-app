@@ -686,7 +686,7 @@ async function fetchCircleCookPhotos() {
               {comments.map(comment => {
                 const name = comment.profiles?.full_name || comment.profiles?.username || 'Someone'
                 const isCommentAuthor = comment.user_id === session.user.id
-                const isPostOwner = (targetType === 'cook' ? cook?.user_id : recipe?.user_id) === session.user.id
+                const isPostOwner = recipe?.user_id === session.user.id
                 const canEdit = isCommentAuthor
                 const canDelete = isCommentAuthor || isPostOwner
                 const showMenu = canEdit || canDelete
