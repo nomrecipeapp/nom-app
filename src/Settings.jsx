@@ -494,6 +494,16 @@ export default function Settings({ session, onBack }) {
 
             <Divider />
 
+          {/* Help & Legal */}
+          <div style={{ background: 'var(--cream)' }}>
+            <SectionHeader label="Help & Legal" />
+            <SettingsRow iconBg="var(--parchment)" icon={<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1" y="3" width="12" height="8" rx="1.5" stroke="var(--charcoal)" strokeWidth="1.3"/><path d="M1 5l6 4 6-4" stroke="var(--charcoal)" strokeWidth="1.3" strokeLinecap="round"/></svg>} label="Contact us" value="nom.recipeapp@gmail.com" onTap={() => { window.location.href = 'mailto:nom.recipeapp@gmail.com?subject=Nom%20support' }} />
+            <SettingsRow iconBg="var(--parchment)" icon={<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1.5l4.5 1.8v3.4c0 2.8-1.9 4.9-4.5 5.8-2.6-.9-4.5-3-4.5-5.8V3.3L7 1.5z" stroke="var(--charcoal)" strokeWidth="1.3" strokeLinejoin="round"/></svg>} label="Privacy Policy" onTap={() => window.open('https://app.termly.io/policy-viewer/policy.html?policyUUID=758a4b17-ed24-4c70-acda-5aaa6c508907', '_blank', 'noopener,noreferrer')} />
+            <SettingsRow iconBg="var(--parchment)" icon={<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3.5 1.5h5l2.5 2.5v8.5h-7.5v-11z" stroke="var(--charcoal)" strokeWidth="1.3" strokeLinejoin="round"/><path d="M5 7h4M5 9.5h4" stroke="var(--charcoal)" strokeWidth="1.3" strokeLinecap="round"/></svg>} label="Terms of Service" onTap={() => window.open('https://app.termly.io/policy-viewer/policy.html?policyUUID=61e1bda6-9414-4896-bd55-972479e2c5ee', '_blank', 'noopener,noreferrer')} />
+          </div>
+
+          <Divider />
+
             {/* Account actions */}
           <div style={{ background: 'var(--cream)' }}>
             <SectionHeader label="Account Actions" />
