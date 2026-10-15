@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { supabase } from './supabase'
+import { apiPost } from './api'
 
 const TOTAL_STEPS = 5
 
@@ -156,9 +157,9 @@ export default function Onboarding({ onComplete, session, prefillInviteCode }) {
     setImporting(true)
     setImportError(null)
     try {
-      const apiKey = import.meta.env.VITE_SPOONACULAR_KEY
-      const res = await fetch(`https://api.spoonacular.com/recipes/extract?url=${encodeURIComponent(recipeUrl)}&apiKey=${apiKey}`)
+      const res = await apiPost('/api/spoonacular-extract', { url: recipeUrl })
       const data = await res.json()
+      if (res.status === 401) { setImportError('Please sign in again to import recipes.'); setImporting(false); return }
       if (data.code === 402) { setImportError('Daily import limit reached. Try again tomorrow or add manually.'); setImporting(false); return }
       const ingredients = data.extendedIngredients
         ? data.extendedIngredients.map(i => i.original).join('\n')

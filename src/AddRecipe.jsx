@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
-import { supabase, API_BASE } from './supabase'
+import { supabase } from './supabase'
+import { apiPost } from './api'
 
 const verdictOptions = [
   { value: 'would_make_again', label: 'Would Make Again', sub: 'A keeper', bg: '#EEF4E5', border: '#7A8C6E', color: '#4A5E42' },
@@ -96,11 +97,7 @@ export default function AddRecipe({ session, onSave, onCancel }) {
     const isSocial = url.includes('tiktok.com') || url.includes('instagram.com')
     if (isSocial) {
       try {
-        const res = await fetch(`${API_BASE}/api/import-social`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url })
-        })
+        const res = await apiPost('/api/import-social', { url })
         const data = await res.json()
         if (data.error) {
           setError(data.message || 'Could not import this post. Try screenshotting the caption and using From Photo instead.')
@@ -128,9 +125,13 @@ export default function AddRecipe({ session, onSave, onCancel }) {
     }
 
     try {
-      const apiKey = import.meta.env.VITE_SPOONACULAR_KEY
-      const res = await fetch(`https://api.spoonacular.com/recipes/extract?url=${encodeURIComponent(url)}&apiKey=${apiKey}`)
+      const res = await apiPost('/api/spoonacular-extract', { url })
       const data = await res.json()
+      if (res.status === 401) {
+        setError(data.message || 'Please sign in again to import recipes.')
+        setLoading(false)
+        return
+      }
 
       if (data.code === 402) {
         setError('Daily import limit reached. Try again tomorrow or add manually.')
@@ -150,11 +151,7 @@ export default function AddRecipe({ session, onSave, onCancel }) {
       const spoonacularFailed = !ingredients || !instructions
       if (spoonacularFailed) {
         try {
-          const claudeRes = await fetch(`${API_BASE}/api/extract-recipe-url`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ url })
-          })
+          const claudeRes = await apiPost('/api/extract-recipe-url', { url })
           const claudeData = await claudeRes.json()
           if (!claudeData.error) {
             ingredients = claudeData.ingredients || ingredients
@@ -173,11 +170,7 @@ export default function AddRecipe({ session, onSave, onCancel }) {
       let imageUrl = (data.image && !spoonacularImageIsGeneric) ? data.image : null
       if (!imageUrl) {
         try {
-          const ogRes = await fetch(`${API_BASE}/api/fetch-og-image`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ url })
-          })
+          const ogRes = await apiPost('/api/fetch-og-image', { url })
           const ogData = await ogRes.json()
           const isGenericFallback = ogData.image_url && (
             ogData.image_url.includes('defaultOg') ||
@@ -238,11 +231,7 @@ export default function AddRecipe({ session, onSave, onCancel }) {
         img.src = objectUrl
       })))
 
-      const response = await fetch(`${API_BASE}/api/scan-recipe`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ images })
-      })
+      const response = await apiPost('/api/scan-recipe', { images })
 
       const data = await response.json()
       console.log('FULL API response:', JSON.stringify(data))
@@ -521,11 +510,7 @@ export default function AddRecipe({ session, onSave, onCancel }) {
                 onError={async e => {
                   e.target.onerror = null // prevent loop
                   try {
-                    const ogRes = await fetch(`${API_BASE}/api/fetch-og-image`, {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ url: recipe.source_url })
-                    })
+                    const ogRes = await apiPost('/api/fetch-og-image', { url: recipe.source_url })
                     const ogData = await ogRes.json()
                     const isGenericFallback = ogData.image_url && (
                       ogData.image_url.includes('defaultOg') ||

@@ -1,15 +1,9 @@
+import { handleCors, requireUser } from './_auth.js'
+
 export default async function handler(req, res) {
-    // CORS: let the iOS app (capacitor://localhost) call this endpoint
-  const allowedOrigins = ['capacitor://localhost', 'http://localhost']
-  const origin = req.headers.origin
-  if (allowedOrigins.includes(origin)) {
-    res.setHeader('Access-Control-Allow-Origin', origin)
-    res.setHeader('Vary', 'Origin')
-  }
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-  if (req.method === 'OPTIONS') return res.status(204).end()
+  if (handleCors(req, res)) return
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
+  if (!(await requireUser(req, res))) return
 
   const { url } = req.body
   if (!url) return res.status(400).json({ error: 'No URL provided' })

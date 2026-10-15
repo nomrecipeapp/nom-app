@@ -1,17 +1,12 @@
-export default async function handler(req, res) {
-    // CORS: let the iOS app (capacitor://localhost) call this endpoint
-  const allowedOrigins = ['capacitor://localhost', 'http://localhost']
-  const origin = req.headers.origin
-  if (allowedOrigins.includes(origin)) {
-    res.setHeader('Access-Control-Allow-Origin', origin)
-    res.setHeader('Vary', 'Origin')
-  }
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-  if (req.method === 'OPTIONS') return res.status(204).end()
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
+import { handleCors, requireUser } from './_auth.js'
 
-  const { images } = req.body
+export default async function handler(req, res) {
+  if (handleCors(req, res)) return
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
+  if (!(await requireUser(req, res))) return
+
+  const { images } = req.body || {}
+  if (!Array.isArray(images) || images.length === 0) return res.status(400).json({ error: true, message: 'No images provided' })
 
   const imageContent = images.map(img => ({
     type: 'image',
