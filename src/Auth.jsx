@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { supabase } from './supabase'
 
-export default function Auth() {
+export default function Auth({ onBack }) {
   const [mode, setMode] = useState('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -93,6 +93,13 @@ export default function Auth() {
       padding: '24px'
     }}>
       <div style={{ width: '100%', maxWidth: '400px' }}>
+
+        {onBack && (
+          <button onClick={onBack} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--muted)', fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '600', padding: '0 0 24px' }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M19 12H5M5 12l7-7M5 12l7 7" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            Back
+          </button>
+        )}
 
         {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: '40px' }}>

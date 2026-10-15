@@ -18,12 +18,17 @@ import './index.css'
 import ResetPassword from './ResetPassword'
 import FollowList from './FollowList'
 import Settings from './Settings'
+import Landing from './Landing'
 
 export default function App() {
   const [session, setSession] = useState(null)
   const [loading, setLoading] = useState(true)
   const [onboardingComplete, setOnboardingComplete] = useState(false)
   const [showLogin, setShowLogin] = useState(false)
+  // Public homepage for logged-out web visitors. Skipped in the iOS app and for invite links (?code=).
+  const [showLanding, setShowLanding] = useState(() =>
+    !Capacitor.isNativePlatform() && !new URLSearchParams(window.location.search).get('code')
+  )
   const [screen, setScreen] = useState('feed')
   const [selectedRecipe, setSelectedRecipe] = useState(null)
   const [selectedCook, setSelectedCook] = useState(null)
@@ -88,6 +93,7 @@ export default function App() {
         setSettingsVisible(false)
         setScreen('feed')
         setPrevScreen('feed')
+        setShowLanding(!Capacitor.isNativePlatform())
         return
       }
       // During signup, the SIGNED_IN event fires before we finish onboarding
@@ -253,8 +259,9 @@ export default function App() {
     setScreen('postDetail')
   }
 
-  if (showLogin) return <Auth />
+  if (showLogin) return <Auth onBack={showLanding ? () => setShowLogin(false) : undefined} />
   if (loading) return null
+  if (!session && showLanding) return <Landing onGetStarted={() => setShowLanding(false)} onSignIn={() => setShowLogin(true)} />
   if (!session) return <Onboarding onComplete={handleOnboardingComplete} prefillInviteCode={prefillInviteCode} />
   if (!onboardingComplete) return <Onboarding session={session} onComplete={handleOnboardingComplete} prefillInviteCode={prefillInviteCode} />
 
