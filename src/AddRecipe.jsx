@@ -504,11 +504,15 @@ export default function AddRecipe({ session, onSave, onCancel }) {
           {recipe?.image_url ? (
             <div style={{ position: 'relative', height: '140px', borderRadius: 'var(--radius-md)', overflow: 'hidden', marginBottom: '8px' }}>
               <img
+                key={recipe.image_url}
                 src={recipe.image_url}
                 alt=""
                 style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                 onError={async e => {
                   e.target.onerror = null // prevent loop
+                  const failedUrl = recipe.image_url
+                  // Only touch the image if the user hasn't removed or replaced it in the meantime
+                  const replaceIfUnchanged = next => setRecipe(r => (r.image_url === failedUrl ? { ...r, image_url: next } : r))
                   try {
                     const ogRes = await apiPost('/api/fetch-og-image', { url: recipe.source_url })
                     const ogData = await ogRes.json()
@@ -517,18 +521,17 @@ export default function AddRecipe({ session, onSave, onCancel }) {
                       ogData.image_url.includes('default-og') ||
                       ogData.image_url.includes('placeholder')
                     )
-                    if (ogData.image_url && !isGenericFallback) {
-                      e.target.src = ogData.image_url
-                      setRecipe(r => ({ ...r, image_url: ogData.image_url }))
+                    if (ogData.image_url && !isGenericFallback && ogData.image_url !== failedUrl) {
+                      replaceIfUnchanged(ogData.image_url)
                     } else {
-                      e.target.style.display = 'none'
+                      replaceIfUnchanged('')
                     }
                   } catch {
-                    e.target.style.display = 'none'
+                    replaceIfUnchanged('')
                   }
                 }}
               />
-              <button onClick={() => setRecipe({ ...recipe, image_url: '' })} style={{ position: 'absolute', top: '8px', right: '8px', width: '28px', height: '28px', borderRadius: '50%', background: 'rgba(0,0,0,0.5)', border: 'none', color: 'white', fontSize: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+              <button onClick={() => setRecipe(r => ({ ...r, image_url: '' }))} aria-label="Remove image" style={{ position: 'absolute', top: '8px', right: '8px', width: '28px', height: '28px', borderRadius: '50%', background: 'rgba(0,0,0,0.5)', border: 'none', color: 'white', fontSize: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
               <button onClick={() => reviewPhotoInputRef.current?.click()} style={{ position: 'absolute', top: '8px', right: '44px', width: '28px', height: '28px', borderRadius: '50%', background: 'rgba(0,0,0,0.5)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
               </button>
