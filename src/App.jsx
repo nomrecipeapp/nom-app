@@ -325,7 +325,7 @@ export default function App() {
                 Settings
               </button>
             ) : screen === 'notifications' ? null : (
-              <button onClick={() => { setPrevScreen(screen); setScreen('notifications') }} style={{
+              <button onClick={() => { setPrevScreen(screen); setScreen('notifications'); setUnreadCount(0) }} style={{
                 position: 'relative', width: '36px', height: '36px', borderRadius: '50%',
                 background: 'var(--warm-white)', border: '1px solid var(--parchment)',
                 cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -385,6 +385,7 @@ export default function App() {
           onSelectCook={(cook, toComments) => goToSocialRecipe(cook, toComments)}
           onSelectSaveCard={(recipe, toComments) => goToFriendRecipeDetail(recipe, toComments)}
           onClose={() => { setScreen(prevScreen); fetchUnreadCount(session.user.id) }}
+          onMarkedRead={() => fetchUnreadCount(session.user.id)}
         />
       )}
 

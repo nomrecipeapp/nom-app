@@ -29,7 +29,7 @@ const typeConfig = {
   },
 }
 
-export default function Notifications({ session, onSelectUser, onSelectCook, onSelectSaveCard, onClose }) {
+export default function Notifications({ session, onSelectUser, onSelectCook, onSelectSaveCard, onClose, onMarkedRead }) {
   const [notifications, setNotifications] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -52,6 +52,15 @@ export default function Notifications({ session, onSelectUser, onSelectCook, onS
       setLoading(false)
       return
     }
+
+    // Mark everything read right away (before loading names and recipes),
+    // so the badge clears even if they leave this screen quickly
+    supabase
+      .from('notifications')
+      .update({ read: true })
+      .eq('recipient_id', session.user.id)
+      .eq('read', false)
+      .then(() => onMarkedRead?.())
 
     const actorIds = [...new Set(data.map(n => n.actor_id))]
     const { data: profiles } = await supabase
@@ -81,12 +90,6 @@ export default function Notifications({ session, onSelectUser, onSelectCook, onS
     ]
     setNotifications(sorted)
     setLoading(false)
-
-    await supabase
-      .from('notifications')
-      .update({ read: true })
-      .eq('recipient_id', session.user.id)
-      .eq('read', false)
   }
 
   async function handleTap(n) {
