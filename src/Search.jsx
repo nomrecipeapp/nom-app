@@ -291,8 +291,6 @@ async function fetchRecentlyViewed() {
                         padding: '10px 16px', cursor: 'pointer',
                         borderBottom: '1px solid var(--parchment)'
                       }}
-                        onMouseEnter={e => e.currentTarget.style.background = 'var(--warm-white)'}
-                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                           <div style={{
@@ -339,8 +337,6 @@ async function fetchRecentlyViewed() {
                           padding: '10px 16px', cursor: 'pointer',
                           borderBottom: '1px solid var(--parchment)'
                         }}
-                          onMouseEnter={e => e.currentTarget.style.background = 'var(--warm-white)'}
-                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                         >
                           <div style={{
                             width: '36px', height: '36px', borderRadius: 'var(--radius-sm)',
@@ -371,8 +367,6 @@ async function fetchRecentlyViewed() {
                         padding: '10px 16px', cursor: 'pointer',
                         borderBottom: '1px solid var(--parchment)'
                       }}
-                        onMouseEnter={e => e.currentTarget.style.background = 'var(--warm-white)'}
-                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                       >
                         <div style={{
                           width: '36px', height: '36px', borderRadius: 'var(--radius-sm)',
@@ -478,8 +472,6 @@ async function fetchRecentlyViewed() {
                       border: '1px solid var(--parchment)', padding: '12px 14px',
                       cursor: 'pointer'
                     }}
-                      onMouseEnter={e => e.currentTarget.style.background = 'var(--parchment)'}
-                      onMouseLeave={e => e.currentTarget.style.background = 'var(--warm-white)'}
                     >
                       <div style={{
                         width: '44px', height: '44px', borderRadius: 'var(--radius-md)',

@@ -361,7 +361,7 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
           <>
             <span style={{ fontWeight: '600', color: 'var(--clay)' }}>
               {circleFriendsMap[key].count} {circleFriendsMap[key].count === 1 ? 'friend' : 'friends'}
-            </span> have this
+            </span> {circleFriendsMap[key].count === 1 ? 'has' : 'have'} this
           </>
         )}
       </span>

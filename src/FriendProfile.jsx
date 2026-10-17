@@ -966,7 +966,7 @@ export default function FriendProfile({ userId, session, onBack, onSelectCook, o
                         <span style={{ fontSize: '11px', color: 'var(--muted)' }}>
                           <span style={{ fontWeight: '600', color: 'var(--clay)' }}>
                             {friendCircleMap[recipe.id]} {friendCircleMap[recipe.id] === 1 ? 'friend' : 'friends'}
-                          </span> also have this
+                          </span> also {friendCircleMap[recipe.id] === 1 ? 'has' : 'have'} this
                         </span>
                       </div>
                     )}

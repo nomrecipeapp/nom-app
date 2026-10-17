@@ -1022,14 +1022,10 @@ async function saveEditCook() {
                               <button
                                 onClick={() => startEditCook(cook)}
                                 style={{ width: '100%', padding: '10px 16px', background: 'none', border: 'none', textAlign: 'left', fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '500', color: 'var(--ink)', cursor: 'pointer', borderBottom: '1px solid var(--parchment)' }}
-                                onMouseEnter={e => e.currentTarget.style.background = 'var(--parchment)'}
-                                onMouseLeave={e => e.currentTarget.style.background = 'none'}
                               >Edit</button>
                               <button
                                 onClick={() => deleteCook(cook.id)}
                                 style={{ width: '100%', padding: '10px 16px', background: 'none', border: 'none', textAlign: 'left', fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '500', color: '#B85252', cursor: 'pointer' }}
-                                onMouseEnter={e => e.currentTarget.style.background = '#FDE8E8'}
-                                onMouseLeave={e => e.currentTarget.style.background = 'none'}
                               >Delete</button>
                             </div>
                           )}

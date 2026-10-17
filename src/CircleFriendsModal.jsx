@@ -107,8 +107,6 @@ export default function CircleFriendsModal({ sourceUrl, canonicalId, session, on
                     padding: '12px 20px', cursor: 'pointer',
                     borderBottom: i < friends.length - 1 ? '1px solid var(--parchment)' : 'none',
                   }}
-                  onMouseEnter={e => e.currentTarget.style.background = 'var(--warm-white)'}
-                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                 >
                   <div style={{
                     width: '36px', height: '36px', borderRadius: '50%', flexShrink: 0,

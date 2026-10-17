@@ -82,8 +82,6 @@ export default function LikesModal({ targetType, targetId, onClose, onSelectUser
                   borderBottom: '1px solid var(--parchment)',
                   transition: 'background 0.15s',
                 }}
-                onMouseEnter={e => e.currentTarget.style.background = 'var(--warm-white)'}
-                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
               >
                 <div style={{
                   width: '36px', height: '36px', borderRadius: '50%', flexShrink: 0,

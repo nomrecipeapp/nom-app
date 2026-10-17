@@ -37,3 +37,25 @@ body {
   font-size: 15px;
   line-height: 1.6;
 }
+/* ── Native feel ──
+   No grey flash when tapping, no long-press text selection on controls,
+   no double-tap zoom delay, and a gentle pressed state on every button
+   (this replaces hover states, which don't exist on a phone). */
+html { -webkit-text-size-adjust: 100%; }
+body { -webkit-tap-highlight-color: transparent; }
+button, a, label[for], [role="button"] {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+button { transition: transform 0.12s ease, opacity 0.12s ease; }
+button:active:not(:disabled), label[for]:active, [role="button"]:active {
+  transform: scale(0.97);
+  opacity: 0.8;
+}
+img { -webkit-user-drag: none; }
+@media (prefers-reduced-motion: reduce) {
+  button:active:not(:disabled) { transform: none; }
+}

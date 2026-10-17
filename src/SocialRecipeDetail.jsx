@@ -835,8 +835,6 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
                               fontWeight: '500', color: 'var(--ink)', cursor: 'pointer',
                               borderBottom: (canDelete || canReport) ? '1px solid var(--parchment)' : 'none'
                             }}
-                              onMouseEnter={e => e.currentTarget.style.background = 'var(--parchment)'}
-                              onMouseLeave={e => e.currentTarget.style.background = 'none'}
                             >Edit</button>
                           )}
                           {canDelete && (
@@ -846,8 +844,6 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
                               fontWeight: '500', color: '#B85252', cursor: 'pointer',
                               borderBottom: canReport ? '1px solid var(--parchment)' : 'none'
                             }}
-                              onMouseEnter={e => e.currentTarget.style.background = '#FDE8E8'}
-                              onMouseLeave={e => e.currentTarget.style.background = 'none'}
                             >Delete</button>
                           )}
                           {canReport && (
@@ -881,8 +877,6 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
                     padding: '10px 14px', cursor: 'pointer',
                     borderBottom: '1px solid var(--parchment)',
                   }}
-                    onMouseEnter={e => e.currentTarget.style.background = 'var(--parchment)'}
-                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                   >
                     <div style={{
                       width: '28px', height: '28px', borderRadius: '50%', flexShrink: 0,
