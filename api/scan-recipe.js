@@ -1,3 +1,4 @@
+import { RECIPE_FORMAT_RULES, RECIPE_FIELDS } from './_recipeFormat.js'
 import { handleCors, requireUser } from './_auth.js'
 
 export default async function handler(req, res) {
@@ -30,7 +31,7 @@ export default async function handler(req, res) {
             ...imageContent,
             {
               type: 'text',
-              text: 'Extract the recipe from these images. They may be multiple pages of the same recipe — combine them into one. Return JSON only, no markdown, no explanation. Use these exact fields: {"title": "", "ingredients": "one per line", "instructions": "numbered steps, one per line", "cook_time": "", "difficulty": "Easy or Medium or Hard or empty", "source_name": ""}. If a field is not visible, use empty string.'
+              text: `Extract the recipe from these images. They may be multiple pages of the same recipe, so combine them into one. Return JSON only, no markdown, no explanation. Use these exact fields: ${RECIPE_FIELDS}. If a field is not visible, use empty string.\n\n${RECIPE_FORMAT_RULES}`
             }
           ]
         }]

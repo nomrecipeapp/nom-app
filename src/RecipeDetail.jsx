@@ -4,6 +4,7 @@ import CircleFriendsModal from './CircleFriendsModal'
 import { IconChevronRight, IconX } from './icons'
 import { confirmSheet, toast } from './ui'
 import { PRESET_TAGS, tagChoices, addTag, hasTag, tagKey } from './tags'
+import { IngredientList, InstructionList, CopyIngredientsButton, RecipeTimes } from './RecipeContent'
 
 const verdictOptions = [
   { value: 'would_make_again', label: 'Would Make Again', sub: 'A keeper', bg: '#EEF4E5', border: '#7A8C6E', color: '#4A5E42' },
@@ -98,7 +99,7 @@ export default function RecipeDetail({ recipe: initialRecipe, session, onBack, o
     source_name: recipe.source_name || '',
     source_url: recipe.source_url || '',
     image_url: recipe.image_url || '',
-    cook_time: recipe.cook_time || '',
+    cook_time: recipe.cook_time || '', prep_time: recipe.prep_time || '',
     difficulty: recipe.difficulty || '',
     ingredients: recipe.ingredients || '',
     instructions: recipe.instructions || '',
@@ -407,6 +408,7 @@ async function saveEditCook() {
         source_url: editForm.source_url.trim() || null,
         image_url: editForm.image_url.trim() || null,
         cook_time: editForm.cook_time.trim() || null,
+        prep_time: (editForm.prep_time || '').trim() || null,
         difficulty: editForm.difficulty.trim() || null,
         ingredients: editForm.ingredients.trim() || null,
         instructions: editForm.instructions.trim() || null,
@@ -613,17 +615,22 @@ async function saveEditCook() {
             </div>
             <div style={{ display: 'flex', gap: '12px' }}>
               <div style={{ flex: 1 }}>
-                <label style={fieldLabel}>Cook time</label>
-                <input value={editForm.cook_time} onChange={e => setEditForm(f => ({ ...f, cook_time: e.target.value }))} placeholder="e.g. 30 mins" style={inputStyle} />
+                <label style={fieldLabel}>Prep time</label>
+                <input value={editForm.prep_time} onChange={e => setEditForm(f => ({ ...f, prep_time: e.target.value }))} placeholder="e.g. 15 min" style={inputStyle} />
               </div>
               <div style={{ flex: 1 }}>
-                <label style={fieldLabel}>Difficulty</label>
-                <input value={editForm.difficulty} onChange={e => setEditForm(f => ({ ...f, difficulty: e.target.value }))} placeholder="e.g. Easy" style={inputStyle} />
+                <label style={fieldLabel}>Total time</label>
+                <input value={editForm.cook_time} onChange={e => setEditForm(f => ({ ...f, cook_time: e.target.value }))} placeholder="e.g. 45 min" style={inputStyle} />
               </div>
+            </div>
+            <div>
+              <label style={fieldLabel}>Difficulty</label>
+              <input value={editForm.difficulty} onChange={e => setEditForm(f => ({ ...f, difficulty: e.target.value }))} placeholder="e.g. Easy" style={inputStyle} />
             </div>
             <div>
               <label style={fieldLabel}>Ingredients</label>
               <textarea value={editForm.ingredients} onChange={e => setEditForm(f => ({ ...f, ingredients: e.target.value }))} rows={8} placeholder="One ingredient per line" style={textareaStyle} />
+              <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '4px' }}>Tip: add a line like “Dressing:” to start a new section.</div>
             </div>
             <div>
               <label style={fieldLabel}>Instructions</label>
@@ -741,7 +748,7 @@ async function saveEditCook() {
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round"/></svg>
                 {thumbnailUploading ? 'Uploading...' : 'Add photo'}
               </button>
-              <button onClick={() => { setEditForm({ title: recipe.title || '', source_name: recipe.source_name || '', source_url: recipe.source_url || '', image_url: recipe.image_url || '', cook_time: recipe.cook_time || '', difficulty: recipe.difficulty || '', ingredients: recipe.ingredients || '', instructions: recipe.instructions || '', notes: recipe.notes || '', tags: recipe.tags || [] }); setEditing(true) }} style={{ background: 'var(--parchment)', border: 'none', borderRadius: 'var(--radius-pill)', padding: '6px 14px', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600', color: 'var(--charcoal)', cursor: 'pointer' }}>Edit</button>
+              <button onClick={() => { setEditForm({ title: recipe.title || '', source_name: recipe.source_name || '', source_url: recipe.source_url || '', image_url: recipe.image_url || '', cook_time: recipe.cook_time || '', prep_time: recipe.prep_time || '', difficulty: recipe.difficulty || '', ingredients: recipe.ingredients || '', instructions: recipe.instructions || '', notes: recipe.notes || '', tags: recipe.tags || [] }); setEditing(true) }} style={{ background: 'var(--parchment)', border: 'none', borderRadius: 'var(--radius-pill)', padding: '6px 14px', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600', color: 'var(--charcoal)', cursor: 'pointer' }}>Edit</button>
             </div>
           )
         }
@@ -805,7 +812,7 @@ async function saveEditCook() {
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
               {recipe.source_name && <span style={{ background: 'var(--parchment)', borderRadius: 'var(--radius-pill)', padding: '4px 10px', fontSize: '11px', fontWeight: '500', color: 'var(--charcoal)' }}>{recipe.source_name}</span>}
-              {recipe.cook_time && <span style={{ fontSize: '12px', color: 'var(--muted)' }}>{recipe.cook_time}</span>}
+              <RecipeTimes prep={recipe.prep_time} total={recipe.cook_time} />
               {recipe.difficulty && <span style={{ fontSize: '12px', color: 'var(--muted)' }}>· {recipe.difficulty}</span>}
             </div>
             <button onClick={() => {
@@ -853,7 +860,7 @@ async function saveEditCook() {
 
         {recipe.image_url && (
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '8px' }}>
-            <button onClick={() => { setEditForm({ title: recipe.title || '', source_name: recipe.source_name || '', source_url: recipe.source_url || '', image_url: recipe.image_url || '', cook_time: recipe.cook_time || '', difficulty: recipe.difficulty || '', ingredients: recipe.ingredients || '', instructions: recipe.instructions || '', notes: recipe.notes || '', tags: recipe.tags || [] }); setEditing(true) }} style={{ background: 'var(--parchment)', border: 'none', borderRadius: 'var(--radius-pill)', padding: '6px 14px', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600', color: 'var(--charcoal)', cursor: 'pointer' }}>Edit</button>
+            <button onClick={() => { setEditForm({ title: recipe.title || '', source_name: recipe.source_name || '', source_url: recipe.source_url || '', image_url: recipe.image_url || '', cook_time: recipe.cook_time || '', prep_time: recipe.prep_time || '', difficulty: recipe.difficulty || '', ingredients: recipe.ingredients || '', instructions: recipe.instructions || '', notes: recipe.notes || '', tags: recipe.tags || [] }); setEditing(true) }} style={{ background: 'var(--parchment)', border: 'none', borderRadius: 'var(--radius-pill)', padding: '6px 14px', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600', color: 'var(--charcoal)', cursor: 'pointer' }}>Edit</button>
           </div>
         )}
 
@@ -927,14 +934,12 @@ async function saveEditCook() {
 
         {recipe.ingredients && (
           <div style={{ background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--parchment)', padding: '20px', marginBottom: '16px' }}>
-            <div style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '14px' }}>Ingredients</div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+              <div style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--muted)' }}>Ingredients</div>
+              <CopyIngredientsButton text={recipe.ingredients} />
+            </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {recipe.ingredients.split('\n').filter(Boolean).map((line, i) => (
-                <div key={i} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-                  <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--clay)', flexShrink: 0, marginTop: '6px' }} />
-                  <span style={{ fontSize: '14px', color: 'var(--charcoal)', lineHeight: '1.5' }}>{line}</span>
-                </div>
-              ))}
+              <IngredientList text={recipe.ingredients} />
             </div>
           </div>
         )}
@@ -943,12 +948,7 @@ async function saveEditCook() {
           <div style={{ background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--parchment)', padding: '20px', marginBottom: '16px' }}>
             <div style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '14px' }}>Instructions</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              {recipe.instructions.split('\n').filter(Boolean).map((line, i) => (
-                <div key={i} style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
-                  <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: 'var(--clay)', color: 'var(--cream)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: '700', flexShrink: 0, marginTop: '1px' }}>{i + 1}</div>
-                  <span style={{ fontSize: '14px', color: 'var(--charcoal)', lineHeight: '1.6', flex: 1 }}>{line.replace(/^\d+\.\s*/, '')}</span>
-                </div>
-              ))}
+              <InstructionList text={recipe.instructions} />
             </div>
           </div>
         )}

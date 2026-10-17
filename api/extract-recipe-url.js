@@ -1,3 +1,4 @@
+import { RECIPE_FORMAT_RULES, RECIPE_FIELDS } from './_recipeFormat.js'
 import { handleCors, requireUser } from './_auth.js'
 
 export default async function handler(req, res) {
@@ -57,7 +58,9 @@ export default async function handler(req, res) {
         max_tokens: 2000,
         messages: [{
           role: 'user',
-          content: `Extract the recipe from this webpage content. Return JSON only, no markdown, no explanation. Use these exact fields: {"title": "", "ingredients": "one per line", "instructions": "numbered steps, one per line", "cook_time": "", "difficulty": "Easy or Medium or Hard or empty", "source_name": ""}. If a field is not found, use empty string. If there is no recipe on this page, return {"error": "no recipe found"}.
+          content: `Extract the recipe from this webpage content. Return JSON only, no markdown, no explanation. Use these exact fields: ${RECIPE_FIELDS}. If a field is not found, use empty string. If there is no recipe on this page, return {"error": "no recipe found"}.
+
+${RECIPE_FORMAT_RULES}
 
 Page content:
 ${text}`

@@ -3,6 +3,7 @@ import { supabase } from './supabase'
 import { apiPost } from './api'
 import { IconCamera, IconCheck, IconChevronLeft, IconX } from './icons'
 import { PRESET_TAGS, tagChoices, addTag, hasTag, tagKey } from './tags'
+import { hasSections } from './recipeText'
 
 const verdictOptions = [
   { value: 'would_make_again', label: 'Would Make Again', sub: 'A keeper', bg: '#EEF4E5', border: '#7A8C6E', color: '#4A5E42' },
@@ -24,6 +25,12 @@ const loadingMessages = [
   'Parsing the steps...',
   'Almost there...',
 ]
+
+function formatMinutes(mins) {
+  const h = Math.floor(mins / 60), m = mins % 60
+  if (!h) return `${m} min`
+  return m ? `${h} hr ${m} min` : `${h} hr`
+}
 
 export default function AddRecipe({ session, onSave, onCancel }) {
   const [mode, setMode] = useState('url')
@@ -53,6 +60,7 @@ export default function AddRecipe({ session, onSave, onCancel }) {
   const [title, setTitle] = useState('')
   const [sourceName, setSourceName] = useState('')
   const [cookTime, setCookTime] = useState('')
+  const [prepTime, setPrepTime] = useState('')
   const [difficulty, setDifficulty] = useState('')
   const [ingredients, setIngredients] = useState('')
   const [instructions, setInstructions] = useState('')
@@ -110,6 +118,7 @@ export default function AddRecipe({ session, onSave, onCancel }) {
           source_name: data.source_name || (url.includes('tiktok.com') ? 'TikTok' : 'Instagram'),
           image_url: data.image_url || null,
           cook_time: data.cook_time || '',
+          prep_time: data.prep_time || '',
           difficulty: data.difficulty || '',
           ingredients: data.ingredients || '',
           instructions: data.instructions || '',
@@ -125,6 +134,13 @@ export default function AddRecipe({ session, onSave, onCancel }) {
     }
 
     try {
+      // Ask the AI importer at the same time: it keeps ingredient and step
+      // sections (like "For the dressing:"), which Spoonacular flattens
+      const aiPromise = apiPost('/api/extract-recipe-url', { url })
+        .then(r => r.json())
+        .then(d => (d && !d.error ? d : null))
+        .catch(() => null)
+
       const res = await apiPost('/api/spoonacular-extract', { url })
       const data = await res.json()
       if (res.status === 401) {
@@ -142,22 +158,24 @@ export default function AddRecipe({ session, onSave, onCancel }) {
       let ingredients = data.extendedIngredients
         ? data.extendedIngredients.map(i => i.original).join('\n')
         : ''
-      let instructions = data.analyzedInstructions?.[0]?.steps
-        ? data.analyzedInstructions[0].steps.map((s, i) => `${i + 1}. ${s.step}`).join('\n')
+      // Keep every group of steps (Spoonacular splits sectioned recipes into groups)
+      const groups = (data.analyzedInstructions || []).filter(g => g.steps?.length)
+      let instructions = groups.length
+        ? groups.map(g => [
+            ...(groups.length > 1 && g.name ? [`${g.name.trim().replace(/:$/, '')}:`] : []),
+            ...g.steps.map((s, i) => `${i + 1}. ${s.step}`),
+          ].join('\n')).join('\n')
         : data.instructions || ''
-      const cookTime = data.readyInMinutes ? `${data.readyInMinutes} min` : ''
+      let cookTime = data.readyInMinutes ? formatMinutes(data.readyInMinutes) : ''
+      let prepTimeFound = data.preparationMinutes > 0 ? formatMinutes(data.preparationMinutes) : ''
 
-      // If Spoonacular didn't find ingredients or instructions, try Claude fallback
-      const spoonacularFailed = !ingredients || !instructions
-      if (spoonacularFailed) {
-        try {
-          const claudeRes = await apiPost('/api/extract-recipe-url', { url })
-          const claudeData = await claudeRes.json()
-          if (!claudeData.error) {
-            ingredients = claudeData.ingredients || ingredients
-            instructions = claudeData.instructions || instructions
-          }
-        } catch { /* silent fail — proceed with whatever Spoonacular got */ }
+      // Prefer the AI importer's version when it found sections, or when Spoonacular came up empty
+      const ai = await aiPromise
+      if (ai) {
+        if (ai.ingredients && (hasSections(ai.ingredients) || !ingredients)) ingredients = ai.ingredients
+        if (ai.instructions && (hasSections(ai.instructions) || !instructions)) instructions = ai.instructions
+        if (!prepTimeFound && ai.prep_time) prepTimeFound = ai.prep_time
+        if (!cookTime && ai.cook_time) cookTime = ai.cook_time
       }
 
       // Try Spoonacular image first, fall back to OG image if needed
@@ -187,6 +205,7 @@ export default function AddRecipe({ session, onSave, onCancel }) {
         source_name: data.sourceName || new URL(url).hostname.replace('www.', ''),
         image_url: imageUrl,
         cook_time: cookTime,
+        prep_time: prepTimeFound,
         difficulty: '',
         ingredients,
         instructions,
@@ -245,6 +264,7 @@ export default function AddRecipe({ session, onSave, onCancel }) {
         source_name: parsed.source_name || '',
         image_url: photoPreview || null,
         cook_time: parsed.cook_time || '',
+        prep_time: parsed.prep_time || '',
         difficulty: parsed.difficulty || '',
         ingredients: parsed.ingredients || '',
         instructions: parsed.instructions || '',
@@ -354,6 +374,7 @@ export default function AddRecipe({ session, onSave, onCancel }) {
       source_name: sourceName,
       image_url: null,
       cook_time: cookTime,
+      prep_time: prepTime,
       difficulty,
       ingredients,
       instructions,
@@ -466,9 +487,15 @@ export default function AddRecipe({ session, onSave, onCancel }) {
         </div>
         <div style={{ display: 'flex', gap: '12px' }}>
           <div style={{ flex: 1 }}>
-            <label style={labelStyle}>Cook time</label>
-            <input value={recipe?.cook_time || ''} onChange={e => setRecipe({...recipe, cook_time: e.target.value})} placeholder="e.g. 30 min" style={inputStyle} />
+            <label style={labelStyle}>Prep time</label>
+            <input value={recipe?.prep_time || ''} onChange={e => setRecipe({...recipe, prep_time: e.target.value})} placeholder="e.g. 15 min" style={inputStyle} />
           </div>
+          <div style={{ flex: 1 }}>
+            <label style={labelStyle}>Total time</label>
+            <input value={recipe?.cook_time || ''} onChange={e => setRecipe({...recipe, cook_time: e.target.value})} placeholder="e.g. 45 min" style={inputStyle} />
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: '12px' }}>
           <div style={{ flex: 1 }}>
             <label style={labelStyle}>Difficulty</label>
             <select value={recipe?.difficulty || ''} onChange={e => setRecipe({...recipe, difficulty: e.target.value})} style={inputStyle}>
@@ -589,6 +616,7 @@ export default function AddRecipe({ session, onSave, onCancel }) {
             {recipe?.ingredients ? <span style={{ marginLeft: '8px', fontSize: '10px', color: 'var(--forest)', fontWeight: '700', letterSpacing: '0.06em', display: 'inline-flex', alignItems: 'center', gap: '3px' }}><IconCheck size={11} strokeWidth={3} />IMPORTED</span> : <span style={{ marginLeft: '8px', fontSize: '10px', color: 'var(--muted)', fontWeight: '500' }}>not found — add manually</span>}
           </label>
           <textarea value={recipe?.ingredients || ''} onChange={e => setRecipe({...recipe, ingredients: e.target.value})} placeholder="One ingredient per line..." rows={5} style={{ ...inputStyle, resize: 'vertical' }} />
+          <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '4px' }}>Tip: add a line like “Dressing:” to start a new section.</div>
         </div>
         <div>
           <label style={labelStyle}>
@@ -787,9 +815,15 @@ export default function AddRecipe({ session, onSave, onCancel }) {
               </div>
               <div style={{ display: 'flex', gap: '12px' }}>
                 <div style={{ flex: 1 }}>
-                  <label style={labelStyle}>Cook time</label>
-                  <input value={cookTime} onChange={e => setCookTime(e.target.value)} placeholder="e.g. 30 min" style={inputStyle} />
+                  <label style={labelStyle}>Prep time</label>
+                  <input value={prepTime} onChange={e => setPrepTime(e.target.value)} placeholder="e.g. 15 min" style={inputStyle} />
                 </div>
+                <div style={{ flex: 1 }}>
+                  <label style={labelStyle}>Total time</label>
+                  <input value={cookTime} onChange={e => setCookTime(e.target.value)} placeholder="e.g. 45 min" style={inputStyle} />
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '12px' }}>
                 <div style={{ flex: 1 }}>
                   <label style={labelStyle}>Difficulty</label>
                   <select value={difficulty} onChange={e => setDifficulty(e.target.value)} style={inputStyle}>
@@ -803,6 +837,7 @@ export default function AddRecipe({ session, onSave, onCancel }) {
               <div>
                 <label style={labelStyle}>Ingredients</label>
                 <textarea value={ingredients} onChange={e => setIngredients(e.target.value)} placeholder="One ingredient per line..." rows={4} style={{ ...inputStyle, resize: 'vertical' }} />
+                <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '4px' }}>Tip: add a line like “Dressing:” to start a new section.</div>
               </div>
               <div>
                 <label style={labelStyle}>Instructions</label>

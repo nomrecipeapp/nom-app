@@ -6,6 +6,7 @@ import ModerationSheet, { MoreMenuSheet } from './ModerationSheet'
 import { getHiddenContent, isHidden } from './moderation'
 import { IconCheck, IconChevronRight, IconX } from './icons'
 import { toast } from './ui'
+import { IngredientList, InstructionList, CopyIngredientsButton, RecipeTimes } from './RecipeContent'
 
 function renderCommentBody(body, onSelectUser, profiles) {
   const parts = body.split(/(@\w+)/g)
@@ -372,7 +373,7 @@ async function fetchCircleCookPhotos() {
 
     await supabase.from('recipes').insert({
       user_id: session.user.id, title: recipe.title, source_url: recipe.source_url,
-      source_name: recipe.source_name, image_url: recipe.image_url, cook_time: recipe.cook_time,
+      source_name: recipe.source_name, image_url: recipe.image_url, cook_time: recipe.cook_time, prep_time: recipe.prep_time,
       difficulty: recipe.difficulty, ingredients: recipe.ingredients,
       instructions: recipe.instructions, status: 'want_to_make',
       canonical_id: canonicalData?.canonical_id || crypto.randomUUID(),
@@ -401,7 +402,7 @@ async function fetchCircleCookPhotos() {
 
     await supabase.from('recipes').insert({
       user_id: session.user.id, title: recipe.title, source_url: recipe.source_url,
-      source_name: recipe.source_name, image_url: recipe.image_url, cook_time: recipe.cook_time,
+      source_name: recipe.source_name, image_url: recipe.image_url, cook_time: recipe.cook_time, prep_time: recipe.prep_time,
       difficulty: recipe.difficulty, ingredients: recipe.ingredients,
       instructions: recipe.instructions, status: 'want_to_make',
       canonical_id: canonicalData?.canonical_id || crypto.randomUUID(),
@@ -496,7 +497,7 @@ async function fetchCircleCookPhotos() {
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
               {recipe.source_name && <div style={{ background: 'var(--parchment)', borderRadius: 'var(--radius-pill)', padding: '3px 10px', fontSize: '11px', fontWeight: '500', color: 'var(--charcoal)' }}>{recipe.source_name}</div>}
-              {recipe.cook_time && <div style={{ fontSize: '11px', color: 'var(--muted)' }}>{recipe.cook_time}</div>}
+              <RecipeTimes prep={recipe.prep_time} total={recipe.cook_time} />
               {recipe.difficulty && <div style={{ fontSize: '11px', color: 'var(--muted)' }}>· {recipe.difficulty}</div>}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
@@ -593,23 +594,21 @@ async function fetchCircleCookPhotos() {
 
         {recipe.ingredients && (
           <div style={{ background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--parchment)', marginBottom: '16px', overflow: 'hidden' }}>
-            <button onClick={() => setIngredientsOpen(o => !o)} style={{
-              width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              padding: '14px 20px', background: 'none', border: 'none', cursor: 'pointer'
-            }}>
-              <div style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--muted)' }}>Ingredients</div>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ transform: ingredientsOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>
-                <path d="M6 9l6 6 6-6" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingRight: '20px' }}>
+              <button onClick={() => setIngredientsOpen(o => !o)} style={{
+                flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '14px 0 14px 20px', background: 'none', border: 'none', cursor: 'pointer'
+              }}>
+                <div style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--muted)' }}>Ingredients</div>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ transform: ingredientsOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>
+                  <path d="M6 9l6 6 6-6" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+              {ingredientsOpen && <CopyIngredientsButton text={recipe.ingredients} />}
+            </div>
             {ingredientsOpen && (
               <div style={{ padding: '0 20px 20px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {recipe.ingredients.split('\n').filter(Boolean).map((line, i) => (
-                  <div key={i} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-                    <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--clay)', flexShrink: 0, marginTop: '6px' }} />
-                    <span style={{ fontSize: '14px', color: 'var(--charcoal)', lineHeight: '1.5' }}>{line}</span>
-                  </div>
-                ))}
+                <IngredientList text={recipe.ingredients} />
               </div>
             )}
           </div>
@@ -628,12 +627,7 @@ async function fetchCircleCookPhotos() {
             </button>
             {directionsOpen && (
               <div style={{ padding: '0 20px 20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                {recipe.instructions.split('\n').filter(Boolean).map((line, i) => (
-                  <div key={i} style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
-                    <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: 'var(--clay)', color: 'var(--cream)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: '700', flexShrink: 0, marginTop: '1px' }}>{i + 1}</div>
-                    <span style={{ fontSize: '14px', color: 'var(--charcoal)', lineHeight: '1.6', flex: 1 }}>{line.replace(/^\d+\.\s*/, '')}</span>
-                  </div>
-                ))}
+                <InstructionList text={recipe.instructions} />
               </div>
             )}
           </div>
