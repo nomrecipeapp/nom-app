@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from './supabase'
+import { IconX } from './icons'
 
 export default function FollowList({ userId, type, session, onBack, onSelectUser }) {
   const [people, setPeople] = useState([])
@@ -83,7 +84,7 @@ export default function FollowList({ userId, type, session, onBack, onSelectUser
                 <button onClick={() => setSearch('')} style={{
                   background: 'none', border: 'none', cursor: 'pointer',
                   color: 'var(--muted)', fontSize: '18px', padding: 0, lineHeight: 1
-                }}>×</button>
+                }}><IconX size={14} strokeWidth={2.2} /></button>
               )}
             </div>
           </div>

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { supabase } from './supabase'
+import { IconChevronLeft } from './icons'
 
 export default function Auth({ onBack }) {
   const [mode, setMode] = useState('login')
@@ -264,7 +265,9 @@ export default function Auth({ onBack }) {
                   fontFamily: 'var(--font-body)', fontSize: '13px',
                   fontWeight: '600', cursor: 'pointer'
                 }}
-              >← Back to log in</button>
+              >
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><IconChevronLeft size={15} />Back to log in</span>
+              </button>
             )}
 
           </form>

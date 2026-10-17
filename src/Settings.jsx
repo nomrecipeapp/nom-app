@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from './supabase'
 import { listBlocked, unblockUser } from './moderation'
+import { IconCheck, IconX } from './icons'
+import { toast } from './ui'
 
 export default function Settings({ session, onBack }) {
   const [profile, setProfile] = useState({ full_name: '', username: '', email: '', is_private: true })
@@ -142,7 +144,7 @@ export default function Settings({ session, onBack }) {
 
   async function handleUnblock(personId) {
     const err = await unblockUser(session.user.id, personId)
-    if (err) { alert("We couldn't unblock them. Please try again."); return }
+    if (err) { toast("We couldn't unblock them. Please try again.", { icon: null }); return }
     setBlocked(b => b.filter(p => p.id !== personId))
   }
 
@@ -265,8 +267,8 @@ export default function Settings({ session, onBack }) {
         try {
             await navigator.clipboard.writeText(message)
         } catch {
-            // if clipboard fails, show the text to copy manually
-            prompt('Copy your invite link:', message)
+            toast("Couldn't copy the link. Try again.", { icon: null })
+            return
         }
         setCopied(code)
         setTimeout(() => setCopied(null), 2000)
@@ -316,7 +318,7 @@ export default function Settings({ session, onBack }) {
                   fontFamily: 'var(--font-body)', fontSize: '12px',
                   fontWeight: '600', cursor: 'pointer', transition: 'all 0.15s'
                 }}
-              >{copied === c.code ? '✓ Copied' : 'Share'}</button>
+              >{copied === c.code ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><IconCheck size={12} strokeWidth={2.5} />Copied</span> : 'Share'}</button>
             </div>
           ))}
         </div>
@@ -353,7 +355,7 @@ export default function Settings({ session, onBack }) {
           <div onClick={e => e.stopPropagation()} style={{ background: 'var(--cream)', borderRadius: '20px 20px 0 0', width: '100%', maxWidth: '480px', padding: '24px 24px 40px', boxShadow: '0 -8px 40px rgba(0,0,0,0.15)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
               <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: '700', color: 'var(--ink)' }}>Update {editFieldLabels[editField]}</div>
-              <button onClick={closeEdit} style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'var(--parchment)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', color: 'var(--charcoal)', fontWeight: '600' }}>×</button>
+              <button onClick={closeEdit} style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'var(--parchment)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', color: 'var(--charcoal)', fontWeight: '600' }}><IconX size={13} strokeWidth={2.2} /></button>
             </div>
 
             {editField === 'password' ? (

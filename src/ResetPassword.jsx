@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { supabase } from './supabase'
+import { IconCheck } from './icons'
 
 export default function ResetPassword({ onComplete }) {
   const [password, setPassword] = useState('')
@@ -67,8 +68,9 @@ export default function ResetPassword({ onComplete }) {
             padding: '14px 16px',
             fontSize: '14px',
             color: '#4A5E42',
-            fontWeight: '500'
-          }}>✓ Password updated! Redirecting...</div>
+            fontWeight: '500',
+            display: 'flex', alignItems: 'center', gap: '8px'
+          }}><IconCheck size={16} strokeWidth={2.5} />Password updated! Taking you back to Nom...</div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             <div>

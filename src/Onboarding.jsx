@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { supabase } from './supabase'
 import { apiPost } from './api'
+import { IconCheck } from './icons'
 
 const TOTAL_STEPS = 5
 
@@ -405,7 +406,7 @@ export default function Onboarding({ onComplete, session, prefillInviteCode }) {
                 <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--ink)' }}>{u.full_name || u.username}</div>
                 {u.username && <div style={{ fontSize: '11px', color: 'var(--muted)' }}>@{u.username}</div>}
               </div>
-              <button onClick={() => !requested[u.id] && sendFollowRequest(u.id)} style={{ padding: '7px 14px', background: requested[u.id] ? '#EEF4E5' : 'var(--clay)', color: requested[u.id] ? 'var(--forest)' : 'var(--cream)', border: 'none', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600', cursor: requested[u.id] ? 'default' : 'pointer' }}>{requested[u.id] ? 'Sent ✓' : '+ Request'}</button>
+              <button onClick={() => !requested[u.id] && sendFollowRequest(u.id)} style={{ padding: '7px 14px', background: requested[u.id] ? '#EEF4E5' : 'var(--clay)', color: requested[u.id] ? 'var(--forest)' : 'var(--cream)', border: 'none', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600', cursor: requested[u.id] ? 'default' : 'pointer' }}>{requested[u.id] ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><IconCheck size={12} strokeWidth={2.5} />Sent</span> : '+ Request'}</button>
             </div>
           ))}
         </div>

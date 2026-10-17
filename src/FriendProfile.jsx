@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import ModerationSheet, { MoreMenuSheet } from './ModerationSheet'
 import { getHiddenContent, hasBlocked, unblockUser } from './moderation'
 import { supabase } from './supabase'
+import { IconCheck, IconChevronRight, IconX } from './icons'
+import { confirmSheet, toast } from './ui'
 
 const verdictStyles = {
   would_make_again: { bg: '#EEF4E5', border: '#7A8C6E', color: '#4A5E42', label: 'Again' },
@@ -165,7 +167,7 @@ function FriendRecipeDetail({ recipe, session, onBack }) {
             background: 'var(--parchment)', borderRadius: 'var(--radius-md)',
             padding: '10px 14px', marginBottom: '16px', textDecoration: 'none'
           }}>
-            <div style={{ fontSize: '12px', fontWeight: '600', color: 'var(--clay)' }}>View original recipe →</div>
+            <div style={{ fontSize: '12px', fontWeight: '600', color: 'var(--clay)' }}>View original recipe<IconChevronRight size={12} strokeWidth={2.4} style={{ marginLeft: '3px', marginTop: '-1px' }} /></div>
             {recipe.source_name && <div style={{ fontSize: '10px', color: 'var(--muted)' }}>{recipe.source_name}</div>}
           </a>
         )}
@@ -219,7 +221,7 @@ function FriendRecipeDetail({ recipe, session, onBack }) {
             fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: '600',
             cursor: saved ? 'default' : 'pointer', transition: 'background 0.2s'
           }}>
-            {saved ? '✓ Saved to Cookbook' : saving ? 'Saving...' : '+ Save to My Cookbook'}
+            {saved ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><IconCheck size={15} strokeWidth={2.5} />Saved to Cookbook</span> : saving ? 'Saving...' : '+ Save to My Cookbook'}
           </button>
         )}
       </div>
@@ -282,7 +284,7 @@ export default function FriendProfile({ userId, session, onBack, onSelectCook, o
   async function handleUnblock() {
     setProfileMenuOpen(false)
     const err = await unblockUser(session.user.id, userId)
-    if (err) { alert("We couldn't unblock them. Please try again."); return }
+    if (err) { toast("We couldn't unblock them. Please try again.", { icon: null }); return }
     setBlockState(null)
     fetchFollowCounts()
   }
@@ -541,7 +543,7 @@ export default function FriendProfile({ userId, session, onBack, onSelectCook, o
     }
   }
   async function unfollow() {
-    if (!confirm('Unfollow this cook?')) return
+    if (!(await confirmSheet({ title: 'Unfollow this cook?', message: "You'll stop seeing their cooks in your Feed. You can request to follow again anytime.", confirmLabel: 'Unfollow' }))) return
     await supabase.from('follows')
       .delete()
       .eq('follower_id', session.user.id)
@@ -841,7 +843,7 @@ export default function FriendProfile({ userId, session, onBack, onSelectCook, o
                   background: 'none', border: 'none',
                   fontFamily: 'var(--font-body)', fontSize: '12px',
                   fontWeight: '600', color: 'var(--clay)', cursor: 'pointer'
-                }}>See all in Cookbook →</button>
+                }}>See all in Cookbook<IconChevronRight size={12} strokeWidth={2.4} style={{ marginLeft: '3px', marginTop: '-1px' }} /></button>
               </div>
             )}
           </>
@@ -877,7 +879,7 @@ export default function FriendProfile({ userId, session, onBack, onSelectCook, o
                 <button onClick={() => setCookbookSearch('')} style={{
                   background: 'none', border: 'none', cursor: 'pointer',
                   color: 'var(--muted)', fontSize: '16px', padding: 0, lineHeight: 1
-                }}>×</button>
+                }}><IconX size={13} strokeWidth={2.2} /></button>
               )}
             </div>
 
@@ -915,7 +917,7 @@ export default function FriendProfile({ userId, session, onBack, onSelectCook, o
               >
                 <option value="newest">Newest</option>
                 <option value="oldest">Oldest</option>
-                <option value="alpha">A→Z</option>
+                <option value="alpha">A to Z</option>
                 <option value="score">Cook Score</option>
                 <option value="friends">Friends Have It</option>
               </select>

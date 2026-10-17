@@ -4,6 +4,8 @@ import LikesModal from './LikesModal'
 import CircleFriendsModal from './CircleFriendsModal'
 import ModerationSheet, { MoreMenuSheet } from './ModerationSheet'
 import { getHiddenContent, isHidden } from './moderation'
+import { IconCheck, IconChevronRight, IconX } from './icons'
+import { toast } from './ui'
 
 const verdictStyles = {
   would_make_again: { bg: '#EEF4E5', border: '#7A8C6E', color: '#4A5E42', label: 'Would Make Again' },
@@ -401,7 +403,7 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
       {overlayPhotos && (
         <div onClick={closeOverlay} onTouchStart={handleOverlayTouchStart} onTouchEnd={handleOverlayTouchEnd}
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.92)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <button onClick={closeOverlay} style={{ position: 'absolute', top: '20px', right: '20px', background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '50%', width: '36px', height: '36px', color: 'white', fontSize: '20px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+          <button onClick={closeOverlay} style={{ position: 'absolute', top: '20px', right: '20px', background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '50%', width: '36px', height: '36px', color: 'white', fontSize: '20px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><IconX size={16} strokeWidth={2.2} /></button>
           <img src={overlayPhotos[overlayIndex]} alt="" onClick={e => e.stopPropagation()} style={{ maxWidth: '92vw', maxHeight: '82vh', objectFit: 'contain', borderRadius: '8px' }} />
           {overlayPhotos.length > 1 && (
             <>
@@ -467,7 +469,7 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
               if (navigator.share) {
                 navigator.share({ title: recipe.title, url: fullUrl }).catch(() => {})
               } else {
-                navigator.clipboard.writeText(fullUrl).then(() => alert('Link copied!'))
+                navigator.clipboard.writeText(fullUrl).then(() => toast('Link copied'))
               }
             }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
@@ -520,7 +522,7 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
                 <span style={{ fontWeight: '600', color: 'var(--clay)' }}>{circleFriendsCount} {circleFriendsCount === 1 ? 'friend' : 'friends'}</span> also {circleFriendsCount === 1 ? 'has' : 'have'} this
               </span>
             </div>
-            <span style={{ fontSize: '12px', color: 'var(--clay)', fontWeight: '600' }}>See all →</span>
+            <span style={{ fontSize: '12px', color: 'var(--clay)', fontWeight: '600' }}>See all<IconChevronRight size={12} strokeWidth={2.4} style={{ marginLeft: '3px', marginTop: '-1px' }} /></span>
           </div>
         )}
 
@@ -530,7 +532,7 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
             background: 'var(--parchment)', borderRadius: 'var(--radius-md)',
             padding: '10px 14px', marginBottom: '16px', textDecoration: 'none'
           }}>
-            <div style={{ fontSize: '12px', fontWeight: '600', color: 'var(--clay)' }}>View original recipe →</div>
+            <div style={{ fontSize: '12px', fontWeight: '600', color: 'var(--clay)' }}>View original recipe<IconChevronRight size={12} strokeWidth={2.4} style={{ marginLeft: '3px', marginTop: '-1px' }} /></div>
             {recipe.source_name && <div style={{ fontSize: '10px', color: 'var(--muted)' }}>{recipe.source_name}</div>}
           </a>
         )}
@@ -546,7 +548,7 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
             )}
             <div>
               <div style={{ fontSize: '10px', color: 'var(--muted)', marginBottom: '1px' }}>Cooked by</div>
-              <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--ink)' }}>{profile?.full_name || profile?.username || 'Unknown'} →</div>
+              <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--ink)' }}>{profile?.full_name || profile?.username || 'Unknown'}<IconChevronRight size={12} strokeWidth={2.4} style={{ marginLeft: '3px', marginTop: '-1px' }} /></div>
             </div>
           </div>
         )}
@@ -629,7 +631,7 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
               <div style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--muted)' }}>From Your Circle</div>
               {circleCooks.length > 3 && (
-                <button onClick={() => setShowCircleModal(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: '600', color: 'var(--clay)', padding: 0 }}>See all {circleCooks.length} →</button>
+                <button onClick={() => setShowCircleModal(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: '600', color: 'var(--clay)', padding: 0 }}>See all {circleCooks.length}<IconChevronRight size={12} strokeWidth={2.4} style={{ marginLeft: '3px', marginTop: '-1px' }} /></button>
               )}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
@@ -664,7 +666,7 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
             width: '100%', padding: '15px', background: 'var(--parchment)', color: 'var(--charcoal)',
             border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-pill)',
             fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: '600', cursor: 'pointer', marginBottom: '32px'
-          }}>View in Cookbook →</button>
+          }}>View in Cookbook<IconChevronRight size={12} strokeWidth={2.4} style={{ marginLeft: '3px', marginTop: '-1px' }} /></button>
         )}
 
         {!isOwner && !duplicate && !myRecipeId && !saved && (
@@ -678,13 +680,13 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
         )}
         {!isOwner && !duplicate && saved && (
           <div style={{ marginBottom: '16px' }}>
-            <div style={{ fontSize: '13px', color: 'var(--sage)', fontWeight: '600', textAlign: 'center', marginBottom: '8px' }}>✓ Saved to Cookbook</div>
+            <div style={{ fontSize: '13px', color: 'var(--sage)', fontWeight: '600', textAlign: 'center', marginBottom: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}><IconCheck size={14} strokeWidth={2.5} />Saved to Cookbook</div>
             <button onClick={() => onViewInCookbook && onViewInCookbook(myRecipeId || recipe.id)} style={{
               width: '100%', padding: '12px',
               background: 'var(--parchment)', color: 'var(--charcoal)',
               border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-pill)',
               fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: '600', cursor: 'pointer'
-            }}>View in Cookbook →</button>
+            }}>View in Cookbook<IconChevronRight size={12} strokeWidth={2.4} style={{ marginLeft: '3px', marginTop: '-1px' }} /></button>
           </div>
         )}
 
@@ -693,7 +695,7 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
             width: '100%', padding: '15px', background: 'var(--parchment)', color: 'var(--charcoal)',
             border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-pill)',
             fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: '600', cursor: 'pointer', marginBottom: '32px'
-          }}>You have this — View in Cookbook →</button>
+          }}>You have this — View in Cookbook<IconChevronRight size={12} strokeWidth={2.4} style={{ marginLeft: '3px', marginTop: '-1px' }} /></button>
         )}
 
         {!isOwner && duplicate && (
@@ -756,7 +758,7 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
                       navigator.share({ title, url: fullUrl }).catch(() => {})
                     } else {
                       navigator.clipboard.writeText(fullUrl).then(() => {
-                        alert('Link copied!')
+                        toast('Link copied')
                       }).catch(() => {})
                     }
                   }

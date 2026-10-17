@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from './supabase'
 import { getHiddenContent } from './moderation'
+import { IconX } from './icons'
 
 const RECENT_SEARCHES_KEY = 'nom_recent_searches'
 
@@ -263,7 +264,7 @@ async function fetchRecentlyViewed() {
             <button onClick={() => { setQuery(''); setShowDropdown(false) }} style={{
               background: 'none', border: 'none', cursor: 'pointer',
               color: 'var(--muted)', fontSize: '18px', padding: 0, lineHeight: 1
-            }}>×</button>
+            }}><IconX size={14} strokeWidth={2.2} /></button>
           )}
         </div>
 
@@ -444,7 +445,7 @@ async function fetchRecentlyViewed() {
                     <button onClick={e => handleRemoveRecent(e, term)} style={{
                       background: 'none', border: 'none', cursor: 'pointer',
                       color: 'var(--muted)', fontSize: '14px', padding: 0, lineHeight: 1, marginLeft: '2px'
-                    }}>×</button>
+                    }}><IconX size={11} strokeWidth={2.2} /></button>
                   </div>
                 ))}
               </div>

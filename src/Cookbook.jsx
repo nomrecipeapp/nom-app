@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from './supabase'
 import CircleFriendsModal from './CircleFriendsModal'
+import { IconX } from './icons'
 
 const FILTERS = ['All', 'Want to Make', 'Cooked', 'Never Again']
 const PRESET_TAGS = ['Breakfast', 'Lunch', 'Dinner', 'Appetizer', 'Dessert', 'Baking', 'Cocktail']
@@ -17,7 +18,7 @@ const verdictStyle = {
   never_again: { background: '#F4E8E8', color: '#9B4040', border: '1px solid #C47070' }
 }
 
-const SORT_OPTIONS = ['Newest', 'Oldest', 'A→Z', 'Cook Score', 'Friends Have It']
+const SORT_OPTIONS = ['Newest', 'Oldest', 'A to Z', 'Cook Score', 'Friends Have It']
 
 export default function Cookbook({ session, onAddRecipe, onSelectRecipe, defaultFilter, onSelectUser, savedScrollY, onScrollChange }) {
   const [recipes, setRecipes] = useState([])
@@ -164,7 +165,7 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
       )
     })
     .sort((a, b) => {
-      if (SORT_OPTIONS[sortIndex] === 'A→Z') return a.title.localeCompare(b.title)
+      if (SORT_OPTIONS[sortIndex] === 'A to Z') return a.title.localeCompare(b.title)
       if (SORT_OPTIONS[sortIndex] === 'Oldest') return new Date(a.created_at) - new Date(b.created_at)
       if (SORT_OPTIONS[sortIndex] === 'Cook Score') return (cookScoresMap[b.id] || 0) - (cookScoresMap[a.id] || 0)
       if (SORT_OPTIONS[sortIndex] === 'Friends Have It') return (circleFriendsMap[b.id]?.count || 0) - (circleFriendsMap[a.id]?.count || 0)
@@ -234,7 +235,7 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
               style={{ flex: 1, border: 'none', background: 'none', fontFamily: 'var(--font-body)', fontSize: '14px', color: 'var(--ink)', outline: 'none' }}
             />
             {search && (
-              <button onClick={() => setSearch('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', fontSize: '16px', padding: 0, lineHeight: 1 }}>×</button>
+              <button onClick={() => setSearch('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', fontSize: '16px', padding: 0, lineHeight: 1 }}><IconX size={13} strokeWidth={2.2} /></button>
             )}
           </div>
         </div>

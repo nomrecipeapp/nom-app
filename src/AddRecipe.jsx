@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from './supabase'
 import { apiPost } from './api'
+import { IconCamera, IconCheck, IconChevronLeft, IconX } from './icons'
 
 const verdictOptions = [
   { value: 'would_make_again', label: 'Would Make Again', sub: 'A keeper', bg: '#EEF4E5', border: '#7A8C6E', color: '#4A5E42' },
@@ -394,7 +395,7 @@ export default function AddRecipe({ session, onSave, onCancel }) {
               <button onClick={() => {
                 setCookPhotoFiles(prev => prev.filter((_, j) => j !== i))
                 setCookPhotoPreviews(prev => prev.filter((_, j) => j !== i))
-              }} style={{ position: 'absolute', top: '4px', right: '4px', width: '20px', height: '20px', borderRadius: '50%', background: 'rgba(0,0,0,0.55)', border: 'none', color: 'white', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>×</button>
+              }} style={{ position: 'absolute', top: '4px', right: '4px', width: '20px', height: '20px', borderRadius: '50%', background: 'rgba(0,0,0,0.55)', border: 'none', color: 'white', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}><IconX size={10} strokeWidth={2.2} /></button>
             </div>
           ))}
           <button onClick={() => cookPhotoInputRef.current?.click()} style={{ width: '80px', height: '80px', borderRadius: 'var(--radius-md)', border: '1.5px dashed var(--tan)', background: 'var(--parchment)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -531,7 +532,7 @@ export default function AddRecipe({ session, onSave, onCancel }) {
                   }
                 }}
               />
-              <button onClick={() => setRecipe(r => ({ ...r, image_url: '' }))} aria-label="Remove image" style={{ position: 'absolute', top: '8px', right: '8px', width: '28px', height: '28px', borderRadius: '50%', background: 'rgba(0,0,0,0.5)', border: 'none', color: 'white', fontSize: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+              <button onClick={() => setRecipe(r => ({ ...r, image_url: '' }))} aria-label="Remove image" style={{ position: 'absolute', top: '8px', right: '8px', width: '28px', height: '28px', borderRadius: '50%', background: 'rgba(0,0,0,0.5)', border: 'none', color: 'white', fontSize: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><IconX size={11} strokeWidth={2.2} /></button>
               <button onClick={() => reviewPhotoInputRef.current?.click()} style={{ position: 'absolute', top: '8px', right: '44px', width: '28px', height: '28px', borderRadius: '50%', background: 'rgba(0,0,0,0.5)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
               </button>
@@ -579,7 +580,7 @@ export default function AddRecipe({ session, onSave, onCancel }) {
           {(recipe?.tags || []).filter(t => !availableTags.includes(t)).map(tag => (
             <div key={tag} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', marginTop: '6px', marginRight: '6px', padding: '4px 10px', background: 'var(--parchment)', borderRadius: 'var(--radius-pill)', fontSize: '12px', color: 'var(--charcoal)' }}>
               {tag}
-              <button onClick={() => setRecipe({ ...recipe, tags: (recipe?.tags || []).filter(t => t !== tag) })} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', fontSize: '14px', lineHeight: 1, padding: 0 }}>×</button>
+              <button onClick={() => setRecipe({ ...recipe, tags: (recipe?.tags || []).filter(t => t !== tag) })} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', fontSize: '14px', lineHeight: 1, padding: 0 }}><IconX size={11} strokeWidth={2.2} /></button>
             </div>
           ))}
         </div>
@@ -587,14 +588,14 @@ export default function AddRecipe({ session, onSave, onCancel }) {
         <div>
           <label style={labelStyle}>
             Ingredients
-            {recipe?.ingredients ? <span style={{ marginLeft: '8px', fontSize: '10px', color: 'var(--forest)', fontWeight: '700', letterSpacing: '0.06em' }}>✓ IMPORTED</span> : <span style={{ marginLeft: '8px', fontSize: '10px', color: 'var(--muted)', fontWeight: '500' }}>not found — add manually</span>}
+            {recipe?.ingredients ? <span style={{ marginLeft: '8px', fontSize: '10px', color: 'var(--forest)', fontWeight: '700', letterSpacing: '0.06em', display: 'inline-flex', alignItems: 'center', gap: '3px' }}><IconCheck size={11} strokeWidth={3} />IMPORTED</span> : <span style={{ marginLeft: '8px', fontSize: '10px', color: 'var(--muted)', fontWeight: '500' }}>not found — add manually</span>}
           </label>
           <textarea value={recipe?.ingredients || ''} onChange={e => setRecipe({...recipe, ingredients: e.target.value})} placeholder="One ingredient per line..." rows={5} style={{ ...inputStyle, resize: 'vertical' }} />
         </div>
         <div>
           <label style={labelStyle}>
             Instructions
-            {recipe?.instructions ? <span style={{ marginLeft: '8px', fontSize: '10px', color: 'var(--forest)', fontWeight: '700', letterSpacing: '0.06em' }}>✓ IMPORTED</span> : <span style={{ marginLeft: '8px', fontSize: '10px', color: 'var(--muted)', fontWeight: '500' }}>not found — add manually</span>}
+            {recipe?.instructions ? <span style={{ marginLeft: '8px', fontSize: '10px', color: 'var(--forest)', fontWeight: '700', letterSpacing: '0.06em', display: 'inline-flex', alignItems: 'center', gap: '3px' }}><IconCheck size={11} strokeWidth={3} />IMPORTED</span> : <span style={{ marginLeft: '8px', fontSize: '10px', color: 'var(--muted)', fontWeight: '500' }}>not found — add manually</span>}
           </label>
           <textarea value={recipe?.instructions || ''} onChange={e => setRecipe({...recipe, instructions: e.target.value})} placeholder="Steps..." rows={5} style={{ ...inputStyle, resize: 'vertical' }} />
         </div>
@@ -629,7 +630,7 @@ export default function AddRecipe({ session, onSave, onCancel }) {
           padding: '13px 20px', background: 'transparent', color: 'var(--muted)',
           border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-pill)',
           fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '600', cursor: 'pointer'
-        }}>← Back</button>
+        }}><span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><IconChevronLeft size={15} />Back</span></button>
         <button onClick={() => saveRecipe(recipe)} disabled={loading} style={{
           flex: 1, padding: '13px',
           background: loading ? 'var(--tan)' : 'var(--clay)',
@@ -737,7 +738,7 @@ export default function AddRecipe({ session, onSave, onCancel }) {
                   transition: 'border-color 0.15s'
                 }}
               >
-                <div style={{ fontSize: '32px', marginBottom: '12px' }}>📷</div>
+                <div style={{ color: 'var(--clay)', marginBottom: '12px', display: 'flex', justifyContent: 'center' }}><IconCamera size={32} strokeWidth={1.6} /></div>
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: '16px', fontWeight: '600', color: 'var(--ink)', marginBottom: '6px' }}>
                   Upload a photo of your recipe
                 </div>

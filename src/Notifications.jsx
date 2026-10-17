@@ -1,29 +1,30 @@
 import { useState, useEffect } from 'react'
 import { supabase } from './supabase'
+import { IconAt, IconBell, IconBookmark, IconCheck, IconComment, IconHeart, IconUserCheck, IconUserPlus } from './icons'
 
 const typeConfig = {
   follow_request: {
-    icon: '👤',
+    icon: <IconUserPlus size={18} />,
     label: (actor) => `${actor} requested to follow you`,
   },
   follow_approved: {
-    icon: '✓',
+    icon: <IconUserCheck size={18} />,
     label: (actor) => `${actor} approved your follow request`,
   },
   like: {
-    icon: '♥',
+    icon: <IconHeart size={18} />,
     label: (actor, recipeName) => `${actor} liked your cook${recipeName ? ` of ${recipeName}` : ''}`,
   },
   comment: {
-    icon: '💬',
+    icon: <IconComment size={18} />,
     label: (actor, recipeName) => `${actor} commented on your cook${recipeName ? ` of ${recipeName}` : ''}`,
   },
   save: {
-    icon: '🔖',
+    icon: <IconBookmark size={18} />,
     label: (actor, recipeName) => `${actor} saved ${recipeName ? `"${recipeName}"` : 'a recipe'} from your cookbook`,
   },
   mention: {
-    icon: '@',
+    icon: <IconAt size={18} />,
     label: (actor, recipeName) => `${actor} mentioned you in a comment${recipeName ? ` on ${recipeName}` : ''}`,
   },
 }
@@ -148,7 +149,7 @@ export default function Notifications({ session, onSelectUser, onSelectCook, onS
           <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--muted)', fontSize: '14px' }}>Loading...</div>
         ) : notifications.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '80px 20px' }}>
-            <div style={{ fontSize: '32px', marginBottom: '12px' }}>🔔</div>
+            <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'var(--parchment)', color: 'var(--clay)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}><IconBell size={26} strokeWidth={1.8} /></div>
             <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: '500', color: 'var(--ink)', marginBottom: '6px' }}>No notifications yet</div>
             <div style={{ fontSize: '13px', color: 'var(--muted)', lineHeight: '1.6' }}>When someone likes, comments, or saves your recipes, you'll see it here.</div>
           </div>
@@ -184,7 +185,9 @@ export default function Notifications({ session, onSelectUser, onSelectCook, onS
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: '700', color: 'var(--cream)'
                 }}>
-                  {actorName[0].toUpperCase()}
+                  {n.actorProfile?.avatar_url
+                    ? <img src={n.actorProfile.avatar_url} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                    : actorName[0].toUpperCase()}
                 </div>
 
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -229,8 +232,8 @@ export default function Notifications({ session, onSelectUser, onSelectCook, onS
                   )}
                   {n.type === 'follow_request' && n._approved && (
                     <div style={{ marginTop: '8px' }}>
-                      <div style={{ fontSize: '12px', color: 'var(--muted)', marginBottom: n._followsBack ? '0' : '8px' }}>
-                        ✓ You approved their request
+                      <div style={{ fontSize: '12px', color: 'var(--muted)', marginBottom: n._followsBack ? '0' : '8px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                        <IconCheck size={13} strokeWidth={2.5} />You approved their request
                       </div>
                       {!n._followsBack && (
                         <button onClick={async e => {
@@ -265,7 +268,7 @@ export default function Notifications({ session, onSelectUser, onSelectCook, onS
                   )}
                 </div>
 
-                <div style={{ fontSize: '16px', paddingTop: '2px', flexShrink: 0 }}>{config.icon}</div>
+                <div style={{ paddingTop: '2px', flexShrink: 0, color: 'var(--clay)', display: 'flex' }}>{config.icon}</div>
               </div>
             )
           })

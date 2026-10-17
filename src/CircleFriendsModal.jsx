@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from './supabase'
+import { IconX } from './icons'
 
 const verdictStyles = {
   would_make_again: { bg: '#EEF4E5', border: '#7A8C6E', color: '#4A5E42', label: 'Would Make Again' },
@@ -86,7 +87,7 @@ export default function CircleFriendsModal({ sourceUrl, canonicalId, session, on
             background: 'var(--parchment)', border: 'none', cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: '16px', color: 'var(--charcoal)', fontWeight: '600'
-          }}>×</button>
+          }}><IconX size={13} strokeWidth={2.2} /></button>
         </div>
 
         {/* List */}
