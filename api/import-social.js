@@ -1,3 +1,4 @@
+import { RECIPE_FORMAT_RULES, RECIPE_FIELDS } from './_recipeFormat.js'
 import { handleCors, requireUser } from './_auth.js'
 
 export default async function handler(req, res) {
@@ -66,15 +67,10 @@ export default async function handler(req, res) {
 
 Caption: ${caption}
 
-Use these exact fields:
-{
-  "title": "recipe name only, no extra text",
-  "ingredients": "one ingredient per line",
-  "instructions": "numbered steps, one per line",
-  "cook_time": "e.g. 30 min or empty string",
-  "difficulty": "Easy or Medium or Hard or empty string",
-  "source_name": "${author}"
-}
+Use these exact fields (title is the recipe name only, no extra text; source_name is "${author}"):
+${RECIPE_FIELDS}
+
+${RECIPE_FORMAT_RULES}
 
 If there is no recipe in this caption, return {"error": "no_recipe"}.
 Only include what is actually in the caption — do not invent or add ingredients or steps.`

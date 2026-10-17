@@ -177,6 +177,7 @@ export default function Onboarding({ onComplete, session, prefillInviteCode }) {
         ingredients,
         instructions,
         cook_time: data.readyInMinutes ? `${data.readyInMinutes} min` : '',
+        prep_time: data.preparationMinutes > 0 ? `${data.preparationMinutes} min` : '',
       })
     } catch {
       setImportError("Couldn't fetch that URL. Try another link.")
@@ -196,6 +197,7 @@ export default function Onboarding({ onComplete, session, prefillInviteCode }) {
       ingredients: importedRecipe.ingredients || null,
       instructions: importedRecipe.instructions || null,
       cook_time: importedRecipe.cook_time || null,
+      prep_time: importedRecipe.prep_time || null,
       status: 'want_to_make',
       canonical_id: canonicalId,
       tags: [],
