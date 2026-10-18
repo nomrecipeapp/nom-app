@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from './supabase'
 import { apiPost } from './api'
 import { IconCamera, IconCheck, IconChevronLeft, IconX } from './icons'
+import { PRESET_TAGS, tagChoices, addTag, hasTag, tagKey } from './tags'
 
 const verdictOptions = [
   { value: 'would_make_again', label: 'Would Make Again', sub: 'A keeper', bg: '#EEF4E5', border: '#7A8C6E', color: '#4A5E42' },
@@ -16,7 +17,6 @@ const nuanceCategories = [
   { key: 'true_to_recipe', label: 'True to Recipe' },
 ]
 
-const PRESET_TAGS = ['Breakfast', 'Lunch', 'Dinner', 'Appetizer', 'Dessert', 'Baking', 'Cocktail']
 
 const loadingMessages = [
   'Reading your recipe...',
@@ -65,8 +65,7 @@ export default function AddRecipe({ session, onSave, onCancel }) {
   async function fetchUserTags() {
     const { data } = await supabase.from('recipes').select('tags').eq('user_id', session.user.id)
     if (!data) return
-    const customTags = [...new Set(data.flatMap(r => r.tags || []).filter(t => !PRESET_TAGS.includes(t)))]
-    if (customTags.length > 0) setAvailableTags([...PRESET_TAGS, ...customTags])
+    setAvailableTags(tagChoices(data.flatMap(r => r.tags || [])))
   }
 
   async function checkDuplicate(urlToCheck) {
@@ -551,11 +550,11 @@ export default function AddRecipe({ session, onSave, onCancel }) {
           <label style={labelStyle}>Tags</label>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
             {availableTags.map(tag => {
-              const selected = (recipe?.tags || []).includes(tag)
+              const selected = hasTag(recipe?.tags, tag)
               return (
                 <button key={tag} onClick={() => {
                   const current = recipe?.tags || []
-                  setRecipe({ ...recipe, tags: selected ? current.filter(t => t !== tag) : [...current, tag] })
+                  setRecipe({ ...recipe, tags: selected ? current.filter(t => tagKey(t) !== tagKey(tag)) : [...current, tag] })
                 }} style={{
                   padding: '5px 12px', border: '1.5px solid',
                   borderColor: selected ? 'var(--clay)' : 'var(--tan)',
@@ -571,13 +570,12 @@ export default function AddRecipe({ session, onSave, onCancel }) {
           <input placeholder="+ Add custom tag" style={{ ...inputStyle, fontSize: '13px' }}
             onKeyDown={e => {
               if (e.key === 'Enter' && e.target.value.trim()) {
-                const newTag = e.target.value.trim()
-                if (!(recipe?.tags || []).includes(newTag)) setRecipe({ ...recipe, tags: [...(recipe?.tags || []), newTag] })
+                setRecipe({ ...recipe, tags: addTag(recipe?.tags, e.target.value, availableTags) })
                 e.target.value = ''
               }
             }}
           />
-          {(recipe?.tags || []).filter(t => !availableTags.includes(t)).map(tag => (
+          {(recipe?.tags || []).filter(t => !hasTag(availableTags, t)).map(tag => (
             <div key={tag} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', marginTop: '6px', marginRight: '6px', padding: '4px 10px', background: 'var(--parchment)', borderRadius: 'var(--radius-pill)', fontSize: '12px', color: 'var(--charcoal)' }}>
               {tag}
               <button onClick={() => setRecipe({ ...recipe, tags: (recipe?.tags || []).filter(t => t !== tag) })} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', fontSize: '14px', lineHeight: 1, padding: 0 }}><IconX size={11} strokeWidth={2.2} /></button>

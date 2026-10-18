@@ -2,9 +2,9 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from './supabase'
 import CircleFriendsModal from './CircleFriendsModal'
 import { IconX } from './icons'
+import { canonicalSpellings, recipeTags, sortTags, tagKey, hasTag } from './tags'
 
 const FILTERS = ['All', 'Want to Make', 'Cooked', 'Never Again']
-const PRESET_TAGS = ['Breakfast', 'Lunch', 'Dinner', 'Appetizer', 'Dessert', 'Baking', 'Cocktail']
 
 const statusLabel = {
   want_to_make: 'Want to Make',
@@ -127,10 +127,14 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
     setCircleFriendsMap(map)
   }
 
-  const allTags = [...new Set([
-    ...PRESET_TAGS,
-    ...recipes.flatMap(r => r.tags || [])
-  ])]
+  // One spelling per tag (so "dinner" and "Dinner" are one chip), with how many
+  // recipes use it. Only tags actually in this cookbook are shown.
+  const tagSpellings = canonicalSpellings(recipes.flatMap(r => r.tags || []))
+  const tagCounts = {}
+  for (const r of recipes) {
+    for (const t of recipeTags(r.tags, tagSpellings)) tagCounts[t] = (tagCounts[t] || 0) + 1
+  }
+  const allTags = sortTags(Object.keys(tagCounts))
 
   const statusCounts = {
     All: recipes.length,
@@ -154,7 +158,7 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
     })
     .filter(r => {
       if (tagFilters.length === 0) return true
-      return tagFilters.some(tag => (r.tags || []).includes(tag))
+      return tagFilters.some(tag => hasTag(r.tags, tag))
     })
     .filter(r => {
       if (!search.trim()) return true
@@ -194,12 +198,13 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
   })
 
   const tagChipStyle = (active) => ({
-    padding: '4px 10px', borderRadius: 'var(--radius-pill)',
+    padding: '5px 11px', borderRadius: 'var(--radius-pill)',
     border: `1.5px solid ${active ? 'var(--clay)' : 'var(--tan)'}`,
-    background: active ? '#F0E0D0' : 'transparent',
-    color: active ? '#8A3A10' : 'var(--muted)',
-    fontFamily: 'var(--font-body)', fontSize: '11px', fontWeight: '600',
-    cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.15s', flexShrink: 0
+    background: active ? 'var(--clay)' : 'transparent',
+    color: active ? 'var(--cream)' : 'var(--charcoal)',
+    fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600',
+    cursor: 'pointer', whiteSpace: 'nowrap', transition: 'background 0.15s, color 0.15s', flexShrink: 0,
+    display: 'inline-flex', alignItems: 'center', gap: '5px'
   })
 
   const badgeStyle = (active) => ({
@@ -260,8 +265,14 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
 
           {/* Tags + Sort row */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-            <div style={{ fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--muted)' }}>
-              Tags <span style={{ fontWeight: '400', textTransform: 'none', letterSpacing: 0, fontSize: '10px', color: '#B0A090' }}>(select multiple)</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--muted)' }}>Tags</div>
+              {hasActiveFilters && (
+                <button onClick={() => setTagFilters([])} style={{
+                  background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+                  color: 'var(--clay)', fontFamily: 'var(--font-body)', fontSize: '11px', fontWeight: '600'
+                }}>Clear {tagFilters.length}</button>
+              )}
             </div>
             <select
               value={SORT_OPTIONS[sortIndex]}
@@ -277,32 +288,27 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
             </select>
           </div>
 
-          {/* Tag chips */}
-          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '8px' }}>
-            {allTags.map(tag => (
-              <button key={tag} onClick={() => toggleTag(tag)} style={tagChipStyle(tagFilters.includes(tag))}>
-                {tag}
-              </button>
-            ))}
-          </div>
-
-          {/* Active filters bar */}
-          {hasActiveFilters && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
-                <path d="M3 6h18M6 12h12M9 18h6" stroke="var(--clay)" strokeWidth="2" strokeLinecap="round"/>
-              </svg>
-              <span style={{ fontSize: '12px', color: 'var(--clay)', fontWeight: '600' }}>
-                {tagFilters.length} {tagFilters.length === 1 ? 'tag' : 'tags'} active
-              </span>
-              <span style={{ fontSize: '12px', color: 'var(--muted)' }}>·</span>
-              <button onClick={() => setTagFilters([])} style={{
-                background: 'none', border: 'none', cursor: 'pointer',
-                color: 'var(--clay)', fontSize: '12px', fontWeight: '600',
-                textDecoration: 'underline', padding: 0
-              }}>Clear</button>
+          {/* Tag chips: one row you can swipe sideways */}
+          {allTags.length > 0 ? (
+            <div className="nom-hscroll" style={{
+              display: 'flex', gap: '6px', overflowX: 'auto', marginBottom: '8px',
+              margin: '0 -24px 8px', padding: '0 24px 2px',
+              WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none'
+            }}>
+              {allTags.map(tag => {
+                const active = tagFilters.includes(tag)
+                return (
+                  <button key={tag} onClick={() => toggleTag(tag)} aria-pressed={active} style={tagChipStyle(active)}>
+                    {tag}
+                    <span style={{ fontSize: '11px', fontWeight: '500', color: active ? 'var(--cream)' : 'var(--muted)', opacity: active ? 0.85 : 1 }}>{tagCounts[tag]}</span>
+                  </button>
+                )
+              })}
             </div>
+          ) : (
+            <div style={{ fontSize: '12px', color: 'var(--muted)', marginBottom: '8px' }}>Add tags to a recipe to filter by them here.</div>
           )}
+
         </div>
 
         {/* Scrollable list */}
@@ -372,15 +378,17 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
                       </div>
                       {(recipe.tags || []).length > 0 && (
                         <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '5px' }}>
-                          {(recipe.tags || []).map(tag => (
-                            <span key={tag} style={{
-                              padding: '2px 8px', borderRadius: 'var(--radius-pill)',
-                              background: tagFilters.includes(tag) ? '#F0E0D0' : 'var(--parchment)',
-                              border: tagFilters.includes(tag) ? '1px solid #C4713A' : 'none',
-                              fontSize: '10px', fontWeight: '600',
-                              color: tagFilters.includes(tag) ? '#8A3A10' : 'var(--charcoal)'
-                            }}>{tag}</span>
-                          ))}
+                          {recipeTags(recipe.tags, tagSpellings).map(tag => {
+                            const active = tagFilters.some(t => tagKey(t) === tagKey(tag))
+                            return (
+                              <span key={tag} style={{
+                                padding: '2px 8px', borderRadius: 'var(--radius-pill)',
+                                background: active ? 'var(--clay)' : 'var(--parchment)',
+                                fontSize: '10px', fontWeight: '600',
+                                color: active ? 'var(--cream)' : 'var(--charcoal)'
+                              }}>{tag}</span>
+                            )
+                          })}
                         </div>
                       )}
                     </div>

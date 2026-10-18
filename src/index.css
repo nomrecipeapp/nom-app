@@ -59,3 +59,6 @@ img { -webkit-user-drag: none; }
 @media (prefers-reduced-motion: reduce) {
   button:active:not(:disabled) { transform: none; }
 }
+
+/* Sideways-scrolling chip rows: no visible scrollbar */
+.nom-hscroll::-webkit-scrollbar { display: none; }

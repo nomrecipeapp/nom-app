@@ -3,6 +3,7 @@ import { supabase } from './supabase'
 import CircleFriendsModal from './CircleFriendsModal'
 import { IconChevronRight, IconX } from './icons'
 import { confirmSheet, toast } from './ui'
+import { PRESET_TAGS, tagChoices, addTag, hasTag, tagKey } from './tags'
 
 const verdictOptions = [
   { value: 'would_make_again', label: 'Would Make Again', sub: 'A keeper', bg: '#EEF4E5', border: '#7A8C6E', color: '#4A5E42' },
@@ -23,7 +24,6 @@ const verdictStyles = {
   never_again: { bg: '#F4E8E8', border: '#C47070', color: '#9B4040', label: 'Never' },
 }
 
-const PRESET_TAGS = ['Breakfast', 'Lunch', 'Dinner', 'Appetizer', 'Dessert', 'Baking', 'Cocktail']
 
 export default function RecipeDetail({ recipe: initialRecipe, session, onBack, onUpdate, onSelectUser }) {
   const [recipe, setRecipe] = useState(initialRecipe)
@@ -83,8 +83,7 @@ export default function RecipeDetail({ recipe: initialRecipe, session, onBack, o
   async function fetchUserTags() {
     const { data } = await supabase.from('recipes').select('tags').eq('user_id', session.user.id)
     if (!data) return
-    const customTags = [...new Set(data.flatMap(r => r.tags || []).filter(t => !PRESET_TAGS.includes(t)))]
-    if (customTags.length > 0) setAvailableTags([...PRESET_TAGS, ...customTags])
+    setAvailableTags(tagChoices(data.flatMap(r => r.tags || [])))
   }
 
   async function fetchMyProfile() {
@@ -634,11 +633,11 @@ async function saveEditCook() {
               <label style={fieldLabel}>Tags</label>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
                 {availableTags.map(tag => {
-                  const selected = (editForm.tags || []).includes(tag)
+                  const selected = hasTag(editForm.tags, tag)
                   return (
                     <button key={tag} onClick={() => {
                       const current = editForm.tags || []
-                      setEditForm(f => ({ ...f, tags: selected ? current.filter(t => t !== tag) : [...current, tag] }))
+                      setEditForm(f => ({ ...f, tags: selected ? current.filter(t => tagKey(t) !== tagKey(tag)) : [...current, tag] }))
                     }} style={{ padding: '5px 12px', border: '1.5px solid', borderColor: selected ? 'var(--clay)' : 'var(--tan)', borderRadius: 'var(--radius-pill)', background: selected ? 'var(--clay)' : 'transparent', color: selected ? 'var(--cream)' : 'var(--muted)', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}>{tag}</button>
                   )
                 })}
@@ -646,12 +645,12 @@ async function saveEditCook() {
               <input placeholder="+ Add custom tag" style={{ ...inputStyle, fontSize: '13px' }}
                 onKeyDown={e => {
                   if (e.key === 'Enter' && e.target.value.trim()) {
-                    const newTag = e.target.value.trim()
-                    if (!(editForm.tags || []).includes(newTag)) setEditForm(f => ({ ...f, tags: [...(f.tags || []), newTag] }))
+                    const typed = e.target.value
+                    setEditForm(f => ({ ...f, tags: addTag(f.tags, typed, availableTags) }))
                     e.target.value = ''
                   }
                 }} />
-              {(editForm.tags || []).filter(t => !availableTags.includes(t)).map(tag => (
+              {(editForm.tags || []).filter(t => !hasTag(availableTags, t)).map(tag => (
                 <div key={tag} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', marginTop: '6px', marginRight: '6px', padding: '4px 10px', background: 'var(--parchment)', borderRadius: 'var(--radius-pill)', fontSize: '12px', color: 'var(--charcoal)' }}>
                   {tag}
                   <button onClick={() => setEditForm(f => ({ ...f, tags: (f.tags || []).filter(t => t !== tag) }))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', fontSize: '14px', lineHeight: 1, padding: 0 }}><IconX size={11} strokeWidth={2.2} /></button>
