@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { supabase } from './supabase'
-import { apiPost } from './api'
+import { importRecipeFromUrl } from './importUrl'
 import { IconCheck } from './icons'
 
 const TOTAL_STEPS = 5
@@ -158,27 +158,9 @@ export default function Onboarding({ onComplete, session, prefillInviteCode }) {
     setImporting(true)
     setImportError(null)
     try {
-      const res = await apiPost('/api/spoonacular-extract', { url: recipeUrl })
-      const data = await res.json()
-      if (res.status === 401) { setImportError('Please sign in again to import recipes.'); setImporting(false); return }
-      if (data.code === 402) { setImportError('Daily import limit reached. Try again tomorrow or add manually.'); setImporting(false); return }
-      const ingredients = data.extendedIngredients
-        ? data.extendedIngredients.map(i => i.original).join('\n')
-        : ''
-      const instructions = data.analyzedInstructions?.[0]?.steps
-        ? data.analyzedInstructions[0].steps.map((s, i) => `${i + 1}. ${s.step}`).join('\n')
-        : data.instructions || ''
-
-      setImportedRecipe({
-        title: data.title || 'Untitled Recipe',
-        source_url: recipeUrl,
-        source_name: data.sourceName || new URL(recipeUrl).hostname.replace('www.', ''),
-        image_url: data.image || null,
-        ingredients,
-        instructions,
-        cook_time: data.readyInMinutes ? `${data.readyInMinutes} min` : '',
-        prep_time: data.preparationMinutes > 0 ? `${data.preparationMinutes} min` : '',
-      })
+      const result = await importRecipeFromUrl(recipeUrl.trim(), 'Try a link from another site.')
+      if (result.error) setImportError(result.error)
+      else setImportedRecipe(result.recipe)
     } catch {
       setImportError("Couldn't fetch that URL. Try another link.")
     }

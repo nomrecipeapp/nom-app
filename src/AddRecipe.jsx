@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from './supabase'
 import { apiPost } from './api'
+import { importRecipeFromUrl } from './importUrl'
 import { IconCamera, IconCheck, IconChevronLeft, IconX } from './icons'
 import { PRESET_TAGS, tagChoices, addTag, hasTag, tagKey } from './tags'
-import { hasSections } from './recipeText'
 
 const verdictOptions = [
   { value: 'would_make_again', label: 'Would Make Again', sub: 'A keeper', bg: '#EEF4E5', border: '#7A8C6E', color: '#4A5E42' },
@@ -25,12 +25,6 @@ const loadingMessages = [
   'Parsing the steps...',
   'Almost there...',
 ]
-
-function formatMinutes(mins) {
-  const h = Math.floor(mins / 60), m = mins % 60
-  if (!h) return `${m} min`
-  return m ? `${h} hr ${m} min` : `${h} hr`
-}
 
 export default function AddRecipe({ session, onSave, onCancel }) {
   const [mode, setMode] = useState('url')
@@ -134,86 +128,13 @@ export default function AddRecipe({ session, onSave, onCancel }) {
     }
 
     try {
-      // Ask the AI importer at the same time: it keeps ingredient and step
-      // sections (like "For the dressing:"), which Spoonacular flattens
-      const aiPromise = apiPost('/api/extract-recipe-url', { url })
-        .then(r => r.json())
-        .then(d => (d && !d.error ? d : null))
-        .catch(() => null)
-
-      const res = await apiPost('/api/spoonacular-extract', { url })
-      const data = await res.json()
-      if (res.status === 401) {
-        setError(data.message || 'Please sign in again to import recipes.')
-        setLoading(false)
-        return
+      const result = await importRecipeFromUrl(url)
+      if (result.error) {
+        setError(result.error)
+      } else {
+        setRecipe({ ...result.recipe, notes: '', tags: [], logCookNow: false })
       }
-
-      if (data.code === 402) {
-        setError('Daily import limit reached. Try again tomorrow or add manually.')
-        setLoading(false)
-        return
-      }
-
-      let ingredients = data.extendedIngredients
-        ? data.extendedIngredients.map(i => i.original).join('\n')
-        : ''
-      // Keep every group of steps (Spoonacular splits sectioned recipes into groups)
-      const groups = (data.analyzedInstructions || []).filter(g => g.steps?.length)
-      let instructions = groups.length
-        ? groups.map(g => [
-            ...(groups.length > 1 && g.name ? [`${g.name.trim().replace(/:$/, '')}:`] : []),
-            ...g.steps.map((s, i) => `${i + 1}. ${s.step}`),
-          ].join('\n')).join('\n')
-        : data.instructions || ''
-      let cookTime = data.readyInMinutes ? formatMinutes(data.readyInMinutes) : ''
-      let prepTimeFound = data.preparationMinutes > 0 ? formatMinutes(data.preparationMinutes) : ''
-
-      // Prefer the AI importer's version when it found sections, or when Spoonacular came up empty
-      const ai = await aiPromise
-      if (ai) {
-        if (ai.ingredients && (hasSections(ai.ingredients) || !ingredients)) ingredients = ai.ingredients
-        if (ai.instructions && (hasSections(ai.instructions) || !instructions)) instructions = ai.instructions
-        if (!prepTimeFound && ai.prep_time) prepTimeFound = ai.prep_time
-        if (!cookTime && ai.cook_time) cookTime = ai.cook_time
-      }
-
-      // Try Spoonacular image first, fall back to OG image if needed
-      const spoonacularImageIsGeneric = data.image && (
-        data.image.includes('defaultOg') ||
-        data.image.includes('default-og') ||
-        data.image.includes('placeholder') ||
-        data.image.includes('nytimes.com/assets')
-      )
-      let imageUrl = (data.image && !spoonacularImageIsGeneric) ? data.image : null
-      if (!imageUrl) {
-        try {
-          const ogRes = await apiPost('/api/fetch-og-image', { url })
-          const ogData = await ogRes.json()
-          const isGenericFallback = ogData.image_url && (
-            ogData.image_url.includes('defaultOg') ||
-            ogData.image_url.includes('default-og') ||
-            ogData.image_url.includes('placeholder')
-          )
-          imageUrl = (ogData.image_url && !isGenericFallback) ? ogData.image_url : null
-        } catch { /* silent fail */ }
-      }
-
-      setRecipe({
-        title: data.title || '',
-        source_url: url,
-        source_name: data.sourceName || new URL(url).hostname.replace('www.', ''),
-        image_url: imageUrl,
-        cook_time: cookTime,
-        prep_time: prepTimeFound,
-        difficulty: '',
-        ingredients,
-        instructions,
-        notes: '',
-        tags: [],
-        logCookNow: false
-      })
-    } catch (e) {
+    } catch {
       setError('Could not fetch recipe. Try adding it manually.')
     }
     setLoading(false)
