@@ -47,6 +47,10 @@ export default async function handler(req, res) {
         title: pageTitle(html),
         foundRecipeData: !!recipeData,
       }))
+      // The site turned our server away (like NYT and Food Network): say so, skip the AI call
+      if (!recipeData && ([401, 403, 429].includes(pageRes.status) || /access denied|are you a robot|just a moment/i.test(pageTitle(html)))) {
+        return res.status(200).json({ error: true, blocked: true, message: 'site blocked' })
+      }
       if (recipeData) {
         text = `Structured recipe data from the page (times may be written like PT1H30M, meaning 1 hr 30 min):\n${JSON.stringify(recipeData)}`.slice(0, 60000)
       } else text = html

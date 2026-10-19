@@ -29,12 +29,27 @@ function siteName(url) {
   try { return new URL(url).hostname.replace('www.', '') } catch { return 'this site' }
 }
 
-// Returns { recipe } on success, or { error } with a message to show the user
+const SITE_NAMES = {
+  'cooking.nytimes.com': 'NYT Cooking',
+  'nytimes.com': 'The New York Times',
+  'foodnetwork.com': 'Food Network',
+}
+
+function friendlySiteName(url) {
+  const host = siteName(url)
+  return SITE_NAMES[host] || host
+}
+
+// Returns { recipe } on success, or { error, blocked, site } with a message to show the user
 // `hint` is the suggestion added after "We couldn't read this recipe"
 export async function importRecipeFromUrl(url, hint = 'Try a screenshot with From Photo instead.') {
+  let blocked = false
   const aiPromise = apiPost('/api/extract-recipe-url', { url })
     .then(r => r.json())
-    .then(d => (d && !d.error ? d : null))
+    .then(d => {
+      if (d?.blocked) blocked = true
+      return d && !d.error ? d : null
+    })
     .catch(() => null)
 
   const spoonPromise = apiPost('/api/spoonacular-extract', { url })
@@ -67,7 +82,10 @@ export async function importRecipeFromUrl(url, hint = 'Try a screenshot with Fro
     if (data.code === 402) {
       return { error: 'Daily import limit reached. Try again tomorrow or add manually.' }
     }
-    return { error: `We couldn't read this recipe from ${siteName(url)}. ${hint}` }
+    const site = friendlySiteName(url)
+    return blocked
+      ? { error: `${site} doesn't let apps read their recipes yet. ${hint}`, blocked: true, site }
+      : { error: `We couldn't find a recipe on this page. ${hint}`, site }
   }
 
   const title = aiOk ? ai.title : data.title

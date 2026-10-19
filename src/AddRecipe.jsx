@@ -28,6 +28,7 @@ const loadingMessages = [
 
 export default function AddRecipe({ session, onSave, onCancel }) {
   const [mode, setMode] = useState('url')
+  const [importIssue, setImportIssue] = useState(null) // { blocked, site } when a link can't be read
   const [url, setUrl] = useState('')
   const [loading, setLoading] = useState(false)
   const [loadingMsg, setLoadingMsg] = useState(loadingMessages[0])
@@ -87,6 +88,7 @@ export default function AddRecipe({ session, onSave, onCancel }) {
     if (!url) return
     setLoading(true)
     setError(null)
+    setImportIssue(null)
 
     if (!skipDuplicateCheck && duplicate) {
       setLoading(false)
@@ -129,7 +131,9 @@ export default function AddRecipe({ session, onSave, onCancel }) {
 
     try {
       const result = await importRecipeFromUrl(url)
-      if (result.error) {
+      if (result.site) {
+        setImportIssue(result)
+      } else if (result.error) {
         setError(result.error)
       } else {
         setRecipe({ ...result.recipe, notes: '', tags: [], logCookNow: false })
@@ -605,7 +609,7 @@ export default function AddRecipe({ session, onSave, onCancel }) {
         {!recipe && (
           <div style={{ display: 'flex', background: 'var(--parchment)', borderRadius: 'var(--radius-pill)', padding: '4px', marginBottom: '28px' }}>
             {['url', 'photo', 'manual'].map(m => (
-              <button key={m} onClick={() => { setMode(m); setError(null); setDuplicate(null); setPhotoPreview(null) }} style={{
+              <button key={m} onClick={() => { setMode(m); setError(null); setImportIssue(null); setDuplicate(null); setPhotoPreview(null) }} style={{
                 flex: 1, padding: '8px', border: 'none', borderRadius: 'var(--radius-pill)',
                 background: mode === m ? 'var(--clay)' : 'transparent',
                 color: mode === m ? 'var(--cream)' : 'var(--muted)',
@@ -623,7 +627,7 @@ export default function AddRecipe({ session, onSave, onCancel }) {
           <div style={{ background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--parchment)', padding: '28px' }}>
             <label style={labelStyle}>Recipe URL</label>
             <input type="url" value={url}
-              onChange={e => { setUrl(e.target.value); setDuplicate(null) }}
+              onChange={e => { setUrl(e.target.value); setDuplicate(null); setImportIssue(null) }}
               onBlur={e => checkDuplicate(e.target.value)}
               placeholder="https://www.seriouseats.com or TikTok/Instagram link..." style={{ ...inputStyle, marginBottom: '16px' }} />
 
@@ -639,6 +643,25 @@ export default function AddRecipe({ session, onSave, onCancel }) {
             )}
 
             {error && <div style={{ background: '#FDE8E8', border: '1px solid #F5C0C0', borderRadius: 'var(--radius-md)', padding: '10px 14px', fontSize: '13px', color: '#B85252', marginBottom: '16px' }}>{error}</div>}
+
+            {importIssue && (
+              <div style={{ background: 'var(--cream)', border: '1px solid var(--ember)', borderRadius: 'var(--radius-md)', padding: '14px 16px', marginBottom: '16px' }}>
+                <div style={{ fontSize: '14px', fontWeight: '600', color: 'var(--ink)', marginBottom: '4px' }}>
+                  {importIssue.blocked
+                    ? `${importIssue.site} doesn't let apps read their recipes yet.`
+                    : `We couldn't find a recipe on this page.`}
+                </div>
+                <div style={{ fontSize: '13px', color: 'var(--charcoal)', marginBottom: '12px', lineHeight: 1.45 }}>
+                  No worries! Snap a screenshot of the recipe and we'll pull it in from the photo.
+                </div>
+                <button onClick={() => { setMode('photo'); setImportIssue(null); setError(null) }} style={{
+                  display: 'inline-flex', alignItems: 'center', gap: '6px',
+                  padding: '9px 16px', background: 'var(--clay)', color: 'var(--cream)',
+                  border: 'none', borderRadius: 'var(--radius-pill)',
+                  fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '600', cursor: 'pointer'
+                }}><IconCamera size={15} /> Add from photo</button>
+              </div>
+            )}
 
             {!duplicate && (
               <button onClick={async () => {
