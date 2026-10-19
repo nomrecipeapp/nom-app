@@ -1,5 +1,6 @@
 import { RECIPE_FORMAT_RULES, RECIPE_FIELDS } from './_recipeFormat.js'
 import { handleCors, requireUser } from './_auth.js'
+import { extractJsonLdRecipe, pageTitle } from './_jsonLd.js'
 
 export default async function handler(req, res) {
   if (handleCors(req, res)) return
@@ -37,7 +38,18 @@ export default async function handler(req, res) {
         }
       })
       const html = await pageRes.text()
-      text = html
+      const recipeData = extractJsonLdRecipe(html)
+      // Private note in the Vercel logs so we can see what each site sent back
+      console.log('extract-recipe-url', JSON.stringify({
+        host: new URL(url).hostname,
+        status: pageRes.status,
+        bytes: html.length,
+        title: pageTitle(html),
+        foundRecipeData: !!recipeData,
+      }))
+      if (recipeData) {
+        text = `Structured recipe data from the page (times may be written like PT1H30M, meaning 1 hr 30 min):\n${JSON.stringify(recipeData)}`.slice(0, 60000)
+      } else text = html
         .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
         .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
         .replace(/<[^>]+>/g, ' ')
@@ -79,6 +91,7 @@ ${text}`
 
     res.status(200).json(parsed)
   } catch (e) {
+    console.error('extract-recipe-url failed', url, e.message)
     res.status(500).json({ error: true, message: e.message })
   }
 }
