@@ -282,7 +282,7 @@ export default function Profile({ session, onBack, onSelectRecipe, onSelectCook,
     <div style={{ minHeight: '100vh', background: 'var(--cream)', paddingBottom: '100px' }}>
       <div style={{ maxWidth: '480px', margin: '0 auto' }}>
 
-        <div style={{ height: '54px' }} />
+        <div style={{ height: 'var(--top-bar-h)' }} />
 
         {/* Hidden avatar input */}
         <input ref={avatarInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleAvatarChange} />

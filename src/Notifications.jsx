@@ -145,7 +145,7 @@ export default function Notifications({ session, onSelectUser, onSelectCook, onS
       paddingBottom: '100px',
     }}>
       {/* Spacer for top bar */}
-      <div style={{ height: '54px' }} />
+      <div style={{ height: 'var(--top-bar-h)' }} />
 
       <div style={{ padding: '8px 0' }}>
         {loading ? (

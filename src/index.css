@@ -1,4 +1,6 @@
 :root {
+  /* Top bar height: 54px plus the iPhone notch area (0 on web) */
+  --top-bar-h: calc(54px + env(safe-area-inset-top, 0px));
   --cream: #FAF6EF;
   --warm-white: #FDF9F4;
   --parchment: #F0E8D8;

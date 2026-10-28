@@ -55,10 +55,10 @@ export default function App() {
 
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return
-    // Dark status bar content (icons/clock) reads correctly against the
-    // app's light --cream background. setBackgroundColor is Android-only
+    // Style.Light = dark clock/icons, for the app's light --cream background
+    // (the plugin names styles by background, not text color). setBackgroundColor is Android-only
     // in this plugin — iOS shows the page background through the overlay.
-    StatusBar.setStyle({ style: Style.Dark })
+    StatusBar.setStyle({ style: Style.Light })
   }, [])
 
   useEffect(() => {
@@ -283,7 +283,7 @@ export default function App() {
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0,
           maxWidth: '480px', margin: '0 auto',
-          height: '54px', background: 'var(--cream)',
+          height: 'var(--top-bar-h)', background: 'var(--cream)',
           borderBottom: '1px solid var(--parchment)',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: '0 16px', paddingTop: 'env(safe-area-inset-top, 0px)', zIndex: 200,
@@ -357,7 +357,7 @@ export default function App() {
           <div style={{
             position: 'fixed', top: 0, left: 0, right: 0,
             maxWidth: '480px', margin: '0 auto',
-            height: '54px', background: 'var(--cream)',
+            height: 'var(--top-bar-h)', background: 'var(--cream)',
             borderBottom: '1px solid var(--parchment)',
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             padding: '0 16px', paddingTop: 'env(safe-area-inset-top, 0px)', zIndex: 301
@@ -536,7 +536,7 @@ export default function App() {
           position: 'fixed', bottom: 0, left: 0, right: 0,
           background: 'var(--warm-white)', borderTop: '1px solid var(--parchment)',
           display: 'flex', justifyContent: 'space-evenly', alignItems: 'center',
-          padding: '12px 0 20px', paddingBottom: 'max(20px, calc(env(safe-area-inset-bottom, 0px) + 4px))', zIndex: 100
+          padding: '12px 0 20px', paddingBottom: 'max(20px, env(safe-area-inset-bottom, 0px))', zIndex: 100
         }}>
           <button onClick={() => setScreen('feed')} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '4px 0', flex: 1 }}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none">

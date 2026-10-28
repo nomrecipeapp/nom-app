@@ -215,12 +215,12 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
   })
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--cream)', paddingTop: '54px' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--cream)', paddingTop: 'var(--top-bar-h)' }}>
       <div style={{ maxWidth: '480px', margin: '0 auto' }}>
 
         {/* Sticky search only */}
         <div ref={headerRef} style={{
-          position: 'sticky', top: '54px', zIndex: 100,
+          position: 'sticky', top: 'var(--top-bar-h)', zIndex: 100,
           background: 'var(--cream)', paddingTop: '12px',
           borderBottom: '1px solid var(--parchment)',
           paddingBottom: '12px', paddingLeft: '24px', paddingRight: '24px'

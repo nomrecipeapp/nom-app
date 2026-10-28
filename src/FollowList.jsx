@@ -56,7 +56,7 @@ export default function FollowList({ userId, type, session, onBack, onSelectUser
       <div style={{ maxWidth: '480px', margin: '0 auto' }}>
 
         {/* Spacer for top bar */}
-        <div style={{ height: '54px' }} />
+        <div style={{ height: 'var(--top-bar-h)' }} />
 
         {/* Search bar */}
         {!loading && people.length > 0 && (

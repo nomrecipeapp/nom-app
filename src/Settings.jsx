@@ -459,7 +459,7 @@ export default function Settings({ session, onBack }) {
       {/* Main settings screen */}
       <div style={{ minHeight: '100vh', background: '#F0E8D8', paddingBottom: '100px' }}>
         <div style={{ maxWidth: '480px', margin: '0 auto' }}>
-          <div style={{ height: '54px' }} />
+          <div style={{ height: 'var(--top-bar-h)' }} />
 
           {/* Identity block */}
           <div style={{ background: 'var(--cream)', display: 'flex', alignItems: 'center', gap: '14px', padding: '20px 20px 16px', borderBottom: '1px solid var(--parchment)' }}>

@@ -240,7 +240,7 @@ async function fetchRecentlyViewed() {
 
   return (
     <div style={{ maxWidth: '480px', margin: '0 auto', padding: '0 16px 100px' }}>
-      <div style={{ height: '70px' }} />
+      <div style={{ height: 'calc(var(--top-bar-h) + 16px)' }} />
 
       {/* Search bar */}
       <div style={{ position: 'relative', marginBottom: '24px' }} ref={searchRef}>

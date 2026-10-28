@@ -457,7 +457,7 @@ async function saveEditCook() {
     return (
       <div style={{ minHeight: '100vh', background: 'var(--cream)', paddingBottom: '40px' }}>
         <div style={{ maxWidth: '480px', margin: '0 auto' }}>
-          <div style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--parchment)', marginTop: '54px' }}>
+          <div style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--parchment)', marginTop: 'var(--top-bar-h)' }}>
             <button onClick={() => { setEditingCookId(null); setEditCookForm(null) }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '600', color: 'var(--muted)', padding: 0 }}>Cancel</button>
             <div style={{ fontFamily: 'var(--font-display)', fontSize: '17px', fontWeight: '700', color: 'var(--ink)' }}>Edit Cook</div>
             <div style={{ width: '48px' }} />
@@ -555,7 +555,7 @@ async function saveEditCook() {
     return (
       <div style={{ minHeight: '100vh', background: 'var(--cream)', paddingBottom: '40px' }}>
         <div style={{ maxWidth: '480px', margin: '0 auto' }}>
-          <div style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--parchment)', marginTop: '54px' }}>
+          <div style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--parchment)', marginTop: 'var(--top-bar-h)' }}>
             <button onClick={() => { setEditing(false); setEditError(null) }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '600', color: 'var(--muted)', padding: 0 }}>Cancel</button>
             <div style={{ fontFamily: 'var(--font-display)', fontSize: '17px', fontWeight: '700', color: 'var(--ink)' }}>Edit Recipe</div>
             <div style={{ width: '48px' }} />
@@ -728,7 +728,7 @@ async function saveEditCook() {
         if (!hasCookPhotos) {
           // Fallback: stock hero as today
           return recipe.image_url ? (
-            <div style={{ height: '220px', background: 'var(--parchment)', position: 'relative', overflow: 'hidden', marginTop: '54px' }}>
+            <div style={{ height: '220px', background: 'var(--parchment)', position: 'relative', overflow: 'hidden', marginTop: 'var(--top-bar-h)' }}>
               <img src={recipe.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                 onError={e => { e.target.style.display = 'none'; e.target.parentElement.style.display = 'none' }} />
               <button onClick={() => thumbnailInputRef.current?.click()} disabled={thumbnailUploading} style={{ position: 'absolute', top: '12px', right: '12px', width: '32px', height: '32px', borderRadius: '50%', background: 'rgba(28,26,23,0.55)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', backdropFilter: 'blur(4px)' }}>
@@ -743,7 +743,7 @@ async function saveEditCook() {
               <div style={{ position: 'absolute', bottom: '16px', right: '10px', background: status.bg, border: `1px solid ${status.border}`, color: status.color, borderRadius: 'var(--radius-pill)', padding: '5px 12px', fontSize: '11px', fontWeight: '600' }}>{status.label}</div>
             </div>
           ) : (
-            <div style={{ paddingTop: '70px', padding: '70px 24px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ padding: 'calc(var(--top-bar-h) + 16px) 24px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <button onClick={() => thumbnailInputRef.current?.click()} disabled={thumbnailUploading} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--parchment)', border: '1.5px dashed var(--tan)', borderRadius: 'var(--radius-pill)', padding: '7px 14px', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600', color: 'var(--muted)', cursor: 'pointer' }}>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round"/></svg>
                 {thumbnailUploading ? 'Uploading...' : 'Add photo'}
@@ -755,7 +755,7 @@ async function saveEditCook() {
 
         // Strip with cook photos
         return (
-          <div style={{ marginTop: '54px', position: 'relative' }}>
+          <div style={{ marginTop: 'var(--top-bar-h)', position: 'relative' }}>
             <div style={{ overflowX: 'auto', display: 'flex', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch', paddingLeft: '16px', paddingBottom: '4px' }}>
               {stripPhotos.map((photo, i) => {
                 const allUrls = stripPhotos.map(p => p.url)

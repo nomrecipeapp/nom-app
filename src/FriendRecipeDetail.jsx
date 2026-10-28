@@ -460,7 +460,7 @@ async function fetchCircleCookPhotos() {
         </div>
       )}
 
-      <div style={{ marginTop: '54px' }} />
+      <div style={{ marginTop: 'var(--top-bar-h)' }} />
       {showStrip ? (
         <div style={{ overflowX: 'auto', display: 'flex', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch', paddingLeft: '16px', paddingBottom: '4px' }}>
           {stripPhotos.map((photo, i) => (

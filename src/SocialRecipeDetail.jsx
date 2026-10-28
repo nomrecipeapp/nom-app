@@ -422,7 +422,7 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
 
       {/* Photo strip or hero */}
       {showStrip ? (
-        <div style={{ marginTop: '54px', overflowX: 'auto', display: 'flex', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch', paddingLeft: '16px', paddingBottom: '4px' }}>
+        <div style={{ marginTop: 'var(--top-bar-h)', overflowX: 'auto', display: 'flex', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch', paddingLeft: '16px', paddingBottom: '4px' }}>
           {stripPhotos.map((photo, i) => (
             <div key={i} onClick={() => openOverlay(i)} style={{ position: 'relative', flexShrink: 0, width: '85vw', maxWidth: '400px', height: '240px', borderRadius: 'var(--radius-lg)', overflow: 'hidden', marginRight: '10px', cursor: 'pointer', background: 'var(--parchment)' }}>
               <img src={photo.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} onError={e => e.target.style.display = 'none'} />
@@ -448,11 +448,11 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
           <div style={{ flexShrink: 0, width: '6px' }} />
         </div>
       ) : recipe?.image_url ? (
-        <div style={{ marginTop: '54px' }}>
+        <div style={{ marginTop: 'var(--top-bar-h)' }}>
           <img src={recipe.image_url} alt="" style={{ width: '100%', height: '260px', objectFit: 'cover', display: 'block' }} onError={e => e.target.style.display = 'none'} />
         </div>
       ) : (
-        <div style={{ height: '54px' }} />
+        <div style={{ height: 'var(--top-bar-h)' }} />
       )}
 
       <div style={{ padding: '20px 20px 0' }}>

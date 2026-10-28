@@ -613,7 +613,7 @@ export default function FriendProfile({ userId, session, onBack, onSelectCook, o
     <div style={{ minHeight: '100vh', background: 'var(--cream)', paddingBottom: '100px' }}>
       <div style={{ maxWidth: '480px', margin: '0 auto' }}>
 
-        <div style={{ height: '54px' }} />
+        <div style={{ height: 'var(--top-bar-h)' }} />
 
         {/* Avatar + name + follow */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '24px 20px 20px' }}>
