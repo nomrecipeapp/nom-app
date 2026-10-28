@@ -245,7 +245,7 @@ export default function Onboarding({ onComplete, session, prefillInviteCode }) {
       </div>
       <div style={{ flex: 1, padding: '32px 28px calc(40px + var(--safe-bottom))', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
         <div>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: '40px', fontWeight: '700', color: 'var(--clay)', letterSpacing: '-1.5px', marginBottom: '12px' }}>Nom</div>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: '40px', fontWeight: '700', color: 'var(--clay)', letterSpacing: '-1.5px', marginBottom: '12px' }}>nom</div>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: '26px', fontWeight: '700', color: 'var(--ink)', lineHeight: '1.2', marginBottom: '12px' }}>What's cookin'<br />good lookin'?</div>
           <div style={{ fontSize: '14px', color: 'var(--muted)', lineHeight: '1.6' }}>Finally, a place for all the recipes you've been meaning to cook.</div>
         </div>

@@ -113,7 +113,7 @@ export default function Auth({ onBack }) {
             color: 'var(--clay)',
             letterSpacing: '-2px',
             lineHeight: '1'
-          }}>Nom</div>
+          }}>nom</div>
           <div style={{
             fontFamily: 'var(--font-body)',
             fontSize: '13px',

@@ -290,7 +290,7 @@ export default function App() {
         }}>
           <div style={{ width: '72px' }}>
             {screen === 'feed' ? (
-              <div style={{ fontFamily: 'var(--font-display)', fontSize: '24px', fontWeight: '700', color: 'var(--clay)', letterSpacing: '-0.5px' }}>Nom</div>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: '24px', fontWeight: '700', color: 'var(--clay)', letterSpacing: '-0.5px' }}>nom</div>
             ) : ['recipe', 'socialRecipe', 'friendRecipeDetail', 'friendProfile', 'followList', 'notifications'].includes(screen) ? (
               <button onClick={() => screen === 'recipe' ? setScreen(recipeBackScreen) : setScreen(prevScreen)} style={{
                 display: 'flex', alignItems: 'center', gap: '5px',

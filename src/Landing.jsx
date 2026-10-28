@@ -94,7 +94,7 @@ function PhoneMock() {
     <div className="nl-phone" aria-hidden="true">
       <div className="nl-screen">
         <div className="nl-screen-top">
-          <span className="nl-screen-logo">Nom</span>
+          <span className="nl-screen-logo">nom</span>
           <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--muted)' }}>Feed</span>
         </div>
         <div className="nl-post">
@@ -160,7 +160,7 @@ export default function Landing({ onGetStarted, onSignIn }) {
       <div className="nl-wrap">
 
         <nav className="nl-nav">
-          <div className="nl-logo">Nom</div>
+          <div className="nl-logo">nom</div>
           <button className="nl-signin" onClick={onSignIn}>Sign in</button>
         </nav>
 
@@ -222,7 +222,7 @@ export default function Landing({ onGetStarted, onSignIn }) {
         </section>
 
         <footer className="nl-foot">
-          <div className="nl-logo" style={{ fontSize: '24px' }}>Nom</div>
+          <div className="nl-logo" style={{ fontSize: '24px' }}>nom</div>
           <div className="nl-foot-links">
             <a href={`mailto:${CONTACT_EMAIL}`}>Contact us</a>
             <a href={PRIVACY_URL} target="_blank" rel="noopener noreferrer">Privacy Policy</a>
