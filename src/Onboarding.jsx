@@ -38,6 +38,27 @@ export default function Onboarding({ onComplete, session, prefillInviteCode }) {
   const [avatarUrl, setAvatarUrl] = useState(null)
   const [avatarUploading, setAvatarUploading] = useState(false)
 
+  // Invite waitlist (for people without a code)
+  const [showWaitlist, setShowWaitlist] = useState(false)
+  const [waitlistEmail, setWaitlistEmail] = useState('')
+  const [waitlistStatus, setWaitlistStatus] = useState('idle') // idle | sending | done | error
+
+  async function handleJoinWaitlist() {
+    const clean = waitlistEmail.trim().toLowerCase()
+    if (!clean.includes('@') || clean.length < 3) { setWaitlistStatus('error'); return }
+    setWaitlistStatus('sending')
+    const { error } = await supabase.from('waitlist').insert({ email: clean, source: 'app' })
+    // 23505 = this email is already on the list, which is still a success for them
+    if (error && error.code !== '23505') { setWaitlistStatus('error'); return }
+    setWaitlistStatus('done')
+  }
+
+  function openWaitlist() {
+    setWaitlistEmail(email)
+    setWaitlistStatus('idle')
+    setShowWaitlist(true)
+  }
+
   // Step 3 state
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState([])
@@ -226,6 +247,44 @@ export default function Onboarding({ onComplete, session, prefillInviteCode }) {
     textTransform: 'uppercase', marginBottom: '6px'
   }
 
+  // ── INVITE WAITLIST (no code yet) ──
+  if (showWaitlist && !session) return (
+    <div style={{ minHeight: '100vh', background: 'var(--cream)', display: 'flex', flexDirection: 'column', maxWidth: '480px', margin: '0 auto', padding: 'calc(48px + var(--safe-top)) 28px calc(40px + var(--safe-bottom))' }}>
+      <button onClick={() => setShowWaitlist(false)} style={{ alignSelf: 'flex-start', padding: '4px 0', background: 'none', border: 'none', fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: '600', color: 'var(--clay)', cursor: 'pointer', marginBottom: '32px' }}>Back</button>
+      {waitlistStatus === 'done' ? (
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'var(--sage)', color: 'var(--cream)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '20px' }}>
+              <IconCheck size={26} strokeWidth={2.5} />
+            </div>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: '26px', fontWeight: '700', color: 'var(--ink)', lineHeight: '1.2', marginBottom: '8px' }}>You're on the list!</div>
+            <div style={{ fontSize: '14px', color: 'var(--muted)', lineHeight: '1.6' }}>We'll email you an invite when a spot opens up. Know someone on Nom? They can send you a code from Settings.</div>
+          </div>
+          <button onClick={() => setShowWaitlist(false)} style={{ width: '100%', padding: '15px', background: 'var(--clay)', color: 'var(--cream)', border: 'none', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)', fontSize: '15px', fontWeight: '700', cursor: 'pointer' }}>Done</button>
+        </div>
+      ) : (
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: '26px', fontWeight: '700', color: 'var(--ink)', lineHeight: '1.2', marginBottom: '8px' }}>Request an invite</div>
+            <div style={{ fontSize: '14px', color: 'var(--muted)', lineHeight: '1.6', marginBottom: '28px' }}>Nom is invite-only while we grow. Leave your email and we'll send you a code when a spot opens up.</div>
+            <label style={labelStyle}>Email</label>
+            <input type="email" value={waitlistEmail} onChange={e => { setWaitlistEmail(e.target.value); if (waitlistStatus === 'error') setWaitlistStatus('idle') }} placeholder="you@example.com" style={inputStyle} />
+            {waitlistStatus === 'error' && (
+              <div style={{ background: '#FDE8E8', border: '1px solid #F5C0C0', borderRadius: 'var(--radius-md)', padding: '12px 16px', fontSize: '13px', color: '#B85252', marginTop: '16px' }}>That didn't go through. Check your email address and try again.</div>
+            )}
+          </div>
+          <button onClick={handleJoinWaitlist} disabled={waitlistStatus === 'sending' || !waitlistEmail.trim()} style={{
+            width: '100%', padding: '15px', marginTop: '24px',
+            background: (waitlistStatus === 'sending' || !waitlistEmail.trim()) ? 'var(--tan)' : 'var(--clay)',
+            color: 'var(--cream)', border: 'none', borderRadius: 'var(--radius-pill)',
+            fontFamily: 'var(--font-body)', fontSize: '15px', fontWeight: '700',
+            cursor: (waitlistStatus === 'sending' || !waitlistEmail.trim()) ? 'not-allowed' : 'pointer'
+          }}>{waitlistStatus === 'sending' ? 'Sending...' : 'Request an invite'}</button>
+        </div>
+      )}
+    </div>
+  )
+
   // ── STEP 1: WELCOME ──
   if (step === 1) return (
     <div style={{ minHeight: '100vh', background: 'var(--cream)', display: 'flex', flexDirection: 'column', maxWidth: '480px', margin: '0 auto' }}>
@@ -248,10 +307,12 @@ export default function Onboarding({ onComplete, session, prefillInviteCode }) {
           <div style={{ fontFamily: 'var(--font-display)', fontSize: '40px', fontWeight: '700', color: 'var(--clay)', letterSpacing: '-1.5px', marginBottom: '12px' }}>nom</div>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: '26px', fontWeight: '700', color: 'var(--ink)', lineHeight: '1.2', marginBottom: '12px' }}>What's cookin'<br />good lookin'?</div>
           <div style={{ fontSize: '14px', color: 'var(--muted)', lineHeight: '1.6' }}>Finally, a place for all the recipes you've been meaning to cook.</div>
+          <div style={{ marginTop: '16px', padding: '12px 14px', background: 'var(--parchment)', borderRadius: 'var(--radius-md)', fontSize: '13px', color: 'var(--charcoal)', lineHeight: '1.5' }}>Nom is invite-only for now. Got a code from a friend? You're in.</div>
         </div>
         <div>
           <ProgressDots step={1} />
-          <button onClick={() => setStep(2)} style={{ width: '100%', padding: '15px', background: 'var(--clay)', color: 'var(--cream)', border: 'none', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)', fontSize: '15px', fontWeight: '700', cursor: 'pointer', marginBottom: '10px' }}>Let's go</button>
+          <button onClick={() => setStep(2)} style={{ width: '100%', padding: '15px', background: 'var(--clay)', color: 'var(--cream)', border: 'none', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)', fontSize: '15px', fontWeight: '700', cursor: 'pointer', marginBottom: '10px' }}>I have an invite code</button>
+          <button onClick={openWaitlist} style={{ width: '100%', padding: '10px', background: 'none', border: 'none', fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '600', color: 'var(--clay)', cursor: 'pointer' }}>No code? Request an invite</button>
           <button onClick={() => onComplete('login')} style={{ width: '100%', padding: '10px', background: 'none', border: 'none', fontFamily: 'var(--font-body)', fontSize: '13px', color: 'var(--muted)', cursor: 'pointer' }}>I already have an account</button>
         </div>
       </div>
@@ -344,7 +405,10 @@ export default function Onboarding({ onComplete, session, prefillInviteCode }) {
           <div style={{ marginBottom: '24px' }}>
             <label style={labelStyle}>Invite Code</label>
             <input type="text" value={inviteCode} onChange={e => setInviteCode(e.target.value.trim().toUpperCase())} placeholder="XXXXXXXX" style={{ ...inputStyle, letterSpacing: '0.1em' }} />
-            <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '4px' }}>You need an invite code to join Nom.</div>
+            <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '4px' }}>
+              You need an invite code to join Nom.{' '}
+              <button onClick={openWaitlist} style={{ padding: 0, background: 'none', border: 'none', fontFamily: 'var(--font-body)', fontSize: '11px', fontWeight: '600', color: 'var(--clay)', cursor: 'pointer' }}>No code? Request one</button>
+            </div>
           </div>
 
           {authError && (
