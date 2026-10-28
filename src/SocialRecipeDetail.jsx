@@ -398,7 +398,7 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
     .filter((p, i, arr) => arr.findIndex(x => x.id === p.id) === i)
 
   return (
-    <div style={{ maxWidth: '480px', margin: '0 auto', paddingBottom: '100px' }}>
+    <div style={{ maxWidth: '480px', margin: '0 auto', paddingBottom: 'var(--nav-clearance)' }}>
 
       {/* Fullscreen overlay */}
       {overlayPhotos && (

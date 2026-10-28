@@ -48,7 +48,7 @@ export function UIHost() {
       {t && (
         <div key={t.key} role="status" aria-live="polite" style={{
           position: 'fixed', left: '50%', zIndex: 2000,
-          bottom: 'calc(100px + env(safe-area-inset-bottom, 0px))',
+          bottom: 'var(--nav-clearance)',
           transform: `translate(-50%, ${t.visible ? '0' : '12px'})`,
           opacity: t.visible ? 1 : 0,
           transition: 'opacity 0.2s ease, transform 0.2s ease',
@@ -75,7 +75,7 @@ export function UIHost() {
           <div onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" style={{
             width: '100%', maxWidth: '480px', background: 'var(--cream)',
             borderRadius: '20px 20px 0 0',
-            padding: '24px 24px calc(28px + env(safe-area-inset-bottom, 0px))',
+            padding: '24px 24px calc(28px + var(--safe-bottom))',
             transform: sheet.open ? 'translateY(0)' : 'translateY(100%)',
             transition: 'transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1)',
             boxShadow: '0 -8px 40px rgba(0,0,0,0.15)',

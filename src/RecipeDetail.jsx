@@ -463,7 +463,7 @@ async function saveEditCook() {
             <div style={{ width: '48px' }} />
           </div>
 
-          <div style={{ padding: '24px 20px 120px 20px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          <div style={{ padding: '24px 20px calc(var(--nav-clearance) + 20px) 20px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
 
             {/* Photos */}
             <div>
@@ -560,7 +560,7 @@ async function saveEditCook() {
             <div style={{ fontFamily: 'var(--font-display)', fontSize: '17px', fontWeight: '700', color: 'var(--ink)' }}>Edit Recipe</div>
             <div style={{ width: '48px' }} />
           </div>
-          <div style={{ padding: '24px 20px 120px 20px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div style={{ padding: '24px 20px calc(var(--nav-clearance) + 20px) 20px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
             <div>
               <label style={fieldLabel}>Title</label>
               <input value={editForm.title} onChange={e => setEditForm(f => ({ ...f, title: e.target.value }))} style={inputStyle} />
@@ -681,7 +681,7 @@ async function saveEditCook() {
 
   // ---- NORMAL VIEW ----
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--cream)', paddingBottom: '120px' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--cream)', paddingBottom: 'calc(var(--nav-clearance) + 20px)' }}>
 
       {/* Photo overlay */}
       {overlayPhotos && (

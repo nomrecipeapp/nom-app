@@ -41,7 +41,9 @@ export default function ResetPassword({ onComplete }) {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      padding: '40px 24px'
+      padding: '40px 24px',
+      paddingTop: 'calc(40px + var(--safe-top))',
+      paddingBottom: 'calc(40px + var(--safe-bottom))'
     }}>
       <div style={{ width: '100%', maxWidth: '400px' }}>
 

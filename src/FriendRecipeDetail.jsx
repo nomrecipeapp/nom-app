@@ -438,7 +438,7 @@ async function fetchCircleCookPhotos() {
   }
 
   return (
-    <div style={{ maxWidth: '480px', margin: '0 auto', paddingBottom: '100px' }}>
+    <div style={{ maxWidth: '480px', margin: '0 auto', paddingBottom: 'var(--nav-clearance)' }}>
 
   {/* Fullscreen overlay */}
       {overlayPhotos && (

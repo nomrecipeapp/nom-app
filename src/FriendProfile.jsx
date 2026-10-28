@@ -122,7 +122,7 @@ function FriendRecipeDetail({ recipe, session, onBack }) {
   }
 
   return (
-    <div style={{ maxWidth: '480px', margin: '0 auto', paddingBottom: '100px' }}>
+    <div style={{ maxWidth: '480px', margin: '0 auto', paddingBottom: 'var(--nav-clearance)' }}>
       {recipe.image_url ? (
         <div style={{ position: 'relative' }}>
           <img src={recipe.image_url} alt="" style={{ width: '100%', height: '260px', objectFit: 'cover', display: 'block' }} onError={e => { e.target.style.display = 'none' }} />
@@ -610,7 +610,7 @@ export default function FriendProfile({ userId, session, onBack, onSelectCook, o
   )
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--cream)', paddingBottom: '100px' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--cream)', paddingBottom: 'var(--nav-clearance)' }}>
       <div style={{ maxWidth: '480px', margin: '0 auto' }}>
 
         <div style={{ height: 'var(--top-bar-h)' }} />

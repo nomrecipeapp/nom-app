@@ -1,6 +1,13 @@
 :root {
-  /* Top bar height: 54px plus the iPhone notch area (0 on web) */
-  --top-bar-h: calc(54px + env(safe-area-inset-top, 0px));
+  /* iPhone edges: notch/status bar area and home bar area (both 0 on web) */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  /* App bars. Screens leave room with these tokens, never hand-typed numbers. */
+  --top-bar-h: calc(54px + var(--safe-top));
+  --bottom-nav-pad: max(20px, var(--safe-bottom));
+  --bottom-nav-h: calc(68px + var(--bottom-nav-pad));
+  /* Bottom space for a scrolling screen: clears the bottom bar, plus breathing room */
+  --nav-clearance: calc(var(--bottom-nav-h) + 12px);
   --cream: #FAF6EF;
   --warm-white: #FDF9F4;
   --parchment: #F0E8D8;

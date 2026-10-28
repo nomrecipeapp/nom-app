@@ -52,7 +52,7 @@ export default function FollowList({ userId, type, session, onBack, onSelectUser
   })
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--cream)', paddingBottom: '100px' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--cream)', paddingBottom: 'var(--nav-clearance)' }}>
       <div style={{ maxWidth: '480px', margin: '0 auto' }}>
 
         {/* Spacer for top bar */}

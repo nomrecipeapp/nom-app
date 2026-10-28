@@ -91,7 +91,9 @@ export default function Auth({ onBack }) {
       alignItems: 'center',
       justifyContent: 'center',
       background: 'var(--cream)',
-      padding: '24px'
+      padding: '24px',
+      paddingTop: 'calc(24px + var(--safe-top))',
+      paddingBottom: 'calc(24px + var(--safe-bottom))'
     }}>
       <div style={{ width: '100%', maxWidth: '400px' }}>
 

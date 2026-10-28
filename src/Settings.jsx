@@ -457,7 +457,7 @@ export default function Settings({ session, onBack }) {
       )}
 
       {/* Main settings screen */}
-      <div style={{ minHeight: '100vh', background: '#F0E8D8', paddingBottom: '100px' }}>
+      <div style={{ minHeight: '100vh', background: '#F0E8D8', paddingBottom: 'calc(40px + var(--safe-bottom))' }}>
         <div style={{ maxWidth: '480px', margin: '0 auto' }}>
           <div style={{ height: 'var(--top-bar-h)' }} />
 

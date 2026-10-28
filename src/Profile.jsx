@@ -279,7 +279,7 @@ export default function Profile({ session, onBack, onSelectRecipe, onSelectCook,
   )
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--cream)', paddingBottom: '100px' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--cream)', paddingBottom: 'var(--nav-clearance)' }}>
       <div style={{ maxWidth: '480px', margin: '0 auto' }}>
 
         <div style={{ height: 'var(--top-bar-h)' }} />

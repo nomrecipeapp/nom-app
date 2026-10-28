@@ -142,7 +142,7 @@ export default function Notifications({ session, onSelectUser, onSelectCook, onS
     <div style={{
       minHeight: '100vh',
       background: 'var(--cream)',
-      paddingBottom: '100px',
+      paddingBottom: 'var(--nav-clearance)',
     }}>
       {/* Spacer for top bar */}
       <div style={{ height: 'var(--top-bar-h)' }} />

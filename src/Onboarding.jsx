@@ -243,7 +243,7 @@ export default function Onboarding({ onComplete, session, prefillInviteCode }) {
           <path d="M85 65 Q82 55 85 45" stroke="rgba(255,255,255,0.5)" strokeWidth="2" strokeLinecap="round" fill="none"/>
         </svg>
       </div>
-      <div style={{ flex: 1, padding: '32px 28px 40px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+      <div style={{ flex: 1, padding: '32px 28px calc(40px + var(--safe-bottom))', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
         <div>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: '40px', fontWeight: '700', color: 'var(--clay)', letterSpacing: '-1.5px', marginBottom: '12px' }}>Nom</div>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: '26px', fontWeight: '700', color: 'var(--ink)', lineHeight: '1.2', marginBottom: '12px' }}>What's cookin'<br />good lookin'?</div>
@@ -260,7 +260,7 @@ export default function Onboarding({ onComplete, session, prefillInviteCode }) {
 
   // ── STEP 2: CREATE ACCOUNT (with photo step inline) ──
   if (step === 2) return (
-    <div style={{ minHeight: '100vh', background: 'var(--cream)', display: 'flex', flexDirection: 'column', maxWidth: '480px', margin: '0 auto', padding: '48px 28px 40px' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--cream)', display: 'flex', flexDirection: 'column', maxWidth: '480px', margin: '0 auto', padding: 'calc(48px + var(--safe-top)) 28px calc(40px + var(--safe-bottom))' }}>
 
       {showPhotoStep ? (
         // ── PHOTO STEP (inside step 2, survives re-render) ──
@@ -373,7 +373,7 @@ export default function Onboarding({ onComplete, session, prefillInviteCode }) {
 
   // ── STEP 3: FIND FELLOW COOKS ──
   if (step === 3) return (
-    <div style={{ minHeight: '100vh', background: 'var(--cream)', display: 'flex', flexDirection: 'column', maxWidth: '480px', margin: '0 auto', padding: '48px 28px 40px' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--cream)', display: 'flex', flexDirection: 'column', maxWidth: '480px', margin: '0 auto', padding: 'calc(48px + var(--safe-top)) 28px calc(40px + var(--safe-bottom))' }}>
       {accountCreated && <div style={{ paddingBottom: '24px' }} />}
       <div style={{ flex: 1 }}>
         <div style={{ fontFamily: 'var(--font-display)', fontSize: '24px', fontWeight: '700', color: 'var(--ink)', lineHeight: '1.2', marginBottom: '4px' }}>Find fellow<br />friendly cooks.</div>
@@ -405,7 +405,7 @@ export default function Onboarding({ onComplete, session, prefillInviteCode }) {
 
   // ── STEP 4: FIRST RECIPE ──
   if (step === 4) return (
-    <div style={{ minHeight: '100vh', background: 'var(--cream)', display: 'flex', flexDirection: 'column', maxWidth: '480px', margin: '0 auto', padding: '48px 28px 40px' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--cream)', display: 'flex', flexDirection: 'column', maxWidth: '480px', margin: '0 auto', padding: 'calc(48px + var(--safe-top)) 28px calc(40px + var(--safe-bottom))' }}>
       <button onClick={() => setStep(3)} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--muted)', fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '600', padding: '0 0 24px' }}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M19 12H5M5 12l7-7M5 12l7 7" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
         Back
@@ -477,7 +477,7 @@ export default function Onboarding({ onComplete, session, prefillInviteCode }) {
           <text x="28" y="108" fontFamily="serif" fontSize="36" fontWeight="bold" fill="rgba(255,255,255,0.88)" letterSpacing="-1.5">nom</text>
         </svg>
       </div>
-      <div style={{ flex: 1, padding: '32px 28px 40px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+      <div style={{ flex: 1, padding: '32px 28px calc(40px + var(--safe-bottom))', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
         <div>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: '32px', fontWeight: '700', color: 'var(--ink)', lineHeight: '1.15', marginBottom: '10px' }}>Your Cookbook<br />is open.</div>
           <div style={{ fontSize: '14px', color: 'var(--muted)', lineHeight: '1.6' }}>Now go find something delicious.</div>

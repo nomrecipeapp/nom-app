@@ -239,7 +239,7 @@ async function fetchRecentlyViewed() {
   const hasDropdownResults = dropdownResults.people.length > 0 || dropdownResults.myRecipes.length > 0 || dropdownResults.recipes.length > 0
 
   return (
-    <div style={{ maxWidth: '480px', margin: '0 auto', padding: '0 16px 100px' }}>
+    <div style={{ maxWidth: '480px', margin: '0 auto', padding: '0 16px var(--nav-clearance)' }}>
       <div style={{ height: 'calc(var(--top-bar-h) + 16px)' }} />
 
       {/* Search bar */}

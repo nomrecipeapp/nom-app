@@ -376,7 +376,7 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
-      style={{ maxWidth: '480px', margin: '0 auto', padding: 'calc(var(--top-bar-h) + 16px) 16px 100px' }}
+      style={{ maxWidth: '480px', margin: '0 auto', padding: 'calc(var(--top-bar-h) + 16px) 16px var(--nav-clearance)' }}
     >
       <style>{`
         @keyframes shimmer {

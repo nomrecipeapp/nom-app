@@ -312,7 +312,7 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
         </div>
 
         {/* Scrollable list */}
-        <div style={{ padding: '16px 24px 100px' }}>
+        <div style={{ padding: '16px 24px var(--nav-clearance)' }}>
 
           {/* Recipe count */}
           <div style={{ fontSize: '12px', color: 'var(--muted)', marginBottom: '16px' }}>

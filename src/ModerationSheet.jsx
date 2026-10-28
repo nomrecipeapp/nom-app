@@ -5,7 +5,7 @@ import { REPORT_REASONS, submitReport, blockUser } from './moderation'
 // target: { type: 'comment' | 'cook' | 'save' | 'profile', id, userId, name }
 
 const overlayStyle = { position: 'fixed', inset: 0, zIndex: 600, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }
-const sheetStyle = { background: 'var(--cream)', borderRadius: '20px 20px 0 0', width: '100%', maxWidth: '480px', padding: '24px 24px calc(32px + env(safe-area-inset-bottom))', boxShadow: '0 -8px 40px rgba(0,0,0,0.15)', boxSizing: 'border-box' }
+const sheetStyle = { background: 'var(--cream)', borderRadius: '20px 20px 0 0', width: '100%', maxWidth: '480px', padding: '24px 24px calc(32px + var(--safe-bottom))', boxShadow: '0 -8px 40px rgba(0,0,0,0.15)', boxSizing: 'border-box' }
 const titleStyle = { fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: '700', color: 'var(--ink)', marginBottom: '8px' }
 const bodyStyle = { fontSize: '13px', color: 'var(--charcoal)', lineHeight: '1.6', marginBottom: '20px' }
 const primaryBtn = { width: '100%', padding: '14px', background: 'var(--clay)', color: 'var(--cream)', border: 'none', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: '600', cursor: 'pointer', marginBottom: '10px' }
@@ -18,7 +18,7 @@ const typeWord = { comment: 'comment', cook: 'post', save: 'post', profile: 'pro
 export function MoreMenuSheet({ actions, onClose }) {
   return (
     <div onClick={onClose} style={overlayStyle}>
-      <div onClick={e => e.stopPropagation()} style={{ ...sheetStyle, padding: '12px 0 calc(16px + env(safe-area-inset-bottom))' }}>
+      <div onClick={e => e.stopPropagation()} style={{ ...sheetStyle, padding: '12px 0 calc(16px + var(--safe-bottom))' }}>
         {actions.map((a, i) => (
           <button key={a.label} onClick={a.onTap} style={{
             width: '100%', padding: '16px 24px', background: 'none', border: 'none',
