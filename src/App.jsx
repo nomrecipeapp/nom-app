@@ -536,7 +536,7 @@ export default function App() {
           position: 'fixed', bottom: 0, left: 0, right: 0,
           background: 'var(--warm-white)', borderTop: '1px solid var(--parchment)',
           display: 'flex', justifyContent: 'space-evenly', alignItems: 'center',
-          padding: '12px 0 20px', paddingBottom: 'calc(20px + env(safe-area-inset-bottom, 0px))', zIndex: 100
+          padding: '12px 0 20px', paddingBottom: 'max(20px, calc(env(safe-area-inset-bottom, 0px) + 4px))', zIndex: 100
         }}>
           <button onClick={() => setScreen('feed')} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '4px 0', flex: 1 }}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none">

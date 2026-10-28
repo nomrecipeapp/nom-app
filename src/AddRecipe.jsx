@@ -594,7 +594,7 @@ export default function AddRecipe({ session, onSave, onCancel }) {
   )
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--cream)', padding: '24px', paddingBottom: '60px' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--cream)', padding: '24px', paddingTop: 'calc(24px + env(safe-area-inset-top, 0px))', paddingBottom: 'calc(60px + env(safe-area-inset-bottom, 0px))' }}>
       <div style={{ maxWidth: '480px', margin: '0 auto' }}>
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '32px' }}>
