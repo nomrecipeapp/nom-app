@@ -296,7 +296,9 @@ export default function Profile({ session, onBack, onSelectRecipe, onSelectCook,
     return {
       icon: IconPot,
       title: 'Your cooking record starts here',
-      body: `Made one of your ${n} ${n === 1 ? 'recipe' : 'recipes'}? Log it and your verdicts and top rated recipes show up here.`,
+      body: n === 1
+        ? 'Made the recipe you saved? Log a cook to start your record. Your verdicts and top rated recipes show up here.'
+        : `Made any of your ${n} recipes? Log a cook to start your record. Your verdicts and top rated recipes show up here.`,
       primary: { label: 'Log a cook', icon: IconPot, onClick: () => onViewCookbook && onViewCookbook('All') },
       secondary: { label: 'Add a recipe', onClick: () => onAddRecipe && onAddRecipe() },
     }

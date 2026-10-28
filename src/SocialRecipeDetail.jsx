@@ -932,6 +932,14 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
           </div>
         </div>
       </div>
+      {isOwner && myRecipeId && (
+        <FloatingAction
+          anchorRef={saveAnchorRef}
+          tone="quiet"
+          label="View in Cookbook"
+          onClick={() => onViewInCookbook && onViewInCookbook(myRecipeId)}
+        />
+      )}
       {!isOwner && (
         <FloatingAction
           anchorRef={saveAnchorRef}

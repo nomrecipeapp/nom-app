@@ -910,6 +910,14 @@ async function fetchCircleCookPhotos() {
           </div>
         </div>
       </div>
+      {isOwner && (
+        <FloatingAction
+          anchorRef={saveAnchorRef}
+          tone="quiet"
+          label="View in Cookbook"
+          onClick={() => onViewInCookbook && onViewInCookbook(myRecipeId || recipe.id)}
+        />
+      )}
       {!isOwner && (
         <FloatingAction
           anchorRef={saveAnchorRef}
