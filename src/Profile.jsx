@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from './supabase'
 import EmptyState from './EmptyState'
-import { IconBook, IconPot, IconPlus } from './icons'
+import { IconBook, IconPot, IconPlus, IconLock, IconLockOpen } from './icons'
 
 const verdictStyles = {
   would_make_again: { bg: '#EEF4E5', border: '#7A8C6E', color: '#4A5E42', label: 'Again' },
@@ -370,8 +370,18 @@ export default function Profile({ session, onBack, onSelectRecipe, onSelectCook,
           <div style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: '700', color: 'var(--ink)', marginBottom: '2px', marginTop: '12px' }}>
             {profile.full_name || profile.username || 'Your Name'}
           </div>
-          {profile.username && (
-            <div style={{ fontSize: '12px', color: 'var(--muted)', marginBottom: '16px' }}>@{profile.username}</div>
+          {(profile.username || profile.is_private !== undefined) && (
+            <div style={{ fontSize: '12px', color: 'var(--muted)', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              {profile.username && <span>@{profile.username}</span>}
+              {profile.username && profile.is_private !== undefined && <span aria-hidden="true">·</span>}
+              {profile.is_private !== undefined && (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                  {profile.is_private === false
+                    ? <><IconLockOpen size={11} strokeWidth={2.2} />Public</>
+                    : <><IconLock size={11} strokeWidth={2.2} />Private</>}
+                </span>
+              )}
+            </div>
           )}
           <div style={{ display: 'flex', gap: '32px', textAlign: 'center' }}>
             <button onClick={() => onViewFollowList('following')} style={{ background: 'none', border: 'none', cursor: 'pointer', textAlign: 'center', padding: 0 }}>

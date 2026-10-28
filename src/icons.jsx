@@ -27,6 +27,7 @@ export const IconAt = (p) => <Svg {...p}><circle cx="12" cy="12" r="4" /><path d
 export const IconBell = (p) => <Svg {...p}><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0" /></Svg>
 export const IconPlus = (p) => <Svg {...p}><path d="M12 5v14M5 12h14" /></Svg>
 export const IconLock = (p) => <Svg {...p}><rect x="4" y="11" width="16" height="10" rx="2" /><path d="M8 11V7.5a4 4 0 018 0V11" /></Svg>
+export const IconLockOpen = (p) => <Svg {...p}><rect x="4" y="11" width="16" height="10" rx="2" /><path d="M8 11V7.5a4 4 0 017.7-1.5" /></Svg>
 export const IconBook = (p) => <Svg {...p}><path d="M4 19V6a2 2 0 012-2h13v14H6a2 2 0 00-2 2zm0 0a2 2 0 002 2h13M9 8h6M9 12h4" /></Svg>
 // A pot with steam, for logging a cook
 export const IconPot = (p) => <Svg {...p}><path d="M4 11h16v5a4 4 0 01-4 4H8a4 4 0 01-4-4v-5zM2 11h2M20 11h2M9 7.5c0-1 1-1.5 1-2.5M14 7.5c0-1 1-1.5 1-2.5" /></Svg>
