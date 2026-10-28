@@ -30,6 +30,8 @@ export default function App() {
     !Capacitor.isNativePlatform() && !new URLSearchParams(window.location.search).get('code')
   )
   const [screen, setScreen] = useState('feed')
+  // Add Recipe can open with "Log a cook right away" already switched on (from Profile's empty state)
+  const [addStartLogging, setAddStartLogging] = useState(false)
   const [selectedRecipe, setSelectedRecipe] = useState(null)
   const [selectedCook, setSelectedCook] = useState(null)
   const [selectedUserId, setSelectedUserId] = useState(null)
@@ -265,6 +267,8 @@ export default function App() {
   if (!session) return <Onboarding onComplete={handleOnboardingComplete} prefillInviteCode={prefillInviteCode} />
   if (!onboardingComplete) return <Onboarding session={session} onComplete={handleOnboardingComplete} prefillInviteCode={prefillInviteCode} />
 
+  function openAdd(startLogging = false) { setAddStartLogging(startLogging); setScreen('add') }
+
   const hideNav = screen === 'add'
   const hideTopBar = screen === 'add' || screen === 'resetPassword'
 
@@ -392,6 +396,7 @@ export default function App() {
       {screen === 'add' && (
         <AddRecipe
           session={session}
+          startLogging={addStartLogging}
           onSave={(recipe, logCookNow) => {
             if (logCookNow && recipe) {
               setRecipeBackScreen('cookbook')
@@ -418,6 +423,8 @@ export default function App() {
           externalEditing={profileEditing}
           onEditingDone={() => setProfileEditing(false)}
           onViewCookbook={(filter) => { setCookbookDefaultFilter(filter); setPrevScreen('profile'); setScreen('cookbook') }}
+          onAddRecipe={() => openAdd()}
+          onLogNewCook={() => openAdd(true)}
         />
       )}
 
@@ -513,7 +520,7 @@ export default function App() {
         <Cookbook
           key={cookbookKey}
           session={session}
-          onAddRecipe={() => setScreen('add')}
+          onAddRecipe={() => openAdd()}
           defaultFilter={cookbookDefaultFilter}
           onSelectRecipe={(recipe) => {
             window.scrollTo(0, 0)
@@ -557,7 +564,7 @@ export default function App() {
           </button>
 
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <button onClick={() => setScreen('add')} style={{
+            <button onClick={() => openAdd()} style={{
               background: 'var(--clay)', border: 'none', cursor: 'pointer',
               width: '48px', height: '48px', borderRadius: '50%',
               display: 'flex', alignItems: 'center', justifyContent: 'center',

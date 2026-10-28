@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import ModerationSheet, { MoreMenuSheet } from './ModerationSheet'
 import { getHiddenContent, hasBlocked, unblockUser } from './moderation'
 import { supabase } from './supabase'
-import { IconCheck, IconChevronRight, IconX } from './icons'
+import { IconCheck, IconChevronRight, IconX, IconLock } from './icons'
 import { confirmSheet, toast } from './ui'
 
 const verdictStyles = {
@@ -708,21 +708,26 @@ export default function FriendProfile({ userId, session, onBack, onSelectCook, o
           )}
         </div>
 
-        {/* Not following state */}
-        {followStatus !== 'approved' && (
-          <div style={{ textAlign: 'center', padding: '32px 20px', color: 'var(--muted)' }}>
-            <div style={{ marginBottom: '12px', display: 'flex', justifyContent: 'center' }}>
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-                <rect x="3" y="11" width="18" height="11" rx="2" stroke="var(--muted)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M7 11V7a5 5 0 0110 0v4" stroke="var(--muted)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
+        {/* Not following yet: a clear lock card (hidden for blocked accounts, which say so above) */}
+        {followStatus !== 'approved' && !blockState && profile && (() => {
+          const first = (profile.full_name || '').trim().split(' ')[0] || profile.username || 'this cook'
+          const isPublic = profile.is_private === false
+          const title = isPublic ? `Follow ${first} to see their Cookbook` : `${first}'s Cookbook is private`
+          const body = followStatus === 'pending'
+            ? `Request sent. You'll see their cooks and verdicts once ${first} approves.`
+            : isPublic
+              ? 'Their cooks, verdicts and saved recipes show up here once you follow.'
+              : `Request to follow to see their cooks, verdicts and saved recipes. ${first} approves every request.`
+          return (
+            <div style={{ margin: '4px 20px 24px', padding: '28px 24px', textAlign: 'center', background: 'var(--warm-white)', border: '1px solid var(--parchment)', borderRadius: 'var(--radius-lg)' }}>
+              <div style={{ width: '52px', height: '52px', borderRadius: '50%', margin: '0 auto 14px', background: 'var(--parchment)', color: 'var(--clay)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <IconLock size={24} strokeWidth={1.9} />
+              </div>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: '19px', fontWeight: '500', color: 'var(--ink)', lineHeight: '1.25', marginBottom: '8px' }}>{title}</div>
+              <div style={{ fontSize: '13px', color: 'var(--muted)', lineHeight: '1.6', maxWidth: '290px', margin: '0 auto' }}>{body}</div>
             </div>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: '500', color: 'var(--ink)', marginBottom: '8px' }}>Private Cookbook</div>
-            <div style={{ fontSize: '13px', lineHeight: '1.6' }}>
-              Follow {profile?.full_name || 'this cook'} to see what they're making.
-            </div>
-          </div>
-        )}
+          )
+        })()}
 
         {/* Tabs */}
         {followStatus === 'approved' && (

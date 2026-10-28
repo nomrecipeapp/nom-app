@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from './supabase'
+import EmptyState from './EmptyState'
+import { IconBook, IconPot, IconPlus } from './icons'
 
 const verdictStyles = {
   would_make_again: { bg: '#EEF4E5', border: '#7A8C6E', color: '#4A5E42', label: 'Again' },
@@ -51,7 +53,7 @@ function RecipeThumbnailSmall({ recipe, dashed }) {
   )
 }
 
-export default function Profile({ session, onBack, onSelectRecipe, onSelectCook, onSelectSave, onViewFollowList, externalEditing, onEditingDone, onViewCookbook }) {
+export default function Profile({ session, onBack, onSelectRecipe, onSelectCook, onSelectSave, onViewFollowList, externalEditing, onEditingDone, onViewCookbook, onAddRecipe, onLogNewCook }) {
   const [profile, setProfile] = useState({ full_name: '', username: '', avatar_url: null })
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -278,6 +280,28 @@ export default function Profile({ session, onBack, onSelectRecipe, onSelectCook,
     </div>
   )
 
+
+  // Nothing cooked yet: what to say depends on whether the Cookbook has anything in it
+  function startRecordEmpty() {
+    if (stats && stats.saved === 0) {
+      return {
+        icon: IconBook,
+        title: 'Your cooking record starts here',
+        body: 'Add a recipe you love, or log something you just made.',
+        primary: { label: 'Add a recipe', icon: IconPlus, onClick: () => onAddRecipe && onAddRecipe() },
+        secondary: { label: 'Log a cook', onClick: () => onLogNewCook && onLogNewCook() },
+      }
+    }
+    const n = stats?.saved || 0
+    return {
+      icon: IconPot,
+      title: 'Your cooking record starts here',
+      body: `Made one of your ${n} ${n === 1 ? 'recipe' : 'recipes'}? Log it and your verdicts and top rated recipes show up here.`,
+      primary: { label: 'Log a cook', icon: IconPot, onClick: () => onViewCookbook && onViewCookbook('All') },
+      secondary: { label: 'Add a recipe', onClick: () => onAddRecipe && onAddRecipe() },
+    }
+  }
+
   return (
     <div style={{ minHeight: '100vh', background: 'var(--cream)', paddingBottom: 'var(--nav-clearance)' }}>
       <div style={{ maxWidth: '480px', margin: '0 auto' }}>
@@ -416,6 +440,12 @@ export default function Profile({ session, onBack, onSelectRecipe, onSelectCook,
               ))}
             </div>
           ) : <>
+          {recentCooks.length === 0 && stats && (
+            <div style={{ padding: '0 20px', marginBottom: '24px' }}>
+              <EmptyState {...startRecordEmpty()} />
+            </div>
+          )}
+
           {/* Recently Cooked */}
           {recentCooks.length > 0 && (
             <div style={{ marginBottom: '20px' }}>
@@ -503,10 +533,7 @@ export default function Profile({ session, onBack, onSelectRecipe, onSelectCook,
             {activityLoading ? (
               <div style={{ textAlign: 'center', padding: '40px 0', fontSize: '13px', color: 'var(--muted)' }}>Loading...</div>
             ) : activityFeed.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px 20px' }}>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: '500', color: 'var(--ink)', marginBottom: '8px' }}>No cooks logged yet</div>
-                <div style={{ fontSize: '13px', color: 'var(--muted)' }}>Log a cook from any recipe in your Cookbook.</div>
-              </div>
+              stats && <EmptyState {...startRecordEmpty()} />
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {activityFeed.map(item => {

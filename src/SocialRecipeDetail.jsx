@@ -4,7 +4,8 @@ import LikesModal from './LikesModal'
 import CircleFriendsModal from './CircleFriendsModal'
 import ModerationSheet, { MoreMenuSheet } from './ModerationSheet'
 import { getHiddenContent, isHidden } from './moderation'
-import { IconCheck, IconChevronRight, IconX } from './icons'
+import { IconCheck, IconChevronRight, IconX, IconPlus } from './icons'
+import FloatingAction from './FloatingAction'
 import { toast } from './ui'
 import { IngredientList, InstructionList, CopyIngredientsButton, RecipeTimes } from './RecipeContent'
 
@@ -42,6 +43,10 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
   const [saving, setSaving] = useState(false)
   const [circleCooks, setCircleCooks] = useState([])
   const [duplicate, setDuplicate] = useState(null)
+  const saveAnchorRef = useRef(null)
+  useEffect(() => {
+    if (duplicate) saveAnchorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [duplicate])
   const [myRecipeId, setMyRecipeId] = useState(null)
   const [likeCount, setLikeCount] = useState(0)
   const [liked, setLiked] = useState(false)
@@ -497,6 +502,53 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
           <ModerationSheet mode={moderation.mode} target={moderation.target} session={session} onClose={handleModerationClose} />
         )}
 
+        {/* Main action: right under the title, and floats once you scroll past it */}
+        <div ref={saveAnchorRef} style={{ marginBottom: '20px', scrollMarginTop: 'calc(var(--top-bar-h) + 12px)' }}>
+        {isOwner && myRecipeId && (
+          <button onClick={() => onViewInCookbook && onViewInCookbook(myRecipeId)} style={{
+            width: '100%', padding: '15px', background: 'var(--parchment)', color: 'var(--charcoal)',
+            border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-pill)',
+            fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: '600', cursor: 'pointer', marginBottom: '0'
+          }}>View in Cookbook<IconChevronRight size={12} strokeWidth={2.4} style={{ marginLeft: '3px', marginTop: '-1px' }} /></button>
+        )}
+
+        {!isOwner && !duplicate && !myRecipeId && !saved && (
+          <button onClick={saveRecipe} disabled={saving} style={{
+            width: '100%', padding: '15px',
+            background: 'var(--clay)', color: 'var(--cream)',
+            border: 'none', borderRadius: 'var(--radius-pill)',
+            fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: '600',
+            cursor: 'pointer', transition: 'background 0.2s', marginBottom: '0'
+          }}>{saving ? 'Saving...' : <><IconPlus size={16} strokeWidth={2.4} style={{ marginRight: '6px', marginTop: '-2px' }} />Save to My Cookbook</>}</button>
+        )}
+        {!isOwner && !duplicate && saved && (
+          <div style={{ marginBottom: '0' }}>
+            <div style={{ fontSize: '13px', color: 'var(--sage)', fontWeight: '600', textAlign: 'center', marginBottom: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}><IconCheck size={14} strokeWidth={2.5} />Saved to Cookbook</div>
+            <button onClick={() => onViewInCookbook && onViewInCookbook(myRecipeId || recipe.id)} style={{
+              width: '100%', padding: '12px',
+              background: 'var(--parchment)', color: 'var(--charcoal)',
+              border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-pill)',
+              fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: '600', cursor: 'pointer'
+            }}>View in Cookbook<IconChevronRight size={12} strokeWidth={2.4} style={{ marginLeft: '3px', marginTop: '-1px' }} /></button>
+          </div>
+        )}
+
+        {!isOwner && myRecipeId && !saved && (
+          <button onClick={() => onViewInCookbook && onViewInCookbook(myRecipeId)} style={{
+            width: '100%', padding: '15px', background: 'var(--parchment)', color: 'var(--charcoal)',
+            border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-pill)',
+            fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: '600', cursor: 'pointer', marginBottom: '0'
+          }}>You have this · View in Cookbook<IconChevronRight size={12} strokeWidth={2.4} style={{ marginLeft: '3px', marginTop: '-1px' }} /></button>
+        )}
+
+        {!isOwner && duplicate && (
+          <div style={{ background: '#FEF3E2', border: '1px solid #F5C47A', borderRadius: 'var(--radius-md)', padding: '12px 16px', marginBottom: '0' }}>
+            <div style={{ fontSize: '13px', fontWeight: '600', color: '#9A6B1A', marginBottom: '8px' }}>Already in your Cookbook: "{duplicate.title}"</div>
+            <button onClick={addAnyway} style={{ width: '100%', padding: '8px', background: 'transparent', border: '1px solid #F5C47A', borderRadius: 'var(--radius-pill)', fontSize: '12px', fontWeight: '600', color: '#9A6B1A', cursor: 'pointer' }}>Add Anyway</button>
+          </div>
+        )}
+        </div>
+
         {showCircleModal && (
           <CircleFriendsModal
             canonicalId={recipe.canonical_id}
@@ -652,50 +704,6 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
                 )
               })}
             </div>
-          </div>
-        )}
-
-        {isOwner && myRecipeId && (
-          <button onClick={() => onViewInCookbook && onViewInCookbook(myRecipeId)} style={{
-            width: '100%', padding: '15px', background: 'var(--parchment)', color: 'var(--charcoal)',
-            border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-pill)',
-            fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: '600', cursor: 'pointer', marginBottom: '32px'
-          }}>View in Cookbook<IconChevronRight size={12} strokeWidth={2.4} style={{ marginLeft: '3px', marginTop: '-1px' }} /></button>
-        )}
-
-        {!isOwner && !duplicate && !myRecipeId && !saved && (
-          <button onClick={saveRecipe} disabled={saving} style={{
-            width: '100%', padding: '15px',
-            background: 'var(--clay)', color: 'var(--cream)',
-            border: 'none', borderRadius: 'var(--radius-pill)',
-            fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: '600',
-            cursor: 'pointer', transition: 'background 0.2s', marginBottom: '16px'
-          }}>{saving ? 'Saving...' : '+ Save to My Cookbook'}</button>
-        )}
-        {!isOwner && !duplicate && saved && (
-          <div style={{ marginBottom: '16px' }}>
-            <div style={{ fontSize: '13px', color: 'var(--sage)', fontWeight: '600', textAlign: 'center', marginBottom: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}><IconCheck size={14} strokeWidth={2.5} />Saved to Cookbook</div>
-            <button onClick={() => onViewInCookbook && onViewInCookbook(myRecipeId || recipe.id)} style={{
-              width: '100%', padding: '12px',
-              background: 'var(--parchment)', color: 'var(--charcoal)',
-              border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-pill)',
-              fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: '600', cursor: 'pointer'
-            }}>View in Cookbook<IconChevronRight size={12} strokeWidth={2.4} style={{ marginLeft: '3px', marginTop: '-1px' }} /></button>
-          </div>
-        )}
-
-        {!isOwner && myRecipeId && !saved && (
-          <button onClick={() => onViewInCookbook && onViewInCookbook(myRecipeId)} style={{
-            width: '100%', padding: '15px', background: 'var(--parchment)', color: 'var(--charcoal)',
-            border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-pill)',
-            fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: '600', cursor: 'pointer', marginBottom: '32px'
-          }}>You have this — View in Cookbook<IconChevronRight size={12} strokeWidth={2.4} style={{ marginLeft: '3px', marginTop: '-1px' }} /></button>
-        )}
-
-        {!isOwner && duplicate && (
-          <div style={{ background: '#FEF3E2', border: '1px solid #F5C47A', borderRadius: 'var(--radius-md)', padding: '12px 16px', marginBottom: '32px' }}>
-            <div style={{ fontSize: '13px', fontWeight: '600', color: '#9A6B1A', marginBottom: '8px' }}>Already in your Cookbook: "{duplicate.title}"</div>
-            <button onClick={addAnyway} style={{ width: '100%', padding: '8px', background: 'transparent', border: '1px solid #F5C47A', borderRadius: 'var(--radius-pill)', fontSize: '12px', fontWeight: '600', color: '#9A6B1A', cursor: 'pointer' }}>Add Anyway</button>
           </div>
         )}
 
@@ -924,6 +932,21 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
           </div>
         </div>
       </div>
+      {!isOwner && (
+        <FloatingAction
+          anchorRef={saveAnchorRef}
+          show={!duplicate}
+          tone={saved ? 'success' : myRecipeId ? 'quiet' : 'primary'}
+          icon={saved ? IconCheck : (myRecipeId ? null : IconPlus)}
+          label={saved ? 'Saved · View in Cookbook' : myRecipeId ? 'You have this · View in Cookbook' : saving ? 'Saving...' : 'Save to My Cookbook'}
+          disabled={saving}
+          onClick={() => {
+            if (saved) { onViewInCookbook && onViewInCookbook(myRecipeId || recipe.id); return }
+            if (myRecipeId) { onViewInCookbook && onViewInCookbook(myRecipeId); return }
+            saveRecipe()
+          }}
+        />
+      )}
     </div>
   )
 }

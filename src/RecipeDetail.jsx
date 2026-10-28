@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from './supabase'
 import CircleFriendsModal from './CircleFriendsModal'
-import { IconChevronRight, IconX } from './icons'
+import { IconChevronRight, IconX, IconPot } from './icons'
+import FloatingAction from './FloatingAction'
 import { confirmSheet, toast } from './ui'
 import { PRESET_TAGS, tagChoices, addTag, hasTag, tagKey } from './tags'
 import { IngredientList, InstructionList, CopyIngredientsButton, RecipeTimes } from './RecipeContent'
@@ -52,6 +53,8 @@ export default function RecipeDetail({ recipe: initialRecipe, session, onBack, o
   const [cookPhotoPreviews, setCookPhotoPreviews] = useState([])
   const [uploadingPhotos, setUploadingPhotos] = useState(false)
   const cookPhotoInputRef = useRef(null)
+  const logButtonRef = useRef(null)
+  const logFormRef = useRef(null)
 
   // Recipe thumbnail edit state
   const [thumbnailUploading, setThumbnailUploading] = useState(false)
@@ -865,11 +868,18 @@ async function saveEditCook() {
         )}
 
         {!logging && (
-          <button onClick={() => setLogging(true)} style={{ width: '100%', padding: '14px', background: 'var(--clay)', color: 'var(--cream)', border: 'none', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: '600', cursor: 'pointer', marginBottom: '24px' }}>Log a Cook</button>
+          <div style={{ marginBottom: '24px' }}>
+            <button ref={logButtonRef} onClick={() => setLogging(true)} style={{ width: '100%', padding: '17px', background: 'var(--clay)', color: 'var(--cream)', border: 'none', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)', fontSize: '16px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', boxShadow: '0 6px 18px rgba(196,113,58,0.28)' }}>
+              <IconPot size={20} strokeWidth={2} />Log a Cook
+            </button>
+            <div style={{ fontSize: '12px', color: 'var(--muted)', textAlign: 'center', marginTop: '8px' }}>
+              {cooks.length === 0 ? 'Made it? Give it your verdict.' : `You've cooked this ${cooks.length === 1 ? 'once' : `${cooks.length} times`}`}
+            </div>
+          </div>
         )}
 
         {logging && (
-          <div style={{ background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--parchment)', padding: '24px', marginBottom: '24px' }}>
+          <div ref={logFormRef} style={{ scrollMarginTop: 'calc(var(--top-bar-h) + 12px)', background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--parchment)', padding: '24px', marginBottom: '24px' }}>
             <div style={{ marginBottom: '24px' }}>
               <div style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '12px' }}>Photos</div>
               {cookPhotoPreviews.length > 0 ? (
@@ -1063,6 +1073,17 @@ async function saveEditCook() {
         )}
 
         <button onClick={deleteRecipe} disabled={deleting} style={{ width: '100%', padding: '12px', background: 'transparent', color: 'var(--muted)', border: '1.5px solid var(--parchment)', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '600', cursor: deleting ? 'not-allowed' : 'pointer', marginTop: '8px' }}>{deleting ? 'Removing...' : 'Remove from Cookbook'}</button>
+
+        <FloatingAction
+          anchorRef={logButtonRef}
+          show={!logging}
+          label="Log a Cook"
+          icon={IconPot}
+          onClick={() => {
+            setLogging(true)
+            requestAnimationFrame(() => logFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
+          }}
+        />
 
       </div>
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>

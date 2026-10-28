@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from './supabase'
 import CircleFriendsModal from './CircleFriendsModal'
-import { IconX } from './icons'
+import { IconX, IconBook, IconBookmark, IconPot, IconPlus } from './icons'
+import EmptyState from './EmptyState'
 import { canonicalSpellings, recipeTags, sortTags, tagKey, hasTag } from './tags'
 
 const FILTERS = ['All', 'Want to Make', 'Cooked', 'Never Again']
@@ -179,12 +180,18 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
   const hasActiveFilters = tagFilters.length > 0
 
   const emptyMessage = () => {
-    if (search) return { title: `No results for "${search}"`, sub: 'Try a different search.', cta: false }
-    if (tagFilters.length > 0) return { title: 'No recipes match those tags', sub: 'Try removing a tag filter.', cta: false }
-    if (filter === 'Want to Make') return { title: 'No recipes saved yet', sub: 'Save recipes you want to try.', cta: false }
-    if (filter === 'Cooked') return { title: 'No cooks logged yet', sub: 'Log a cook from any recipe in your Cookbook.', cta: false }
-    if (filter === 'Never Again') return { title: 'No recipes here', sub: 'Hopefully it stays that way.', cta: false }
-    return { title: 'Your Cookbook is empty', sub: 'Add your first recipe to get started.', cta: true }
+    if (search) return { title: `No results for "${search}"`, body: 'Try a different search.' }
+    if (tagFilters.length > 0) return { title: 'No recipes match those tags', body: 'Try removing a tag filter.' }
+    const add = { label: 'Add a recipe', icon: IconPlus, onClick: onAddRecipe }
+    if (filter === 'Want to Make') return { icon: IconBookmark, title: 'Save something to try', body: "Recipes you save but haven't cooked yet live here.", primary: add }
+    if (filter === 'Cooked') return { icon: IconPot, title: 'Nothing cooked yet', body: "Open a recipe you've made and tap Log a Cook to give it your verdict." }
+    if (filter === 'Never Again') return { title: 'No Never Agains', body: 'Hopefully it stays that way.' }
+    return {
+      icon: IconBook,
+      title: 'Your Cookbook starts here',
+      body: 'Save a recipe from any website, TikTok or Instagram, or snap a page from a cookbook.',
+      primary: add
+    }
   }
 
   const chipStyle = (active) => ({
@@ -325,25 +332,7 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
           )}
 
           {loading ? null : filtered.length === 0 ? (
-            <div style={{
-              textAlign: 'center', padding: '60px 24px',
-              background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)',
-              border: '1px solid var(--parchment)'
-            }}>
-              <div style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: '500', color: 'var(--ink)', marginBottom: '8px' }}>
-                {emptyMessage().title}
-              </div>
-              <div style={{ fontSize: '13px', color: 'var(--muted)', marginBottom: '24px' }}>
-                {emptyMessage().sub}
-              </div>
-              {emptyMessage().cta && (
-                <button onClick={onAddRecipe} style={{
-                  padding: '12px 24px', background: 'var(--clay)', color: 'var(--cream)',
-                  border: 'none', borderRadius: 'var(--radius-pill)',
-                  fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '600', cursor: 'pointer'
-                }}>+ Add your first recipe</button>
-              )}
-            </div>
+            <EmptyState {...emptyMessage()} />
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {filtered.map(recipe => (

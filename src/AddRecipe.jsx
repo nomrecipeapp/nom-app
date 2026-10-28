@@ -26,7 +26,7 @@ const loadingMessages = [
   'Almost there...',
 ]
 
-export default function AddRecipe({ session, onSave, onCancel }) {
+export default function AddRecipe({ session, onSave, onCancel, startLogging = false }) {
   const [mode, setMode] = useState('url')
   const [importIssue, setImportIssue] = useState(null) // { blocked, site } when a link can't be read
   const [url, setUrl] = useState('')
@@ -46,7 +46,7 @@ export default function AddRecipe({ session, onSave, onCancel }) {
 
   // Verdict state
   const [verdict, setVerdict] = useState(null)
-  const [manualLogCook, setManualLogCook] = useState(false)
+  const [manualLogCook, setManualLogCook] = useState(startLogging)
   const [availableTags, setAvailableTags] = useState(PRESET_TAGS)
   const [scores, setScores] = useState({ flavor: 0, effort: 0, would_share: 0, true_to_recipe: 0 })
   const [cookNotes, setCookNotes] = useState('')
@@ -120,7 +120,7 @@ export default function AddRecipe({ session, onSave, onCancel }) {
           instructions: data.instructions || '',
           notes: '',
           tags: [],
-          logCookNow: false
+          logCookNow: startLogging
         })
       } catch (e) {
         setError('Could not import this post. Try screenshotting the caption and using From Photo instead.')
@@ -136,7 +136,7 @@ export default function AddRecipe({ session, onSave, onCancel }) {
       } else if (result.error) {
         setError(result.error)
       } else {
-        setRecipe({ ...result.recipe, notes: '', tags: [], logCookNow: false })
+        setRecipe({ ...result.recipe, notes: '', tags: [], logCookNow: startLogging })
       }
     } catch {
       setError('Could not fetch recipe. Try adding it manually.')
@@ -195,7 +195,7 @@ export default function AddRecipe({ session, onSave, onCancel }) {
         instructions: parsed.instructions || '',
         notes: '',
         tags: [],
-        logCookNow: false
+        logCookNow: startLogging
       })
     } catch (e) {
       console.error('Photo import error:', e)

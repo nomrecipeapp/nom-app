@@ -52,6 +52,7 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
   const isPulling = useRef(false)
   const PULL_THRESHOLD = 72
   const [suggestions, setSuggestions] = useState([])
+  const [hasFollows, setHasFollows] = useState(false)
 
   useEffect(() => {
     fetchFeed()
@@ -134,6 +135,7 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
       .eq('follower_id', session.user.id)
       .eq('status', 'approved')
 
+    setHasFollows(!!follows && follows.length > 0)
     if (!follows || follows.length === 0) {
       setLoading(false)
       setLastUpdated(Date.now())
@@ -452,51 +454,53 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
       ) : feed.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '40px 16px 0' }}>
           <svg width="100%" viewBox="0 0 680 420" style={{ maxWidth: '360px', margin: '0 auto 8px', display: 'block' }}>
-            <rect x="140" y="270" width="400" height="12" rx="6" fill="#D9C9B0" opacity="0.5"/>
+            <rect x="140" y="270" width="400" height="12" rx="6" fill="var(--tan)" opacity="0.5"/>
             <g transform="rotate(-8, 230, 230)">
-              <ellipse cx="230" cy="252" rx="52" ry="14" fill="#C4713A" opacity="0.18"/>
-              <path d="M178 238 Q178 268 230 274 Q282 268 282 238" fill="#F0E8D8" stroke="#D9C9B0" strokeWidth="1.5"/>
-              <ellipse cx="230" cy="238" rx="52" ry="13" fill="#F8F2EA" stroke="#D9C9B0" strokeWidth="1.5"/>
-              <path d="M218 228 Q215 220 218 212" stroke="#D9C9B0" strokeWidth="1.5" strokeLinecap="round" fill="none" opacity="0.6"/>
-              <path d="M230 225 Q227 217 230 209" stroke="#D9C9B0" strokeWidth="1.5" strokeLinecap="round" fill="none" opacity="0.7"/>
-              <path d="M242 228 Q239 220 242 212" stroke="#D9C9B0" strokeWidth="1.5" strokeLinecap="round" fill="none" opacity="0.6"/>
+              <ellipse cx="230" cy="252" rx="52" ry="14" fill="var(--clay)" opacity="0.18"/>
+              <path d="M178 238 Q178 268 230 274 Q282 268 282 238" fill="var(--parchment)" stroke="var(--tan)" strokeWidth="1.5"/>
+              <ellipse cx="230" cy="238" rx="52" ry="13" fill="var(--warm-white)" stroke="var(--tan)" strokeWidth="1.5"/>
+              <path d="M218 228 Q215 220 218 212" stroke="var(--tan)" strokeWidth="1.5" strokeLinecap="round" fill="none" opacity="0.6"/>
+              <path d="M230 225 Q227 217 230 209" stroke="var(--tan)" strokeWidth="1.5" strokeLinecap="round" fill="none" opacity="0.7"/>
+              <path d="M242 228 Q239 220 242 212" stroke="var(--tan)" strokeWidth="1.5" strokeLinecap="round" fill="none" opacity="0.6"/>
             </g>
             <g transform="rotate(5, 450, 225)">
-              <ellipse cx="450" cy="252" rx="58" ry="15" fill="#C4713A" opacity="0.2"/>
-              <path d="M392 236 Q392 268 450 275 Q508 268 508 236" fill="#F0E8D8" stroke="#D9C9B0" strokeWidth="1.5"/>
-              <ellipse cx="450" cy="236" rx="58" ry="14" fill="#F8F2EA" stroke="#D9C9B0" strokeWidth="1.5"/>
-              <path d="M436 225 Q433 216 436 207" stroke="#D9C9B0" strokeWidth="1.5" strokeLinecap="round" fill="none" opacity="0.6"/>
-              <path d="M450 222 Q447 213 450 204" stroke="#D9C9B0" strokeWidth="1.5" strokeLinecap="round" fill="none" opacity="0.75"/>
-              <path d="M464 225 Q461 216 464 207" stroke="#D9C9B0" strokeWidth="1.5" strokeLinecap="round" fill="none" opacity="0.6"/>
+              <ellipse cx="450" cy="252" rx="58" ry="15" fill="var(--clay)" opacity="0.2"/>
+              <path d="M392 236 Q392 268 450 275 Q508 268 508 236" fill="var(--parchment)" stroke="var(--tan)" strokeWidth="1.5"/>
+              <ellipse cx="450" cy="236" rx="58" ry="14" fill="var(--warm-white)" stroke="var(--tan)" strokeWidth="1.5"/>
+              <path d="M436 225 Q433 216 436 207" stroke="var(--tan)" strokeWidth="1.5" strokeLinecap="round" fill="none" opacity="0.6"/>
+              <path d="M450 222 Q447 213 450 204" stroke="var(--tan)" strokeWidth="1.5" strokeLinecap="round" fill="none" opacity="0.75"/>
+              <path d="M464 225 Q461 216 464 207" stroke="var(--tan)" strokeWidth="1.5" strokeLinecap="round" fill="none" opacity="0.6"/>
             </g>
             <g opacity="0.35">
-              <line x1="160" y1="245" x2="160" y2="272" stroke="#8A8070" strokeWidth="1.8" strokeLinecap="round"/>
-              <line x1="156" y1="245" x2="156" y2="258" stroke="#8A8070" strokeWidth="1.2" strokeLinecap="round"/>
-              <line x1="160" y1="245" x2="160" y2="258" stroke="#8A8070" strokeWidth="1.2" strokeLinecap="round"/>
-              <line x1="164" y1="245" x2="164" y2="258" stroke="#8A8070" strokeWidth="1.2" strokeLinecap="round"/>
+              <line x1="160" y1="245" x2="160" y2="272" stroke="var(--muted)" strokeWidth="1.8" strokeLinecap="round"/>
+              <line x1="156" y1="245" x2="156" y2="258" stroke="var(--muted)" strokeWidth="1.2" strokeLinecap="round"/>
+              <line x1="160" y1="245" x2="160" y2="258" stroke="var(--muted)" strokeWidth="1.2" strokeLinecap="round"/>
+              <line x1="164" y1="245" x2="164" y2="258" stroke="var(--muted)" strokeWidth="1.2" strokeLinecap="round"/>
             </g>
             <g opacity="0.35">
-              <ellipse cx="522" cy="244" rx="7" ry="9" fill="none" stroke="#8A8070" strokeWidth="1.5"/>
-              <line x1="522" y1="253" x2="522" y2="272" stroke="#8A8070" strokeWidth="1.5" strokeLinecap="round"/>
+              <ellipse cx="522" cy="244" rx="7" ry="9" fill="none" stroke="var(--muted)" strokeWidth="1.5"/>
+              <line x1="522" y1="253" x2="522" y2="272" stroke="var(--muted)" strokeWidth="1.5" strokeLinecap="round"/>
             </g>
           </svg>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: '700', color: 'var(--ink)', lineHeight: '1.2', marginBottom: '8px' }}>
-            Your feed fills up<br />as friends join.
+            {hasFollows ? 'Quiet in the kitchen' : 'See what your friends are cooking'}
           </div>
-          <div style={{ fontSize: '13px', color: 'var(--muted)', lineHeight: '1.6', marginBottom: '28px' }}>
-            Follow a cook to see what they're making.<br />Until then, your Cookbook is waiting.
+          <div style={{ fontSize: '13px', color: 'var(--muted)', lineHeight: '1.6', marginBottom: '28px', maxWidth: '300px', marginLeft: 'auto', marginRight: 'auto' }}>
+            {hasFollows
+              ? "No one you follow has logged a cook yet. Log one of yours and it'll show up here too."
+              : 'Follow friends to see their cooks and honest verdicts here. Until then, your Cookbook is waiting.'}
           </div>
           <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginBottom: suggestions.length > 0 ? '32px' : '0' }}>
-            <button onClick={() => onGoToSearch && onGoToSearch()} style={{
+            <button onClick={() => hasFollows ? (onGoToCookbook && onGoToCookbook()) : (onGoToSearch && onGoToSearch())} style={{
               padding: '13px 24px', background: 'var(--clay)', color: 'var(--cream)',
               border: 'none', borderRadius: 'var(--radius-pill)',
               fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '700', cursor: 'pointer'
-            }}>Find Cooks</button>
-            <button onClick={() => onGoToCookbook && onGoToCookbook()} style={{
+            }}>{hasFollows ? 'Go to Cookbook' : 'Find Cooks'}</button>
+            <button onClick={() => hasFollows ? (onGoToSearch && onGoToSearch()) : (onGoToCookbook && onGoToCookbook())} style={{
               padding: '13px 24px', background: 'none', color: 'var(--muted)',
               border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-pill)',
               fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '700', cursor: 'pointer'
-            }}>Go to Cookbook</button>
+            }}>{hasFollows ? 'Find more cooks' : 'Go to Cookbook'}</button>
           </div>
           {suggestions.length > 0 && (
             <div style={{ textAlign: 'left' }}>
