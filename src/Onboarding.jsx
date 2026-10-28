@@ -21,7 +21,7 @@ function ProgressDots({ step }) {
   )
 }
 
-export default function Onboarding({ onComplete, session, prefillInviteCode }) {
+export default function Onboarding({ onComplete, session, prefillInviteCode, startOnWaitlist }) {
   const [step, setStep] = useState(session ? 3 : prefillInviteCode ? 2 : 1)
   const [accountCreated, setAccountCreated] = useState(!!session)
   const [showPhotoStep, setShowPhotoStep] = useState(false)
@@ -39,7 +39,7 @@ export default function Onboarding({ onComplete, session, prefillInviteCode }) {
   const [avatarUploading, setAvatarUploading] = useState(false)
 
   // Invite waitlist (for people without a code)
-  const [showWaitlist, setShowWaitlist] = useState(false)
+  const [showWaitlist, setShowWaitlist] = useState(!!startOnWaitlist)
   const [waitlistEmail, setWaitlistEmail] = useState('')
   const [waitlistStatus, setWaitlistStatus] = useState('idle') // idle | sending | done | error
 

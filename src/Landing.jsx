@@ -25,6 +25,7 @@ const css = `
   .nl-btn { background: var(--clay); color: var(--cream); border: none; border-radius: var(--radius-pill); padding: 15px 24px; font-family: var(--font-body); font-size: 15px; font-weight: 700; cursor: pointer; }
   .nl-btn-ghost { background: transparent; color: var(--clay); border: 2px solid var(--clay); border-radius: var(--radius-pill); padding: 13px 24px; font-family: var(--font-body); font-size: 15px; font-weight: 600; cursor: pointer; }
   .nl-note { font-size: 13px; color: var(--muted); margin-top: 14px; }
+  .nl-note-link { padding: 0; background: none; border: none; font-family: var(--font-body); font-size: 13px; font-weight: 600; color: var(--clay); cursor: pointer; }
 
   .nl-phone { justify-self: center; width: 100%; max-width: 330px; background: var(--ink); border-radius: 40px; padding: 12px; box-shadow: 0 24px 60px rgba(28,26,23,0.22); }
   .nl-screen { background: var(--cream); border-radius: 30px; overflow: hidden; }
@@ -153,7 +154,7 @@ const verdicts = [
   { mood: 'sad', label: 'Never Again', sub: 'Duly noted', bg: '#F4E8E8', border: '#C47070', stroke: '#C47070', fill: '#9B4040' },
 ]
 
-export default function Landing({ onGetStarted, onSignIn }) {
+export default function Landing({ onGetStarted, onSignIn, onRequestInvite }) {
   return (
     <div className="nl">
       <style>{css}</style>
@@ -175,7 +176,10 @@ export default function Landing({ onGetStarted, onSignIn }) {
               <button className="nl-btn" onClick={onGetStarted}>I have an invite</button>
               <button className="nl-btn-ghost" onClick={onSignIn}>Sign in</button>
             </div>
-            <div className="nl-note">Nom is invite-only for now. Ask a friend on Nom for a code.</div>
+            <div className="nl-note">
+              Nom is invite-only for now.{' '}
+              <button className="nl-note-link" onClick={onRequestInvite}>No code? Request an invite</button>
+            </div>
           </div>
           <PhoneMock />
         </header>

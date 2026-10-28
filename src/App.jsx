@@ -50,6 +50,7 @@ export default function App() {
   const [cookbookScrollY, setCookbookScrollY] = useState(0)
   const [cookbookKey, setCookbookKey] = useState(0)
   const [prefillInviteCode, setPrefillInviteCode] = useState('')
+  const [startOnWaitlist, setStartOnWaitlist] = useState(false)
   const [settingsVisible, setSettingsVisible] = useState(false)
   const [midSignup, setMidSignup] = useState(false)
   const [pendingRecipeId, setPendingRecipeId] = useState(null)
@@ -263,8 +264,8 @@ export default function App() {
 
   if (showLogin) return <Auth onBack={showLanding ? () => setShowLogin(false) : undefined} />
   if (loading) return null
-  if (!session && showLanding) return <Landing onGetStarted={() => setShowLanding(false)} onSignIn={() => setShowLogin(true)} />
-  if (!session) return <Onboarding onComplete={handleOnboardingComplete} prefillInviteCode={prefillInviteCode} />
+  if (!session && showLanding) return <Landing onGetStarted={() => setShowLanding(false)} onSignIn={() => setShowLogin(true)} onRequestInvite={() => { setStartOnWaitlist(true); setShowLanding(false) }} />
+  if (!session) return <Onboarding onComplete={handleOnboardingComplete} prefillInviteCode={prefillInviteCode} startOnWaitlist={startOnWaitlist} />
   if (!onboardingComplete) return <Onboarding session={session} onComplete={handleOnboardingComplete} prefillInviteCode={prefillInviteCode} />
 
   function openAdd(startLogging = false) { setAddStartLogging(startLogging); setScreen('add') }
