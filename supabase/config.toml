@@ -1,7 +1,7 @@
 
 [functions.notify-new-signup]
 enabled = true
-verify_jwt = true
+verify_jwt = false
 import_map = "./functions/notify-new-signup/deno.json"
 # Uncomment to specify a custom file path to the entrypoint.
 # Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
@@ -26,3 +26,9 @@ enabled = true
 verify_jwt = false
 import_map = "./functions/notify-new-report/deno.json"
 entrypoint = "./functions/notify-new-report/index.ts"
+
+[functions.notify-new-waitlist]
+enabled = true
+verify_jwt = false
+import_map = "./functions/notify-new-waitlist/deno.json"
+entrypoint = "./functions/notify-new-waitlist/index.ts"
