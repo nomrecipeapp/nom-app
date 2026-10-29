@@ -401,14 +401,10 @@ export default function Profile({ session, onBack, onSelectRecipe, onSelectCook,
             <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: '700', color: 'var(--ink)' }}>{stats === null ? '—' : stats.saved}</div>
             <div style={{ fontSize: '10px', color: 'var(--muted)', marginTop: '2px' }}>Saved</div>
           </button>
-          <button onClick={() => onViewCookbook && onViewCookbook('Cooked')} style={{ flex: 1, padding: '12px 0', textAlign: 'center', background: 'none', border: 'none', borderRight: '1px solid var(--parchment)', cursor: 'pointer' }}>
+          <button onClick={() => onViewCookbook && onViewCookbook('Cooked')} style={{ flex: 1, padding: '12px 0', textAlign: 'center', background: 'none', border: 'none', cursor: 'pointer' }}>
             <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: '700', color: 'var(--ink)' }}>{stats === null ? '—' : stats.cooked}</div>
             <div style={{ fontSize: '10px', color: 'var(--muted)', marginTop: '2px' }}>Cooked</div>
           </button>
-          <div style={{ flex: 1, padding: '12px 0', textAlign: 'center' }}>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: '700', color: 'var(--ink)' }}>—</div>
-            <div style={{ fontSize: '10px', color: 'var(--muted)', marginTop: '2px' }}>Top cuisine</div>
-          </div>
         </div>
         
         {/* Tabs */}
