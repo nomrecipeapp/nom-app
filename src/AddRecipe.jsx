@@ -382,7 +382,7 @@ export default function AddRecipe({ session, onSave, onCancel, startLogging = fa
                   }}>{n}</button>
                 ))}
               </div>
-              <span style={{ fontFamily: 'var(--font-display)', fontSize: '13px', fontWeight: '700', color: 'var(--clay)', width: '28px', textAlign: 'right' }}>
+              <span style={{ fontFamily: 'var(--font-display)', fontSize: '13px', fontWeight: '700', color: 'var(--clay)', width: '36px', flexShrink: 0, whiteSpace: 'nowrap', textAlign: 'right' }}>
                 {scores[cat.key] > 0 ? `${scores[cat.key]}/5` : '—'}
               </span>
             </div>

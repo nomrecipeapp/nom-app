@@ -521,13 +521,13 @@ async function saveEditCook() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 {nuanceCategories.map(cat => (
                   <div key={cat.key} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <span style={{ fontSize: '13px', fontWeight: '500', color: 'var(--charcoal)', width: '130px', flexShrink: 0 }}>{cat.label}</span>
-                    <div style={{ display: 'flex', gap: '6px', flex: 1 }}>
+                    <span style={{ fontSize: '13px', fontWeight: '500', color: 'var(--charcoal)', flex: 1, minWidth: 0 }}>{cat.label}</span>
+                    <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
                       {[1,2,3,4,5].map(n => (
                         <button key={n} onClick={() => setEditCookForm(f => ({ ...f, [cat.key]: n }))} style={{ width: '32px', height: '32px', borderRadius: '50%', border: `2px solid ${editCookForm[cat.key] >= n ? 'var(--clay)' : 'var(--tan)'}`, background: editCookForm[cat.key] >= n ? 'var(--clay)' : 'transparent', color: editCookForm[cat.key] >= n ? 'var(--cream)' : 'var(--muted)', fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: '600', cursor: 'pointer', transition: 'all 0.15s' }}>{n}</button>
                       ))}
                     </div>
-                    <span style={{ fontFamily: 'var(--font-display)', fontSize: '15px', fontWeight: '700', color: 'var(--clay)', width: '28px', textAlign: 'right' }}>{editCookForm[cat.key] > 0 ? `${editCookForm[cat.key]}/5` : '—'}</span>
+                    <span style={{ fontFamily: 'var(--font-display)', fontSize: '15px', fontWeight: '700', color: 'var(--clay)', width: '36px', flexShrink: 0, whiteSpace: 'nowrap', textAlign: 'right' }}>{editCookForm[cat.key] > 0 ? `${editCookForm[cat.key]}/5` : '—'}</span>
                   </div>
                 ))}
               </div>
@@ -916,13 +916,13 @@ async function saveEditCook() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '24px' }}>
               {nuanceCategories.map(cat => (
                 <div key={cat.key} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <span style={{ fontSize: '13px', fontWeight: '500', color: 'var(--charcoal)', width: '130px', flexShrink: 0 }}>{cat.label}</span>
-                  <div style={{ display: 'flex', gap: '6px', flex: 1 }}>
+                  <span style={{ fontSize: '13px', fontWeight: '500', color: 'var(--charcoal)', flex: 1, minWidth: 0 }}>{cat.label}</span>
+                  <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
                     {[1,2,3,4,5].map(n => (
                       <button key={n} onClick={() => setScores(s => ({...s, [cat.key]: n}))} style={{ width: '32px', height: '32px', borderRadius: '50%', border: `2px solid ${scores[cat.key] >= n ? 'var(--clay)' : 'var(--tan)'}`, background: scores[cat.key] >= n ? 'var(--clay)' : 'transparent', color: scores[cat.key] >= n ? 'var(--cream)' : 'var(--muted)', fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: '600', cursor: 'pointer', transition: 'all 0.15s' }}>{n}</button>
                     ))}
                   </div>
-                  <span style={{ fontFamily: 'var(--font-display)', fontSize: '15px', fontWeight: '700', color: 'var(--clay)', width: '28px', textAlign: 'right' }}>{scores[cat.key] > 0 ? `${scores[cat.key]}/5` : '—'}</span>
+                  <span style={{ fontFamily: 'var(--font-display)', fontSize: '15px', fontWeight: '700', color: 'var(--clay)', width: '36px', flexShrink: 0, whiteSpace: 'nowrap', textAlign: 'right' }}>{scores[cat.key] > 0 ? `${scores[cat.key]}/5` : '—'}</span>
                 </div>
               ))}
             </div>

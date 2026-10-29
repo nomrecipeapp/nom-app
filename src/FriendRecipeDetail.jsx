@@ -704,7 +704,7 @@ async function fetchCircleCookPhotos() {
             </button>
             {likeCount > 0 ? (
               <button onClick={() => setShowLikesModal(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-                <span style={{ fontSize: '13px', fontWeight: '600', color: liked ? 'var(--clay)' : 'var(--muted)' }}>{likeCount} {liked ? 'Liked' : 'Like'}</span>
+                <span style={{ fontSize: '13px', fontWeight: '600', color: liked ? 'var(--clay)' : 'var(--muted)' }}>{likeCount} {likeCount === 1 ? 'Like' : 'Likes'}</span>
               </button>
             ) : (
               <span style={{ fontSize: '13px', fontWeight: '600', color: 'var(--muted)' }}>Like</span>

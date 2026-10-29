@@ -318,7 +318,7 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
         {feedLikeCounts[`${type}-${item.id}`] > 0 ? (
           <button onClick={e => { e.stopPropagation(); setLikesModal({ targetType: type, targetId: item.id }) }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
             <span style={{ fontSize: '12px', fontWeight: '600', color: feedLikes[`${type}-${item.id}`] ? 'var(--clay)' : 'var(--muted)' }}>
-              {feedLikeCounts[`${type}-${item.id}`]} {feedLikes[`${type}-${item.id}`] ? 'Liked' : 'Like'}
+              {feedLikeCounts[`${type}-${item.id}`]} {feedLikeCounts[`${type}-${item.id}`] === 1 ? 'Like' : 'Likes'}
             </span>
           </button>
         ) : (
