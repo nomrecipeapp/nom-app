@@ -21,8 +21,8 @@ function ProgressDots({ step }) {
   )
 }
 
-export default function Onboarding({ onComplete, session, prefillInviteCode, startOnWaitlist }) {
-  const [step, setStep] = useState(session ? 3 : prefillInviteCode ? 2 : 1)
+export default function Onboarding({ onComplete, session, prefillInviteCode, startOnWaitlist, startOnSignup }) {
+  const [step, setStep] = useState(session ? 3 : (prefillInviteCode || startOnSignup) ? 2 : 1)
   const [accountCreated, setAccountCreated] = useState(!!session)
   const [showPhotoStep, setShowPhotoStep] = useState(false)
 
@@ -260,7 +260,10 @@ export default function Onboarding({ onComplete, session, prefillInviteCode, sta
             <div style={{ fontFamily: 'var(--font-display)', fontSize: '26px', fontWeight: '700', color: 'var(--ink)', lineHeight: '1.2', marginBottom: '8px' }}>You're on the list!</div>
             <div style={{ fontSize: '14px', color: 'var(--muted)', lineHeight: '1.6' }}>We'll email you an invite when a spot opens up. Know someone on Nom? They can send you a code from Settings.</div>
           </div>
-          <button onClick={() => setShowWaitlist(false)} style={{ width: '100%', padding: '15px', background: 'var(--clay)', color: 'var(--cream)', border: 'none', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)', fontSize: '15px', fontWeight: '700', cursor: 'pointer' }}>Done</button>
+          <div>
+            <button onClick={() => setShowWaitlist(false)} style={{ width: '100%', padding: '15px', background: 'var(--clay)', color: 'var(--cream)', border: 'none', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)', fontSize: '15px', fontWeight: '700', cursor: 'pointer' }}>Done</button>
+            <button onClick={() => onComplete('login')} style={{ width: '100%', padding: '12px 10px 0', background: 'none', border: 'none', fontFamily: 'var(--font-body)', fontSize: '13px', color: 'var(--muted)', cursor: 'pointer' }}>Already have an account? <span style={{ color: 'var(--clay)', fontWeight: '600' }}>Sign in</span></button>
+          </div>
         </div>
       ) : (
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
@@ -273,6 +276,7 @@ export default function Onboarding({ onComplete, session, prefillInviteCode, sta
               <div style={{ background: '#FDE8E8', border: '1px solid #F5C0C0', borderRadius: 'var(--radius-md)', padding: '12px 16px', fontSize: '13px', color: '#B85252', marginTop: '16px' }}>That didn't go through. Check your email address and try again.</div>
             )}
           </div>
+          <div>
           <button onClick={handleJoinWaitlist} disabled={waitlistStatus === 'sending' || !waitlistEmail.trim()} style={{
             width: '100%', padding: '15px', marginTop: '24px',
             background: (waitlistStatus === 'sending' || !waitlistEmail.trim()) ? 'var(--tan)' : 'var(--clay)',
@@ -280,6 +284,8 @@ export default function Onboarding({ onComplete, session, prefillInviteCode, sta
             fontFamily: 'var(--font-body)', fontSize: '15px', fontWeight: '700',
             cursor: (waitlistStatus === 'sending' || !waitlistEmail.trim()) ? 'not-allowed' : 'pointer'
           }}>{waitlistStatus === 'sending' ? 'Sending...' : 'Request an invite'}</button>
+          <button onClick={() => onComplete('login')} style={{ width: '100%', padding: '12px 10px 0', background: 'none', border: 'none', fontFamily: 'var(--font-body)', fontSize: '13px', color: 'var(--muted)', cursor: 'pointer' }}>Already have an account? <span style={{ color: 'var(--clay)', fontWeight: '600' }}>Sign in</span></button>
+          </div>
         </div>
       )}
     </div>
@@ -307,13 +313,12 @@ export default function Onboarding({ onComplete, session, prefillInviteCode, sta
           <div style={{ fontFamily: 'var(--font-display)', fontSize: '40px', fontWeight: '700', color: 'var(--clay)', letterSpacing: '-1.5px', marginBottom: '12px' }}>nom</div>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: '26px', fontWeight: '700', color: 'var(--ink)', lineHeight: '1.2', marginBottom: '12px' }}>What's cookin'<br />good lookin'?</div>
           <div style={{ fontSize: '14px', color: 'var(--muted)', lineHeight: '1.6' }}>Finally, a place for all the recipes you've been meaning to cook.</div>
-          <div style={{ marginTop: '16px', padding: '12px 14px', background: 'var(--parchment)', borderRadius: 'var(--radius-md)', fontSize: '13px', color: 'var(--charcoal)', lineHeight: '1.5' }}>Nom is invite-only for now. Got a code from a friend? You're in.</div>
+          <div style={{ marginTop: '16px', marginBottom: '24px', padding: '12px 14px', background: 'var(--parchment)', borderRadius: 'var(--radius-md)', fontSize: '13px', color: 'var(--charcoal)', lineHeight: '1.5' }}>Nom is invite-only for now. Got a code from a friend? You're in.</div>
         </div>
         <div>
-          <ProgressDots step={1} />
           <button onClick={() => setStep(2)} style={{ width: '100%', padding: '15px', background: 'var(--clay)', color: 'var(--cream)', border: 'none', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)', fontSize: '15px', fontWeight: '700', cursor: 'pointer', marginBottom: '10px' }}>I have an invite code</button>
-          <button onClick={openWaitlist} style={{ width: '100%', padding: '10px', background: 'none', border: 'none', fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '600', color: 'var(--clay)', cursor: 'pointer' }}>No code? Request an invite</button>
-          <button onClick={() => onComplete('login')} style={{ width: '100%', padding: '10px', background: 'none', border: 'none', fontFamily: 'var(--font-body)', fontSize: '13px', color: 'var(--muted)', cursor: 'pointer' }}>I already have an account</button>
+          <button onClick={() => onComplete('login')} style={{ width: '100%', padding: '13px', background: 'transparent', color: 'var(--clay)', border: '2px solid var(--clay)', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)', fontSize: '15px', fontWeight: '600', cursor: 'pointer', marginBottom: '6px' }}>Sign in</button>
+          <button onClick={openWaitlist} style={{ width: '100%', padding: '10px', background: 'none', border: 'none', fontFamily: 'var(--font-body)', fontSize: '13px', color: 'var(--muted)', cursor: 'pointer' }}>No code? Request an invite</button>
         </div>
       </div>
     </div>

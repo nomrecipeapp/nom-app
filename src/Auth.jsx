@@ -2,14 +2,13 @@ import { useState } from 'react'
 import { supabase } from './supabase'
 import { IconChevronLeft } from './icons'
 
-export default function Auth({ onBack }) {
+export default function Auth({ onBack, onSignUp }) {
   const [mode, setMode] = useState('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [message, setMessage] = useState(null)
-  const [inviteCode, setInviteCode] = useState('')
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -17,46 +16,7 @@ export default function Auth({ onBack }) {
     setError(null)
     setMessage(null)
 
-    if (mode === 'signup') {
-      const { data: invite } = await supabase
-        .from('invites')
-        .select('id, used_by')
-        .eq('code', inviteCode.trim().toUpperCase())
-        .maybeSingle()
-
-      if (!invite) {
-        setError('That invite code is invalid. Ask a friend for one.')
-        setLoading(false)
-        return
-      }
-      if (invite.used_by) {
-        setError('That invite code has already been used.')
-        setLoading(false)
-        return
-      }
-
-      const { data, error } = await supabase.auth.signUp({ email, password })
-      if (error) {
-        setError(error.message)
-      } else if (data?.user && !data?.user?.confirmed_at && data?.user?.identities?.length === 0) {
-        setError('An account with this email already exists. Try logging in instead.')
-      } else {
-        await supabase
-          .from('invites')
-          .update({ used_by: data.user.id, used_at: new Date().toISOString() })
-          .eq('id', invite.id)
-
-        const codes = Array.from({ length: 3 }, () =>
-          Math.random().toString(36).substring(2, 10).toUpperCase()
-        )
-        await supabase.from('invites').insert(
-          codes.map(code => ({ code, created_by: data.user.id }))
-        )
-
-        setMessage('Check your email to confirm your account.')
-      }
-
-    } else if (mode === 'reset') {
+    if (mode === 'reset') {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: 'https://www.nomrecipeapp.com'
       })
@@ -130,32 +90,9 @@ export default function Auth({ onBack }) {
           padding: '32px'
         }}>
 
-          {/* Toggle */}
+          {/* Heading */}
           {mode !== 'reset' && (
-            <div style={{
-              display: 'flex',
-              background: 'var(--parchment)',
-              borderRadius: 'var(--radius-pill)',
-              padding: '4px',
-              marginBottom: '28px'
-            }}>
-              {['login', 'signup'].map(m => (
-                <button
-                  key={m}
-                  onClick={() => { setMode(m); setError(null); setMessage(null) }}
-                  style={{
-                    flex: 1, padding: '8px', border: 'none',
-                    borderRadius: 'var(--radius-pill)',
-                    background: mode === m ? 'var(--clay)' : 'transparent',
-                    color: mode === m ? 'var(--cream)' : 'var(--muted)',
-                    fontFamily: 'var(--font-body)', fontSize: '13px',
-                    fontWeight: '600', cursor: 'pointer', transition: 'all 0.15s'
-                  }}
-                >
-                  {m === 'login' ? 'Log in' : 'Sign up'}
-                </button>
-              ))}
-            </div>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: '700', color: 'var(--ink)', marginBottom: '24px' }}>Welcome back</div>
           )}
 
           {/* Reset mode header */}
@@ -189,26 +126,6 @@ export default function Auth({ onBack }) {
               </div>
             )}
 
-            {/* Invite code — signup only */}
-            {mode === 'signup' && (
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{
-                  display: 'block', fontSize: '12px', fontWeight: '600',
-                  color: 'var(--charcoal)', marginBottom: '6px', letterSpacing: '0.04em'
-                }}>Invite Code</label>
-                <input
-                  type="text"
-                  value={inviteCode}
-                  onChange={e => setInviteCode(e.target.value.trim().toUpperCase())}
-                  placeholder="XXXXXXXX"
-                  style={{ ...inputStyle, letterSpacing: '0.1em' }}
-                />
-                <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '4px' }}>
-                  You need an invite code to join Nom.
-                </div>
-              </div>
-            )}
-
             {/* Forgot password */}
             {mode === 'login' && (
               <div style={{ textAlign: 'right', marginBottom: '20px' }}>
@@ -223,8 +140,6 @@ export default function Auth({ onBack }) {
                 >Forgot password?</button>
               </div>
             )}
-
-            {mode === 'signup' && <div style={{ marginBottom: '20px' }} />}
 
             {error && (
               <div style={{
@@ -254,7 +169,7 @@ export default function Auth({ onBack }) {
                 cursor: loading ? 'not-allowed' : 'pointer', transition: 'all 0.15s'
               }}
             >
-              {loading ? 'Please wait...' : mode === 'login' ? 'Log in' : mode === 'signup' ? 'Create account' : 'Send reset link'}
+              {loading ? 'Please wait...' : mode === 'login' ? 'Sign in' : 'Send reset link'}
             </button>
 
             {mode === 'reset' && (
@@ -268,12 +183,18 @@ export default function Auth({ onBack }) {
                   fontWeight: '600', cursor: 'pointer'
                 }}
               >
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><IconChevronLeft size={15} />Back to log in</span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><IconChevronLeft size={15} />Back to sign in</span>
               </button>
             )}
 
           </form>
         </div>
+
+        {mode === 'login' && onSignUp && (
+          <button type="button" onClick={onSignUp} style={{ width: '100%', marginTop: '20px', padding: '10px', background: 'none', border: 'none', fontFamily: 'var(--font-body)', fontSize: '13px', color: 'var(--muted)', cursor: 'pointer' }}>
+            New to Nom? <span style={{ color: 'var(--clay)', fontWeight: '600' }}>I have an invite code</span>
+          </button>
+        )}
       </div>
     </div>
   )

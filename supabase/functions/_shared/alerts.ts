@@ -26,7 +26,7 @@ export async function fetchOne(table: string, select: string, id: string | null 
 }
 
 // Read one column for every row (small tables only)
-async function fetchColumn(table: string, column: string): Promise<string[]> {
+export async function fetchColumn(table: string, column: string): Promise<string[]> {
   const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?select=${column}&limit=10000`, { headers: dbHeaders })
   const rows = await res.json()
   return Array.isArray(rows) ? rows.map((r: Record<string, string>) => r[column]).filter(Boolean) : []
