@@ -41,7 +41,7 @@ export default function Onboarding({ onComplete, session, prefillInviteCode, sta
   // Invite waitlist (for people without a code)
   const [showWaitlist, setShowWaitlist] = useState(!!startOnWaitlist)
   const [waitlistEmail, setWaitlistEmail] = useState('')
-  const [waitlistStatus, setWaitlistStatus] = useState('idle') // idle | sending | done | error
+  const [waitlistStatus, setWaitlistStatus] = useState('idle') // idle | sending | done | already | error
 
   async function handleJoinWaitlist() {
     const clean = waitlistEmail.trim().toLowerCase()
@@ -49,7 +49,9 @@ export default function Onboarding({ onComplete, session, prefillInviteCode, sta
     setWaitlistStatus('sending')
     const { error } = await supabase.from('waitlist').insert({ email: clean, source: 'app' })
     // 23505 = this email is already on the list, which is still a success for them
-    if (error && error.code !== '23505') { setWaitlistStatus('error'); return }
+    // 23505 = this email is already on the waitlist
+    if (error && error.code === '23505') { setWaitlistStatus('already'); return }
+    if (error) { setWaitlistStatus('error'); return }
     setWaitlistStatus('done')
   }
 
@@ -251,13 +253,13 @@ export default function Onboarding({ onComplete, session, prefillInviteCode, sta
   if (showWaitlist && !session) return (
     <div style={{ minHeight: '100vh', background: 'var(--cream)', display: 'flex', flexDirection: 'column', maxWidth: '480px', margin: '0 auto', padding: 'calc(48px + var(--safe-top)) 28px calc(40px + var(--safe-bottom))' }}>
       <button onClick={() => setShowWaitlist(false)} style={{ alignSelf: 'flex-start', padding: '4px 0', background: 'none', border: 'none', fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: '600', color: 'var(--clay)', cursor: 'pointer', marginBottom: '32px' }}>Back</button>
-      {waitlistStatus === 'done' ? (
+      {(waitlistStatus === 'done' || waitlistStatus === 'already') ? (
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
           <div>
             <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'var(--sage)', color: 'var(--cream)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '20px' }}>
               <IconCheck size={26} strokeWidth={2.5} />
             </div>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: '26px', fontWeight: '700', color: 'var(--ink)', lineHeight: '1.2', marginBottom: '8px' }}>You're on the list!</div>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: '26px', fontWeight: '700', color: 'var(--ink)', lineHeight: '1.2', marginBottom: '8px' }}>{waitlistStatus === 'already' ? "You're already on the list!" : "You're on the list!"}</div>
             <div style={{ fontSize: '14px', color: 'var(--muted)', lineHeight: '1.6' }}>We'll email you an invite when a spot opens up. Know someone on Nom? They can send you a code from Settings.</div>
           </div>
           <div>
