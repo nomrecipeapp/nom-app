@@ -1,5 +1,5 @@
 import { RECIPE_FORMAT_RULES, RECIPE_FIELDS } from './_recipeFormat.js'
-import { handleCors, requireUser } from './_auth.js'
+import { handleCors, requireUser, claimImport } from './_auth.js'
 
 export default async function handler(req, res) {
   if (handleCors(req, res)) return
@@ -49,6 +49,8 @@ export default async function handler(req, res) {
         message: 'Could not read the caption from this post. Try screenshotting it and using From Photo instead.'
       })
     }
+
+    if (!(await claimImport(req, res, 'social'))) return
 
     // Pass caption to Claude to extract recipe
     const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {

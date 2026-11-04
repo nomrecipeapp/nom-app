@@ -35,7 +35,7 @@ const SITE_NAMES = {
   'foodnetwork.com': 'Food Network',
 }
 
-function friendlySiteName(url) {
+export function friendlySiteName(url) {
   const host = siteName(url)
   return SITE_NAMES[host] || host
 }
@@ -44,10 +44,12 @@ function friendlySiteName(url) {
 // `hint` is the suggestion added after "We couldn't read this recipe"
 export async function importRecipeFromUrl(url, hint = 'Try a screenshot with From Photo instead.') {
   let blocked = false
+  let limitMessage = null
   const aiPromise = apiPost('/api/extract-recipe-url', { url })
     .then(r => r.json())
     .then(d => {
       if (d?.blocked) blocked = true
+      if (d?.limitReached) limitMessage = d
       return d && !d.error ? d : null
     })
     .catch(() => null)
@@ -79,6 +81,7 @@ export async function importRecipeFromUrl(url, hint = 'Try a screenshot with Fro
   const spoonOk = data.code !== 402 && usable(data.title, spoonIngredients)
 
   if (!aiOk && !spoonOk) {
+    if (limitMessage) return { limitReached: true, limit: limitMessage.limit, error: limitMessage.message }
     if (data.code === 402) {
       return { error: 'Daily import limit reached. Try again tomorrow or add manually.' }
     }

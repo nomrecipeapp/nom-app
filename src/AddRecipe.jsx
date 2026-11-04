@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from './supabase'
 import { apiPost } from './api'
-import { importRecipeFromUrl } from './importUrl'
+import { importRecipeFromUrl, friendlySiteName } from './importUrl'
 import { IconCamera, IconCheck, IconChevronLeft, IconX } from './icons'
 import { PRESET_TAGS, tagChoices, addTag, hasTag, tagKey } from './tags'
 
@@ -26,9 +26,28 @@ const loadingMessages = [
   'Almost there...',
 ]
 
+// Copy for the daily import limit card. limit = { cap, first_week, reset_at } from the server.
+function importLimitCopy(limit) {
+  const cap = limit?.cap || 10
+  let when = 'tomorrow'
+  if (limit?.reset_at) {
+    const reset = new Date(limit.reset_at)
+    const time = reset.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+    when = reset.toDateString() === new Date().toDateString() ? `at ${time}` : `tomorrow at ${time}`
+  }
+  return {
+    title: `You've used today's ${cap} imports`,
+    body: limit?.first_week
+      ? `We're so happy to have you in the Nom family, and it's exciting to see you building out your cookbook! To help keep Nom free while we grow, you can import 40 recipes a day during your first week and 10 a day after that. You can import again ${when}.`
+      : `Thanks for building your cookbook on Nom! To help keep Nom free while we grow, you can import 10 recipes a day. You can import again ${when}.`,
+  }
+}
+
 export default function AddRecipe({ session, onSave, onCancel, startLogging = false }) {
   const [mode, setMode] = useState('url')
   const [importIssue, setImportIssue] = useState(null) // { blocked, site } when a link can't be read
+  const [importLimit, setImportLimit] = useState(null) // { cap, first_week, reset_at } when today's imports are used up
+  const [importsLeft, setImportsLeft] = useState(null) // for the "2 imports left today" heads-up
   const [url, setUrl] = useState('')
   const [loading, setLoading] = useState(false)
   const [loadingMsg, setLoadingMsg] = useState(loadingMessages[0])
@@ -63,7 +82,23 @@ export default function AddRecipe({ session, onSave, onCancel, startLogging = fa
 
   useEffect(() => {
     fetchUserTags()
+    refreshImportStatus()
   }, [])
+
+  // How many AI imports are left today (see claim_import in Supabase). Quietly does nothing if unavailable.
+  async function refreshImportStatus() {
+    const { data, error } = await supabase.rpc('import_status')
+    if (error || !data) return
+    setImportsLeft(data.remaining)
+    setImportLimit(data.remaining === 0 && data.reset_at ? data : null)
+  }
+
+  function addManuallyInstead() {
+    setMode('manual')
+    if (url && !sourceName) setSourceName(friendlySiteName(url))
+    setError(null)
+    setImportIssue(null)
+  }
 
   async function fetchUserTags() {
     const { data } = await supabase.from('recipes').select('tags').eq('user_id', session.user.id)
@@ -103,6 +138,12 @@ export default function AddRecipe({ session, onSave, onCancel, startLogging = fa
       try {
         const res = await apiPost('/api/import-social', { url })
         const data = await res.json()
+        if (data.limitReached) {
+          setImportLimit(data.limit || {})
+          setImportsLeft(0)
+          setLoading(false)
+          return
+        }
         if (data.error) {
           setError(data.message || 'Could not import this post. Try screenshotting the caption and using From Photo instead.')
           setLoading(false)
@@ -126,12 +167,16 @@ export default function AddRecipe({ session, onSave, onCancel, startLogging = fa
         setError('Could not import this post. Try screenshotting the caption and using From Photo instead.')
       }
       setLoading(false)
+      refreshImportStatus()
       return
     }
 
     try {
       const result = await importRecipeFromUrl(url)
-      if (result.site) {
+      if (result.limitReached) {
+        setImportLimit(result.limit || {})
+        setImportsLeft(0)
+      } else if (result.site) {
         setImportIssue(result)
       } else if (result.error) {
         setError(result.error)
@@ -142,6 +187,7 @@ export default function AddRecipe({ session, onSave, onCancel, startLogging = fa
       setError('Could not fetch recipe. Try adding it manually.')
     }
     setLoading(false)
+    refreshImportStatus()
   }
 
   async function importFromPhoto(files) {
@@ -178,6 +224,12 @@ export default function AddRecipe({ session, onSave, onCancel, startLogging = fa
       const response = await apiPost('/api/scan-recipe', { images })
 
       const data = await response.json()
+      if (data.limitReached) {
+        setImportLimit(data.limit || {})
+        setImportsLeft(0)
+        setPhotoPreview(null)
+        throw Object.assign(new Error('import limit'), { limitReached: true })
+      }
       console.log('FULL API response:', JSON.stringify(data))
       const text = data.content?.[0]?.text || ''
       const clean = text.replace(/```json|```/g, '').trim()
@@ -199,12 +251,13 @@ export default function AddRecipe({ session, onSave, onCancel, startLogging = fa
       })
     } catch (e) {
       console.error('Photo import error:', e)
-      setError('Could not read the recipe from this image. Try a clearer photo or add manually.')
+      if (!e.limitReached) setError('Could not read the recipe from this image. Try a clearer photo or add manually.')
     }
 
     clearInterval(msgInterval)
     setLoadingMsg(loadingMessages[0])
     setLoading(false)
+    refreshImportStatus()
   }
 
   function handlePhotoChange(e) {
@@ -593,6 +646,28 @@ export default function AddRecipe({ session, onSave, onCancel, startLogging = fa
     </div>
   )
 
+  const importLimitCard = importLimit && (() => {
+    const copy = importLimitCopy(importLimit)
+    return (
+      <div style={{ background: 'var(--cream)', border: '1px solid var(--ember)', borderRadius: 'var(--radius-md)', padding: '14px 16px', marginBottom: '16px' }}>
+        <div style={{ fontSize: '14px', fontWeight: '600', color: 'var(--ink)', marginBottom: '4px' }}>{copy.title}</div>
+        <div style={{ fontSize: '13px', color: 'var(--charcoal)', marginBottom: '12px', lineHeight: 1.45 }}>{copy.body}</div>
+        <button onClick={addManuallyInstead} style={{
+          display: 'inline-flex', alignItems: 'center', gap: '6px',
+          padding: '9px 16px', background: 'var(--clay)', color: 'var(--cream)',
+          border: 'none', borderRadius: 'var(--radius-pill)',
+          fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '600', cursor: 'pointer'
+        }}>Add manually</button>
+      </div>
+    )
+  })()
+
+  const importsLeftNote = !importLimit && importsLeft > 0 && importsLeft <= 2 && (
+    <div style={{ fontSize: '12px', color: 'var(--muted)', textAlign: 'center', marginTop: '10px' }}>
+      {importsLeft === 1 ? '1 import left today' : `${importsLeft} imports left today`}
+    </div>
+  )
+
   return (
     <div style={{ minHeight: '100vh', background: 'var(--cream)', padding: '24px', paddingTop: 'calc(24px + var(--safe-top))', paddingBottom: 'calc(60px + var(--safe-bottom))' }}>
       <div style={{ maxWidth: '480px', margin: '0 auto' }}>
@@ -644,7 +719,9 @@ export default function AddRecipe({ session, onSave, onCancel, startLogging = fa
 
             {error && <div style={{ background: '#FDE8E8', border: '1px solid #F5C0C0', borderRadius: 'var(--radius-md)', padding: '10px 14px', fontSize: '13px', color: '#B85252', marginBottom: '16px' }}>{error}</div>}
 
-            {importIssue && (
+            {importLimitCard}
+
+            {importIssue && !importLimit && (
               <div style={{ background: 'var(--cream)', border: '1px solid var(--ember)', borderRadius: 'var(--radius-md)', padding: '14px 16px', marginBottom: '16px' }}>
                 <div style={{ fontSize: '14px', fontWeight: '600', color: 'var(--ink)', marginBottom: '4px' }}>
                   {importIssue.blocked
@@ -663,7 +740,7 @@ export default function AddRecipe({ session, onSave, onCancel, startLogging = fa
               </div>
             )}
 
-            {!duplicate && (
+            {!duplicate && !importLimit && (
               <button onClick={async () => {
                 const { data: existingList } = await supabase
                   .from('recipes')
@@ -684,6 +761,7 @@ export default function AddRecipe({ session, onSave, onCancel, startLogging = fa
                 cursor: loading || !url ? 'not-allowed' : 'pointer'
               }}>{loading ? 'Fetching recipe...' : 'Import Recipe'}</button>
             )}
+            {!duplicate && importsLeftNote}
           </div>
         )}
 
@@ -699,7 +777,9 @@ export default function AddRecipe({ session, onSave, onCancel, startLogging = fa
               style={{ display: 'none' }}
             />
 
-            {!loading && !photoPreview && (
+            {importLimitCard}
+
+            {!loading && !photoPreview && !importLimit && (
               <div
                 onClick={() => photoInputRef.current?.click()}
                 style={{
@@ -720,6 +800,7 @@ export default function AddRecipe({ session, onSave, onCancel, startLogging = fa
                 </div>
               </div>
             )}
+            {!loading && !photoPreview && importsLeftNote}
 
             {loading && (
               <div style={{ textAlign: 'center', padding: '48px 24px' }}>
