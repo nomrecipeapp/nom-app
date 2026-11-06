@@ -61,8 +61,8 @@ export async function requireUser(req, res) {
 export const IMPORT_LIMIT_MESSAGE = "You've used today's imports. To help keep Nom free while we grow, imports are limited each day. You can add this recipe manually, or import it again tomorrow."
 
 // Daily import cap (set in the claim_import function in Supabase).
-// Call right before using the AI. Returns true if the import may go ahead,
-// or sends a 429 with { limitReached: true } and returns false.
+// Call right before using the AI. Returns a truthy "claim" if the import may go ahead
+// (pass it to recordImportCost afterwards), or sends a 429 with { limitReached: true } and returns false.
 // If the check itself fails (Supabase hiccup), the import goes ahead and the
 // Anthropic Console spend limit stays the backstop.
 export async function claimImport(req, res, kind) {
@@ -92,9 +92,37 @@ export async function claimImport(req, res, kind) {
       })
       return false
     }
-    return true
+    return { usageId: result?.usage_id ?? null }
   } catch (e) {
     console.error('claim_import error:', e.message)
     return true
+  }
+}
+
+// After the AI answers: save the token counts so the Admin page shows real costs
+// and the monthly budget check can run. Never blocks or breaks an import.
+export async function recordImportCost(req, claim, anthropicData) {
+  const usageId = claim?.usageId
+  const usage = anthropicData?.usage
+  if (!usageId || !usage) return
+  const token = (req.headers.authorization || '').slice(7)
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/record_import_cost`, {
+      method: 'POST',
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        p_usage_id: usageId,
+        p_model: anthropicData.model || 'unknown',
+        p_input_tokens: (usage.input_tokens || 0) + (usage.cache_creation_input_tokens || 0) + (usage.cache_read_input_tokens || 0),
+        p_output_tokens: usage.output_tokens || 0,
+      }),
+    })
+    if (!r.ok) console.error('record_import_cost failed', r.status, await r.text())
+  } catch (e) {
+    console.error('record_import_cost error:', e.message)
   }
 }

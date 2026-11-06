@@ -38,3 +38,9 @@ enabled = true
 verify_jwt = false
 import_map = "./functions/send-invite/deno.json"
 entrypoint = "./functions/send-invite/index.ts"
+
+[functions.budget-alert]
+enabled = true
+verify_jwt = false
+import_map = "./functions/budget-alert/deno.json"
+entrypoint = "./functions/budget-alert/index.ts"

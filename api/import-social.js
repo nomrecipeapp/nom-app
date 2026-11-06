@@ -1,5 +1,5 @@
 import { RECIPE_FORMAT_RULES, RECIPE_FIELDS } from './_recipeFormat.js'
-import { handleCors, requireUser, claimImport } from './_auth.js'
+import { handleCors, requireUser, claimImport, recordImportCost } from './_auth.js'
 
 export default async function handler(req, res) {
   if (handleCors(req, res)) return
@@ -50,7 +50,8 @@ export default async function handler(req, res) {
       })
     }
 
-    if (!(await claimImport(req, res, 'social'))) return
+    const claim = await claimImport(req, res, 'social')
+    if (!claim) return
 
     // Pass caption to Claude to extract recipe
     const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
@@ -81,6 +82,7 @@ Only include what is actually in the caption — do not invent or add ingredient
     })
 
     const claudeData = await claudeRes.json()
+    await recordImportCost(req, claim, claudeData)
     const text = claudeData.content?.[0]?.text || ''
     const clean = text.replace(/```json|```/g, '').trim()
     const parsed = JSON.parse(clean)

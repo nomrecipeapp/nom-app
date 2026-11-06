@@ -1,5 +1,5 @@
 import { RECIPE_FORMAT_RULES, RECIPE_FIELDS } from './_recipeFormat.js'
-import { handleCors, requireUser, claimImport } from './_auth.js'
+import { handleCors, requireUser, claimImport, recordImportCost } from './_auth.js'
 import { extractJsonLdRecipe, pageTitle } from './_jsonLd.js'
 
 export default async function handler(req, res) {
@@ -62,7 +62,8 @@ export default async function handler(req, res) {
         .slice(0, 60000)
     }
 
-    if (!(await claimImport(req, res, 'url'))) return
+    const claim = await claimImport(req, res, 'url')
+    if (!claim) return
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -87,6 +88,7 @@ ${text}`
     })
 
     const data = await response.json()
+    await recordImportCost(req, claim, data)
     const raw = data.content?.[0]?.text || ''
     const clean = raw.replace(/```json|```/g, '').trim()
     const parsed = JSON.parse(clean)

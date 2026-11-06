@@ -232,7 +232,7 @@ Founder of Nom${textFooter}`
   return { subject: "You're invited to Nom", html, text }
 }
 
-// ── 4. Budget alert (internal, to Syd; sent by the Admin page later) ──
+// ── 4. Budget alert (internal, to Syd; sent by the budget-alert function) ──
 
 export function budgetAlertEmail(opts: {
   spent: number

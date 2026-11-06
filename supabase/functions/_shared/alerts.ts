@@ -3,7 +3,7 @@
 
 export const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 export const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-const ALERT_TO = 'nom.recipeapp@gmail.com'
+export const ALERT_TO = 'nom.recipeapp@gmail.com'
 const FROM = 'Nom <hello@nomrecipeapp.com>'
 
 const dbHeaders = { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` }
@@ -26,18 +26,18 @@ export async function fetchOne(table: string, select: string, id: string | null 
 }
 
 // Read one column for every row (small tables only)
-export async function fetchColumn(table: string, column: string): Promise<string[]> {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?select=${column}&limit=10000`, { headers: dbHeaders })
+export async function fetchColumn(table: string, column: string, filter = ''): Promise<string[]> {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?select=${column}&limit=10000${filter ? `&${filter}` : ''}`, { headers: dbHeaders })
   const rows = await res.json()
   return Array.isArray(rows) ? rows.map((r: Record<string, string>) => r[column]).filter(Boolean) : []
 }
 
-// Current totals: everyone with an account, and waitlist emails that don't have an account yet
+// Current totals: everyone with an account, and waitlist emails not invited yet and without an account
 export async function getCounts(): Promise<{ users: number | null; waiting: number | null }> {
   try {
     const [userEmails, waitlistEmails] = await Promise.all([
       fetchColumn('profiles', 'email'),
-      fetchColumn('waitlist', 'email'),
+      fetchColumn('waitlist', 'email', 'invited_at=is.null'),
     ])
     const joined = new Set(userEmails.map((e) => e.trim().toLowerCase()))
     const waiting = waitlistEmails.filter((e) => !joined.has(e.trim().toLowerCase())).length

@@ -1,5 +1,5 @@
 import { RECIPE_FORMAT_RULES, RECIPE_FIELDS } from './_recipeFormat.js'
-import { handleCors, requireUser, claimImport } from './_auth.js'
+import { handleCors, requireUser, claimImport, recordImportCost } from './_auth.js'
 
 export default async function handler(req, res) {
   if (handleCors(req, res)) return
@@ -14,7 +14,8 @@ export default async function handler(req, res) {
     source: { type: 'base64', media_type: img.mediaType, data: img.base64 }
   }))
 
-  if (!(await claimImport(req, res, 'photo'))) return
+  const claim = await claimImport(req, res, 'photo')
+  if (!claim) return
 
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -41,6 +42,7 @@ export default async function handler(req, res) {
     })
 
     const data = await response.json()
+    await recordImportCost(req, claim, data)
     res.status(200).json(data)
   } catch (e) {
     res.status(500).json({ error: e.message })
