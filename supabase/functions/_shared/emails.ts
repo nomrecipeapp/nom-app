@@ -290,6 +290,50 @@ ${atLimit
   return { subject, html, text }
 }
 
+// ── 5. Launch announcement (one-time, to everyone with an account; sent by send-announcement) ──
+
+export function announcementEmail(opts: { name?: string }): Email {
+  const name = firstName(opts.name)
+  const hi = name ? `Hi ${esc(name)}!` : 'Hi there!'
+  const html = layout({
+    preheader: 'Download it on your iPhone and sign in. Your cookbook is waiting.',
+    footerNote: "You're getting this because you have a Nom account.",
+    body: `
+      ${heading(`Order up! Nom is on the App Store. <span style="font-style:italic;color:${C.clay};">For real.</span>`)}
+      ${p(hi)}
+      ${p("You were one of the very first people to cook with Nom, so I wanted you to hear it from me: Nom is now live on the App Store for iPhone.")}
+      ${p("Everything you've saved is already there. Here's how to get set up:", 'font-weight:700;color:' + C.ink + ';margin-bottom:18px;')}
+      ${steps([
+        ['Download Nom', "It's free on the App Store for iPhone."],
+        ['Sign in', 'Use the same email and password you use now. Your recipes, cooks and friends are all there.'],
+        ['Bring a friend', 'You have invite codes in Settings. Nom is better with your people.'],
+      ])}
+      ${p(`<strong style="color:${C.ink};">Fair warning: we're still cooking.</strong> Nom is very much a work in progress, and the next batch is already in the oven. New versions are coming soon, and each one should taste a little better than the last.`)}
+      ${p("If something comes out half-baked, or you have an idea for what Nom should serve up next, just reply to this email. It comes straight to me, and I read every one. So much of Nom came from your feedback, and I'm so grateful you're here early.")}
+      ${button('Download on the App Store', APP_STORE_URL)}
+      ${signoff('Thank you for cooking with me,')}`,
+  })
+  const text = `${name ? `Hi ${name}!` : 'Hi there!'}
+
+Order up! Nom is on the App Store. For real.
+
+You were one of the very first people to cook with Nom, so I wanted you to hear it from me: Nom is now live on the App Store for iPhone.
+
+Everything you've saved is already there. Here's how to get set up:
+1. Download Nom. It's free on the App Store for iPhone: ${APP_STORE_URL}
+2. Sign in. Use the same email and password you use now. Your recipes, cooks and friends are all there.
+3. Bring a friend. You have invite codes in Settings. Nom is better with your people.
+
+Fair warning: we're still cooking. Nom is very much a work in progress, and the next batch is already in the oven. New versions are coming soon, and each one should taste a little better than the last.
+
+If something comes out half-baked, or you have an idea for what Nom should serve up next, just reply to this email. It comes straight to me, and I read every one. So much of Nom came from your feedback, and I'm so grateful you're here early.
+
+Thank you for cooking with me,
+Syd
+Founder of Nom${textFooter}`
+  return { subject: 'Order up! Nom is on the App Store', html, text }
+}
+
 // ── Sending ──
 
 export async function sendEmail(to: string, email: Email): Promise<{ ok: boolean; error?: string }> {

@@ -8,7 +8,8 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "invite": "node --env-file=.env.local scripts/send-invite.mjs"
+    "invite": "node --env-file=.env.local scripts/send-invite.mjs",
+    "announce": "node --env-file=.env.local scripts/send-announcement.mjs"
   },
   "dependencies": {
     "@capacitor/core": "^8.5.0",
