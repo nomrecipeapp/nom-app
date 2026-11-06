@@ -7,7 +7,8 @@
 --   3. waitlist.invited_at and invites.source ('admin' = sent by Syd, 'friend' = a member's code)
 --   4. Real AI cost per import (token counts saved after each import)
 --   5. Budget check: 75% alert, and at 100% friend invites pause on their own
---   6. Friend invite rules: paused codes stop working, new members get N codes
+--   6. Friend invite rules: paused codes stop working (people who try one join the waitlist),
+--      new members get N codes, Syd can give anyone more
 --   7. Read-only functions the Admin page uses (each one checks you're an admin)
 --
 -- Nothing here changes what members see, unless friend invites are paused.
@@ -65,6 +66,8 @@ alter table public.admin_settings enable row level security;
 -- ───────────────────────── 3. Waitlist + invites ─────────────────────────
 
 alter table public.waitlist add column if not exists invited_at timestamptz;
+-- Whose code they tried while friend invites were paused
+alter table public.waitlist add column if not exists tried_inviter uuid references auth.users(id) on delete set null;
 
 alter table public.invites add column if not exists source text not null default 'friend';
 do $$ begin
@@ -222,8 +225,9 @@ returns text language sql volatile set search_path = '' as $$
   from generate_series(1, 8);
 $$;
 
--- The app gives each new member 3 codes. This trims or tops that up to the setting
--- (0 while friend invites are paused). Only runs when a member makes their own codes.
+-- The app gives each new member 3 codes. This trims or tops that up to the setting.
+-- During a pause new members still get codes; they just don't work until invites are back on.
+-- Only runs when a member makes their own codes.
 create or replace function public.match_codes_per_new_user()
 returns trigger language plpgsql security definer set search_path = '' as $$
 declare
@@ -232,8 +236,7 @@ declare
   have int;
 begin
   if pg_trigger_depth() > 1 then return null; end if;
-  select case when friend_invites_on then codes_per_new_user else 0 end
-    into want from public.admin_settings where id = 1;
+  select codes_per_new_user into want from public.admin_settings where id = 1;
   if want is null then return null; end if;
 
   for r in
@@ -261,6 +264,59 @@ create trigger invites_match_codes_per_new_user
   after insert on public.invites
   referencing new table as new_rows
   for each statement execute function public.match_codes_per_new_user();
+
+-- Is this code good to use? Lets the sign-up screen tell "paused" apart from "invalid".
+-- Only says the inviter's first name, and only to someone holding their code.
+create or replace function public.invite_code_status(p_code text)
+returns json language plpgsql stable security definer set search_path = '' as $$
+declare
+  i record;
+  first_name text;
+begin
+  select inv.id, inv.used_by, inv.created_by, inv.source into i
+  from public.invites inv where inv.code = upper(trim(p_code)) limit 1;
+  if i.id is null then return json_build_object('status', 'invalid'); end if;
+  if i.used_by is not null then return json_build_object('status', 'used'); end if;
+  if i.source = 'friend' and not public.friend_invites_allowed(i.created_by) then
+    select nullif(split_part(trim(coalesce(p.full_name, '')), ' ', 1), '') into first_name
+    from public.profiles p where p.id = i.created_by;
+    return json_build_object('status', 'paused', 'first_name', first_name);
+  end if;
+  return json_build_object('status', 'ok');
+end;
+$$;
+revoke all on function public.invite_code_status(text) from public;
+grant execute on function public.invite_code_status(text) to anon, authenticated;
+
+-- Someone tried a friend's code during a pause: put them on the waitlist and remember whose code.
+-- Returns 'done', 'already' (on the list before) or 'invalid'.
+create or replace function public.join_waitlist_from_code(p_email text, p_code text)
+returns text language plpgsql volatile security definer set search_path = '' as $$
+declare
+  clean text := lower(trim(p_email));
+  inviter uuid;
+begin
+  if clean !~ '^[^\s@]+@[^\s@]+\.[^\s@]+$' or char_length(clean) > 254 then return 'invalid'; end if;
+  select created_by into inviter from public.invites where code = upper(trim(p_code)) and source = 'friend' limit 1;
+  begin
+    insert into public.waitlist (email, source, tried_inviter) values (clean, 'app', inviter);
+    return 'done';
+  exception when unique_violation then
+    update public.waitlist set tried_inviter = coalesce(tried_inviter, inviter) where lower(email) = clean;
+    return 'already';
+  end;
+end;
+$$;
+revoke all on function public.join_waitlist_from_code(text, text) from public;
+grant execute on function public.join_waitlist_from_code(text, text) to anon, authenticated;
+
+-- For the app's Settings screen: are friend invites on right now?
+create or replace function public.friend_invites_on()
+returns boolean language sql stable security definer set search_path = '' as $$
+  select coalesce((select friend_invites_on from public.admin_settings where id = 1), true);
+$$;
+revoke all on function public.friend_invites_on() from public;
+grant execute on function public.friend_invites_on() to anon, authenticated;
 
 -- ───────────────────────── 7. Admin page functions ─────────────────────────
 
@@ -312,14 +368,17 @@ begin
 end;
 $$;
 
+drop function if exists public.admin_waitlist();
 create or replace function public.admin_waitlist()
-returns table (id uuid, email text, source text, created_at timestamptz, invited_at timestamptz, has_account boolean)
+returns table (id uuid, email text, source text, created_at timestamptz, invited_at timestamptz, has_account boolean, tried_inviter_name text)
 language plpgsql stable security definer set search_path = '' as $$
 begin
   perform public.require_admin();
   return query
     select w.id, w.email, w.source, w.created_at, w.invited_at,
-      exists (select 1 from public.profiles p where lower(p.email) = lower(w.email))
+      exists (select 1 from public.profiles p where lower(p.email) = lower(w.email)),
+      (select coalesce(nullif(split_part(trim(coalesce(t.full_name, '')), ' ', 1), ''), t.username)::text
+         from public.profiles t where t.id = w.tried_inviter)
     from public.waitlist w
     order by w.created_at desc;
 end;
@@ -382,6 +441,21 @@ begin
   return row_to_json(s);
 end;
 $$;
+
+-- Give someone more friend codes (1 to 10 at a time). They show up in their Settings right away.
+create or replace function public.admin_give_codes(p_user uuid, p_count int)
+returns int language plpgsql volatile security definer set search_path = '' as $$
+begin
+  perform public.require_admin();
+  if p_count < 1 or p_count > 10 then raise exception 'Pick 1 to 10 codes'; end if;
+  if not exists (select 1 from public.profiles where id = p_user) then raise exception 'No such user'; end if;
+  insert into public.invites (code, created_by, source)
+  select public.new_invite_code(), p_user, 'friend' from generate_series(1, p_count);
+  return (select count(*) from public.invites where created_by = p_user and used_by is null)::int;
+end;
+$$;
+revoke all on function public.admin_give_codes(uuid, int) from public, anon;
+grant execute on function public.admin_give_codes(uuid, int) to authenticated;
 
 -- Lock all admin functions to signed-in accounts (and they check is_admin inside)
 revoke all on function public.admin_overview() from public, anon;

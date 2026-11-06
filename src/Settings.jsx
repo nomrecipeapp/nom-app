@@ -237,9 +237,13 @@ export default function Settings({ session, onBack }) {
     const [codes, setCodes] = useState([])
     const [loadingCodes, setLoadingCodes] = useState(true)
     const [copied, setCopied] = useState(null)
+    const [invitesOn, setInvitesOn] = useState(true)
 
     useEffect(() => {
       fetchCodes()
+      supabase.rpc('friend_invites_on').then(({ data, error }) => {
+        if (!error && data === false) setInvitesOn(false)
+      })
     }, [])
 
     async function fetchCodes() {
@@ -284,9 +288,16 @@ export default function Settings({ session, onBack }) {
 
     return (
       <div style={{ padding: '4px 20px 16px' }}>
-        <div style={{ fontSize: '13px', color: 'var(--muted)', lineHeight: '1.5', marginBottom: '16px' }}>
-          You have <span style={{ fontWeight: '700', color: 'var(--ink)' }}>{available.length}</span> invite{available.length !== 1 ? 's' : ''} left. Each code can only be used once.
-        </div>
+        {invitesOn ? (
+          <div style={{ fontSize: '13px', color: 'var(--muted)', lineHeight: '1.5', marginBottom: '16px' }}>
+            You have <span style={{ fontWeight: '700', color: 'var(--ink)' }}>{available.length}</span> invite{available.length !== 1 ? 's' : ''} left. Each code can only be used once.
+          </div>
+        ) : (
+          <div style={{ background: 'var(--parchment)', borderRadius: 'var(--radius-md)', padding: '14px 16px', marginBottom: '16px' }}>
+            <div style={{ fontSize: '14px', fontWeight: '700', color: 'var(--ink)', marginBottom: '4px' }}>Invites are paused for now</div>
+            <div style={{ fontSize: '13px', color: 'var(--muted)', lineHeight: '1.5' }}>We're pausing new sign-ups for a bit so Nom can stay free and keep running smoothly as we make room for more people. Your codes are saved and will work again soon.</div>
+          </div>
+        )}
 
         {available.length === 0 && (
           <div style={{
@@ -302,13 +313,13 @@ export default function Settings({ session, onBack }) {
             <div key={c.id} style={{
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
               background: 'var(--parchment)', borderRadius: 'var(--radius-md)',
-              padding: '12px 14px'
+              padding: '12px 14px', opacity: invitesOn ? 1 : 0.5
             }}>
               <div style={{
                 fontFamily: 'var(--font-display)', fontSize: '16px',
                 fontWeight: '700', color: 'var(--ink)', letterSpacing: '0.12em'
               }}>{c.code}</div>
-              <button
+              {invitesOn && <button
                 onClick={() => shareCode(c.code)}
                 style={{
                   padding: '7px 14px',
@@ -318,7 +329,7 @@ export default function Settings({ session, onBack }) {
                   fontFamily: 'var(--font-body)', fontSize: '12px',
                   fontWeight: '600', cursor: 'pointer', transition: 'all 0.15s'
                 }}
-              >{copied === c.code ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><IconCheck size={12} strokeWidth={2.5} />Copied</span> : 'Share'}</button>
+              >{copied === c.code ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><IconCheck size={12} strokeWidth={2.5} />Copied</span> : 'Share'}</button>}
             </div>
           ))}
         </div>

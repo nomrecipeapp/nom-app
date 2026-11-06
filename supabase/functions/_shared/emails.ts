@@ -272,7 +272,7 @@ export function budgetAlertEmail(opts: {
         </tr>
       </table>
       ${atLimit
-        ? p('<strong style="color:' + C.ink + ';">Friend invites are paused.</strong> Unused codes stop working and new members get 0 codes. Everyone already on Nom can keep using everything, and the waitlist keeps collecting emails. Turn invites back on from the Admin page when you\'re ready.')
+        ? p('<strong style="color:' + C.ink + ';">Friend invites are paused.</strong> Members' codes stop working until you turn invites back on, and anyone who tries one lands on your waitlist. Everyone already on Nom can keep using everything, and the waitlist keeps collecting emails. Turn invites back on from the Admin page when you\'re ready.')
         : p("Nothing has changed yet. If spending reaches 100%, Nom will pause friend invites on its own. Current users won't notice anything.")}
       ${p('The hard cap in the Anthropic Console still applies on top of this.', 'font-size:14px;color:' + C.muted + ';')}`,
   })

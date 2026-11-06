@@ -353,6 +353,7 @@ function Waitlist({ rows, onInvited }) {
                   <div style={{ fontSize: '15px', fontWeight: 600, color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.email}</div>
                   <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '2px', display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
                     <span>Asked {shortDate(r.created_at)}{r.source && r.source !== 'app' ? ` on the ${r.source}` : ''}</span>
+                    {r.tried_inviter_name && !r.has_account && <Chip tone="warn">Tried {r.tried_inviter_name}'s code</Chip>}
                     {r.has_account ? <Chip tone="good">Has an account</Chip>
                       : r.invited_at ? <Chip tone="good">Invited {isToday(r.invited_at) ? 'today' : shortDate(r.invited_at)}</Chip>
                         : <Chip>Waiting</Chip>}
@@ -385,7 +386,47 @@ function Waitlist({ rows, onInvited }) {
 }
 
 // ── Users ──
-function Users({ rows }) {
+function GiveCodes({ user, onGiven }) {
+  const [open, setOpen] = useState(false)
+  const [count, setCount] = useState(3)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState(null)
+  const [done, setDone] = useState(null)
+
+  async function give() {
+    setBusy(true); setError(null)
+    const { data, error } = await supabase.rpc('admin_give_codes', { p_user: user.id, p_count: count })
+    setBusy(false)
+    if (error) { setError(error.message); return }
+    setDone(`Gave ${count} code${count === 1 ? '' : 's'}. They now have ${data} to share.`)
+    setOpen(false)
+    onGiven(user.id, data)
+  }
+
+  if (!open) {
+    return (
+      <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+        <Button kind="secondary" small onClick={() => { setOpen(true); setDone(null) }}>Give codes</Button>
+        {done && <span style={{ fontSize: '12px', color: 'var(--forest)', fontWeight: 600 }}>{done}</span>}
+      </div>
+    )
+  }
+  return (
+    <div style={{ marginTop: '12px', background: 'var(--parchment)', borderRadius: 'var(--radius-sm)', padding: '12px' }}>
+      <div style={{ fontSize: '13px', color: 'var(--charcoal)', marginBottom: '10px' }}>How many new codes for {user.full_name?.split(' ')[0] || user.username || 'them'}? They show up in their Settings right away.</div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+        <Button kind="quiet" small disabled={busy || count <= 1} onClick={() => setCount(c => c - 1)} style={{ width: '36px', padding: '7px 0', background: 'var(--warm-white)' }} aria-label="Fewer">-</Button>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: 700, minWidth: '20px', textAlign: 'center' }}>{count}</div>
+        <Button kind="quiet" small disabled={busy || count >= 10} onClick={() => setCount(c => c + 1)} style={{ width: '36px', padding: '7px 0', background: 'var(--warm-white)' }} aria-label="More">+</Button>
+        <Button small disabled={busy} onClick={give}>{busy ? 'Giving...' : `Give ${count}`}</Button>
+        <Button kind="quiet" small disabled={busy} onClick={() => setOpen(false)} style={{ background: 'var(--warm-white)' }}>Cancel</Button>
+      </div>
+      {error && <ErrorNote>{error}</ErrorNote>}
+    </div>
+  )
+}
+
+function Users({ rows, onCodesGiven }) {
   const [query, setQuery] = useState('')
   const [sort, setSort] = useState('newest')
   const q = query.trim().toLowerCase()
@@ -431,6 +472,7 @@ function Users({ rows }) {
                 <div>Joined {shortDate(u.joined_at)} · last active {ago(u.last_active)}</div>
                 <div>Invited by {u.invited_by_name || (u.invite_source === 'admin' ? 'you' : 'unknown')} · codes: {u.codes_left} left, {u.codes_used} used</div>
               </div>
+              <GiveCodes user={u} onGiven={onCodesGiven} />
             </div>
           ))}
         </div>
@@ -475,7 +517,7 @@ function Invites({ settings, users, onSaveSettings }) {
             <div style={{ fontSize: '15px', fontWeight: 600, color: 'var(--ink)' }}>Friend invites are {paused ? 'paused' : 'on'}</div>
             <div style={{ fontSize: '13px', color: 'var(--muted)', marginTop: '2px', lineHeight: 1.5 }}>
               {paused
-                ? "Members' unused codes don't work right now, and new members get 0 codes. Invites you send still work."
+                ? "Members' codes don't work right now. Anyone who tries one sees \"Nom is full for a moment\" and joins your waitlist. New members still get codes, which work once you turn this back on. Invites you send always work."
                 : "Members can share their codes. Invites you send always work, even when this is off."}
             </div>
           </div>
@@ -490,7 +532,7 @@ function Invites({ settings, users, onSaveSettings }) {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
           <div>
             <div style={{ fontSize: '15px', fontWeight: 600, color: 'var(--ink)' }}>Codes per new member</div>
-            <div style={{ fontSize: '13px', color: 'var(--muted)', marginTop: '2px' }}>How many codes each person gets when they join. Doesn't change anyone who already joined.</div>
+            <div style={{ fontSize: '13px', color: 'var(--muted)', marginTop: '2px' }}>How many codes each person gets when they join. Doesn't change anyone who already joined. To give someone more, use Give codes in the Users tab.</div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
             <Button kind="quiet" small disabled={saving || codes <= 0} onClick={() => save({ codes_per_new_user: codes - 1 })} style={{ width: '36px', padding: '7px 0' }} aria-label="Fewer">-</Button>
@@ -640,7 +682,7 @@ export default function Admin() {
             )}
             {tab === 'overview' && <Overview data={overview} onSaveSettings={saveSettings} />}
             {tab === 'waitlist' && <Waitlist rows={waitlist} onInvited={markInvited} />}
-            {tab === 'users' && <Users rows={users} />}
+            {tab === 'users' && <Users rows={users} onCodesGiven={(id, left) => setUsers(list => list.map(x => x.id === id ? { ...x, codes_left: left } : x))} />}
             {tab === 'invites' && <Invites settings={overview.settings} users={users} onSaveSettings={saveSettings} />}
             {loadedAt && <div style={{ fontSize: '11px', color: 'var(--muted)', textAlign: 'center', marginTop: '32px' }}>Updated {loadedAt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: TZ })}</div>}
           </>

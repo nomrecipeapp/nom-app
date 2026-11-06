@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { supabase } from './supabase'
 import { importRecipeFromUrl } from './importUrl'
 import { IconCheck } from './icons'
@@ -55,6 +55,38 @@ export default function Onboarding({ onComplete, session, prefillInviteCode, sta
     setWaitlistStatus('done')
   }
 
+  // Friend invites paused: a friend's code sends people to the waitlist instead of a dead end
+  const [pausedCode, setPausedCode] = useState(null) // { code, firstName }
+  const [pausedEmail, setPausedEmail] = useState(null)
+  const [pausedStatus, setPausedStatus] = useState('idle') // idle | sending | done | already | error
+
+  const codeToCheck = !session && step === 2 && inviteCode.trim().length >= 6 ? inviteCode.trim().toUpperCase() : null
+  useEffect(() => {
+    if (!codeToCheck) return
+    let cancelled = false
+    supabase.rpc('invite_code_status', { p_code: codeToCheck }).then(({ data, error }) => {
+      if (cancelled || error || data?.status !== 'paused') return
+      setPausedCode({ code: codeToCheck, firstName: data.first_name || null })
+      setPausedStatus('idle')
+    })
+    return () => { cancelled = true }
+  }, [codeToCheck])
+
+  async function handleJoinFromPausedCode() {
+    const clean = (pausedEmail ?? email).trim().toLowerCase()
+    if (!clean.includes('@') || clean.length < 3) { setPausedStatus('error'); return }
+    setPausedStatus('sending')
+    const { data, error } = await supabase.rpc('join_waitlist_from_code', { p_email: clean, p_code: pausedCode.code })
+    if (error || data === 'invalid') { setPausedStatus('error'); return }
+    setPausedStatus(data === 'already' ? 'already' : 'done')
+  }
+
+  function resetPausedCode() {
+    setPausedCode(null)
+    setInviteCode('')
+    setPausedStatus('idle')
+  }
+
   function openWaitlist() {
     setWaitlistEmail(email)
     setWaitlistStatus('idle')
@@ -88,7 +120,16 @@ export default function Onboarding({ onComplete, session, prefillInviteCode, sta
       .from('invites').select('id, used_by')
       .eq('code', inviteCode.trim().toUpperCase()).maybeSingle()
 
-    if (!invite) { setAuthError('That invite code is invalid. Ask a friend for one.'); return }
+    if (!invite) {
+      const { data: status } = await supabase.rpc('invite_code_status', { p_code: inviteCode })
+      if (status?.status === 'paused') {
+        setPausedCode({ code: inviteCode.trim().toUpperCase(), firstName: status.first_name || null })
+        setPausedStatus('idle')
+        return
+      }
+      setAuthError('That invite code is invalid. Ask a friend for one.')
+      return
+    }
     if (invite.used_by) { setAuthError('That invite code has already been used.'); return }
 
     setAuthLoading(true)
@@ -292,6 +333,55 @@ export default function Onboarding({ onComplete, session, prefillInviteCode, sta
       )}
     </div>
   )
+
+  // ── FRIEND INVITES PAUSED (they used a friend's code) ──
+  if (pausedCode && !session) {
+    const whose = pausedCode.firstName ? `${pausedCode.firstName}'s` : "Your friend's"
+    const whoseLower = pausedCode.firstName ? whose : "your friend's"
+    const joined = pausedStatus === 'done' || pausedStatus === 'already'
+    const emailValue = pausedEmail ?? email
+    return (
+      <div style={{ minHeight: '100vh', background: 'var(--cream)', display: 'flex', flexDirection: 'column', maxWidth: '480px', margin: '0 auto', padding: 'calc(48px + var(--safe-top)) 28px calc(40px + var(--safe-bottom))' }}>
+        {joined ? (
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+            <div>
+              <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'var(--sage)', color: 'var(--cream)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '20px' }}>
+                <IconCheck size={26} strokeWidth={2.5} />
+              </div>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: '26px', fontWeight: '700', color: 'var(--ink)', lineHeight: '1.2', marginBottom: '8px' }}>{pausedStatus === 'already' ? "You're already on the list!" : "You're first in line!"}</div>
+              <div style={{ fontSize: '14px', color: 'var(--muted)', lineHeight: '1.6' }}>Thanks for your patience. We'll email you an invite the moment a spot opens up, and {whoseLower} code will work again too.</div>
+            </div>
+            <div>
+              <button onClick={() => { resetPausedCode(); setStep(1) }} style={{ width: '100%', padding: '15px', background: 'var(--clay)', color: 'var(--cream)', border: 'none', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)', fontSize: '15px', fontWeight: '700', cursor: 'pointer' }}>Done</button>
+              <button onClick={() => onComplete('login')} style={{ width: '100%', padding: '12px 10px 0', background: 'none', border: 'none', fontFamily: 'var(--font-body)', fontSize: '13px', color: 'var(--muted)', cursor: 'pointer' }}>Already have an account? <span style={{ color: 'var(--clay)', fontWeight: '600' }}>Sign in</span></button>
+            </div>
+          </div>
+        ) : (
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+            <div>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: '26px', fontWeight: '700', color: 'var(--ink)', lineHeight: '1.2', marginBottom: '8px' }}>Nom is full for a moment</div>
+              <div style={{ fontSize: '14px', color: 'var(--muted)', lineHeight: '1.6', marginBottom: '28px' }}>We're letting people in a few at a time so Nom can stay free for everyone while we grow. {whose} code will work again soon. Join the waitlist and you'll be first in line when we open more spots.</div>
+              <label style={labelStyle}>Email</label>
+              <input type="email" value={emailValue} onChange={e => { setPausedEmail(e.target.value); if (pausedStatus === 'error') setPausedStatus('idle') }} placeholder="you@example.com" style={inputStyle} />
+              {pausedStatus === 'error' && (
+                <div style={{ background: '#FDE8E8', border: '1px solid #F5C0C0', borderRadius: 'var(--radius-md)', padding: '12px 16px', fontSize: '13px', color: '#B85252', marginTop: '16px' }}>That didn't go through. Check your email address and try again.</div>
+              )}
+            </div>
+            <div>
+              <button onClick={handleJoinFromPausedCode} disabled={pausedStatus === 'sending' || !emailValue.trim()} style={{
+                width: '100%', padding: '15px', marginTop: '24px',
+                background: (pausedStatus === 'sending' || !emailValue.trim()) ? 'var(--tan)' : 'var(--clay)',
+                color: 'var(--cream)', border: 'none', borderRadius: 'var(--radius-pill)',
+                fontFamily: 'var(--font-body)', fontSize: '15px', fontWeight: '700',
+                cursor: (pausedStatus === 'sending' || !emailValue.trim()) ? 'not-allowed' : 'pointer'
+              }}>{pausedStatus === 'sending' ? 'Joining...' : 'Join the waitlist'}</button>
+              <button onClick={resetPausedCode} style={{ width: '100%', padding: '12px 10px 0', background: 'none', border: 'none', fontFamily: 'var(--font-body)', fontSize: '13px', color: 'var(--muted)', cursor: 'pointer' }}>Have a different code? <span style={{ color: 'var(--clay)', fontWeight: '600' }}>Use it instead</span></button>
+            </div>
+          </div>
+        )}
+      </div>
+    )
+  }
 
   // ── STEP 1: WELCOME ──
   if (step === 1) return (
