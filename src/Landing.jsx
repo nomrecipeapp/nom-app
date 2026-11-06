@@ -6,6 +6,7 @@
 const PRIVACY_URL = 'https://app.termly.io/policy-viewer/policy.html?policyUUID=758a4b17-ed24-4c70-acda-5aaa6c508907'
 const TERMS_URL = 'https://app.termly.io/policy-viewer/policy.html?policyUUID=61e1bda6-9414-4896-bd55-972479e2c5ee'
 const CONTACT_EMAIL = 'hello@nomrecipeapp.com'
+const APP_STORE_URL = 'https://apps.apple.com/us/app/nom-recipe-app/id6828565860'
 
 const css = `
   .nl { background: var(--cream); color: var(--ink); font-family: var(--font-body); min-height: 100vh; }
@@ -24,23 +25,15 @@ const css = `
   .nl-ctas { display: flex; flex-direction: column; gap: 10px; max-width: 360px; }
   .nl-btn { background: var(--clay); color: var(--cream); border: none; border-radius: var(--radius-pill); padding: 15px 24px; font-family: var(--font-body); font-size: 15px; font-weight: 700; cursor: pointer; }
   .nl-btn-ghost { background: transparent; color: var(--clay); border: 2px solid var(--clay); border-radius: var(--radius-pill); padding: 13px 24px; font-family: var(--font-body); font-size: 15px; font-weight: 600; cursor: pointer; }
+  .nl-btn-link { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
   .nl-note { font-size: 13px; color: var(--muted); margin-top: 14px; }
   .nl-note-link { padding: 0; background: none; border: none; font-family: var(--font-body); font-size: 13px; font-weight: 600; color: var(--clay); cursor: pointer; }
 
-  .nl-phone { justify-self: center; width: 100%; max-width: 330px; background: var(--ink); border-radius: 40px; padding: 12px; box-shadow: 0 24px 60px rgba(28,26,23,0.22); }
-  .nl-screen { background: var(--cream); border-radius: 30px; overflow: hidden; }
-  .nl-screen-top { display: flex; justify-content: space-between; align-items: center; padding: 16px 18px 10px; }
-  .nl-screen-logo { font-family: var(--font-display); font-weight: 700; font-size: 20px; color: var(--clay); }
-  .nl-post { margin: 0 12px 12px; background: var(--warm-white); border: 1px solid var(--parchment); border-radius: var(--radius-md); overflow: hidden; }
-  .nl-post-head { display: flex; align-items: center; gap: 9px; padding: 11px 12px; }
-  .nl-av { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-weight: 700; font-size: 12px; color: var(--cream); flex-shrink: 0; }
-  .nl-post-name { font-size: 12px; font-weight: 600; }
-  .nl-post-time { font-size: 10px; color: var(--muted); }
-  .nl-post-img { height: 132px; }
-  .nl-post-body { padding: 11px 12px 13px; }
-  .nl-verdict { display: inline-flex; align-items: center; gap: 5px; border-radius: var(--radius-pill); padding: 4px 10px; font-size: 11px; font-weight: 600; margin-bottom: 7px; }
-  .nl-post-title { font-family: var(--font-display); font-size: 16px; font-weight: 500; margin-bottom: 4px; }
-  .nl-post-note { font-size: 12px; color: var(--charcoal); line-height: 1.5; font-style: italic; }
+  .nl-hero-img { justify-self: center; width: 100%; max-width: 330px; height: auto; display: block; filter: drop-shadow(0 24px 40px rgba(28,26,23,0.22)); }
+
+  .nl-shots { display: flex; gap: 14px; overflow-x: auto; scroll-snap-type: x mandatory; margin: 0 -20px; padding: 0 20px 6px; scrollbar-width: none; }
+  .nl-shots::-webkit-scrollbar { display: none; }
+  .nl-shot { flex: 0 0 72%; scroll-snap-align: center; width: 100%; height: auto; display: block; border-radius: var(--radius-lg); }
 
   .nl-section { padding: 56px 0; border-top: 1px solid var(--parchment); }
   .nl-label { font-size: 11px; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
@@ -70,6 +63,7 @@ const css = `
     .nl-hero { grid-template-columns: 1.1fr 0.9fr; padding: 56px 0 80px; }
     .nl-ctas { flex-direction: row; max-width: none; }
     .nl-grid3, .nl-verdicts { grid-template-columns: repeat(3, 1fr); }
+    .nl-shots { display: grid; grid-template-columns: repeat(3, 1fr); overflow: visible; margin: 0; padding: 0; }
     .nl-band { padding: 48px; }
   }
 `
@@ -90,45 +84,11 @@ function FaceIcon({ mood, stroke, fill, size = 40 }) {
   )
 }
 
-function PhoneMock() {
-  return (
-    <div className="nl-phone" aria-hidden="true">
-      <div className="nl-screen">
-        <div className="nl-screen-top">
-          <span className="nl-screen-logo">nom</span>
-          <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--muted)' }}>Feed</span>
-        </div>
-        <div className="nl-post">
-          <div className="nl-post-head">
-            <div className="nl-av" style={{ background: 'linear-gradient(135deg, var(--clay), var(--ember))' }}>J</div>
-            <div><div className="nl-post-name">Jamie cooked</div><div className="nl-post-time">2 hours ago</div></div>
-          </div>
-          <div className="nl-post-img" style={{ background: 'linear-gradient(160deg, var(--rust) 0%, var(--ember) 55%, var(--tan) 100%)' }} />
-          <div className="nl-post-body">
-            <div className="nl-verdict" style={{ background: '#EEF4E5', border: '1px solid var(--sage)', color: 'var(--forest)' }}>
-              <FaceIcon mood="happy" stroke="var(--sage)" fill="var(--forest)" size={13} /> Would Make Again
-            </div>
-            <div className="nl-post-title">Spicy Peanut Noodles</div>
-            <div className="nl-post-note">"Added chili crisp on top. Doubling the sauce next time."</div>
-          </div>
-        </div>
-        <div className="nl-post">
-          <div className="nl-post-head">
-            <div className="nl-av" style={{ background: 'linear-gradient(135deg, var(--sage), var(--forest))' }}>M</div>
-            <div><div className="nl-post-name">Maya cooked</div><div className="nl-post-time">Yesterday</div></div>
-          </div>
-          <div className="nl-post-body" style={{ paddingTop: 0 }}>
-            <div className="nl-verdict" style={{ background: '#FBF0E6', border: '1px solid var(--ember)', color: 'var(--clay)' }}>
-              <FaceIcon mood="meh" stroke="var(--ember)" fill="var(--clay)" size={13} /> It Was Fine
-            </div>
-            <div className="nl-post-title">Sheet Pan Gnocchi</div>
-            <div className="nl-post-note">"Easy weeknight, but needed way more salt."</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
+const shots = [
+  { src: '/landing/shot-save.webp', alt: 'Nom app: save recipes from a link, a photo, or by hand' },
+  { src: '/landing/shot-verdict.webp', alt: 'Nom app: log a cook as Would Make Again, It Was Fine, or Never Again' },
+  { src: '/landing/shot-cookbook.webp', alt: 'Nom app: your Cookbook, organized with your own tags' },
+]
 
 const features = [
   {
@@ -167,21 +127,21 @@ export default function Landing({ onGetStarted, onSignIn, onRequestInvite }) {
 
         <header className="nl-hero">
           <div>
-            <div className="nl-pill"><span className="nl-pill-dot" />Coming soon to the App Store</div>
+            <div className="nl-pill"><span className="nl-pill-dot" />Now on the App Store</div>
             <h1 className="nl-h1">Find it. Cook it. <em>Share it.</em></h1>
             <p className="nl-lede">
               Nom is your living cookbook. Save recipes from anywhere, keep an honest record of what you actually cook, and see what your friends are making.
             </p>
             <div className="nl-ctas">
-              <button className="nl-btn" onClick={onGetStarted}>I have an invite</button>
-              <button className="nl-btn-ghost" onClick={onSignIn}>Sign in</button>
+              <a className="nl-btn nl-btn-link" href={APP_STORE_URL} target="_blank" rel="noopener noreferrer">Download on the App Store</a>
+              <button className="nl-btn-ghost" onClick={onGetStarted}>I have an invite</button>
             </div>
             <div className="nl-note">
               Nom is invite-only for now.{' '}
               <button className="nl-note-link" onClick={onRequestInvite}>No code? Request an invite</button>
             </div>
           </div>
-          <PhoneMock />
+          <img className="nl-hero-img" src="/landing/hero-feed.webp" width="660" height="1435" alt="The Nom app Feed, showing friends' cooks and their verdicts" />
         </header>
 
         <section className="nl-section">
@@ -194,6 +154,16 @@ export default function Landing({ onGetStarted, onSignIn, onRequestInvite }) {
                 <h3>{f.title}</h3>
                 <p>{f.body}</p>
               </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="nl-section">
+          <div className="nl-label">See it in action</div>
+          <h2 className="nl-h2">A peek inside the app.</h2>
+          <div className="nl-shots">
+            {shots.map(shot => (
+              <img key={shot.src} className="nl-shot" src={shot.src} width="600" height="1304" alt={shot.alt} loading="lazy" />
             ))}
           </div>
         </section>
@@ -220,7 +190,7 @@ export default function Landing({ onGetStarted, onSignIn, onRequestInvite }) {
               <p className="nl-lede" style={{ marginBottom: '24px' }}>
                 No trending feed, no strangers. Just the people you follow and what they really thought of dinner.
               </p>
-              <button className="nl-btn" onClick={onGetStarted}>I have an invite</button>
+              <a className="nl-btn nl-btn-link" href={APP_STORE_URL} target="_blank" rel="noopener noreferrer">Download on the App Store</a>
             </div>
           </div>
         </section>
@@ -229,6 +199,7 @@ export default function Landing({ onGetStarted, onSignIn, onRequestInvite }) {
           <div className="nl-logo" style={{ fontSize: '24px' }}>nom</div>
           <div className="nl-foot-links">
             <a href={`mailto:${CONTACT_EMAIL}`}>Contact us</a>
+            <a href={APP_STORE_URL} target="_blank" rel="noopener noreferrer">Nom on the App Store</a>
             <a href={PRIVACY_URL} target="_blank" rel="noopener noreferrer">Privacy Policy</a>
             <a href={TERMS_URL} target="_blank" rel="noopener noreferrer">Terms of Service</a>
           </div>
