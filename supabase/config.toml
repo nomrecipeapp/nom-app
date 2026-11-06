@@ -32,3 +32,9 @@ enabled = true
 verify_jwt = false
 import_map = "./functions/notify-new-waitlist/deno.json"
 entrypoint = "./functions/notify-new-waitlist/index.ts"
+
+[functions.send-invite]
+enabled = true
+verify_jwt = false
+import_map = "./functions/send-invite/deno.json"
+entrypoint = "./functions/send-invite/index.ts"

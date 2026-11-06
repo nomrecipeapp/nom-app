@@ -3,6 +3,7 @@
 // the request is re-read from the database so fake calls can't send email).
 
 import { countsHtml, esc, fetchColumn, fetchOne, getCounts, readRecordId, sendAlert, wrap } from '../_shared/alerts.ts'
+import { sendEmail, waitlistEmail } from '../_shared/emails.ts'
 
 Deno.serve(async (req) => {
   const id = await readRecordId(req)
@@ -24,6 +25,13 @@ Deno.serve(async (req) => {
     ${hasAccount ? '<p style="background:#FAF6EF;border:1px solid #D9C9B0;border-radius:12px;padding:12px 16px">This email <strong>already has a Nom account</strong>. No invite needed; they probably meant to log in.</p>' : ''}
     ${countsHtml(counts)}
     <p style="font-size:13px;color:#8A8070">See everyone waiting in Supabase, Table Editor, <strong>waitlist</strong>.</p>`)
+
+  // Tell the person they're on the list (skip if they already have an account; they meant to sign in).
+  // Repeat requests never get here: the waitlist only allows each email once.
+  if (!hasAccount) {
+    const sent = await sendEmail(String(w.email).trim(), waitlistEmail())
+    if (!sent.ok) console.error('Waitlist confirmation failed for', w.email)
+  }
 
   const waiting = counts.waiting === null ? '' : ` (${counts.waiting} waiting)`
   const flag = hasAccount ? ' (already has an account)' : ''
