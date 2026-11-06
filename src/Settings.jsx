@@ -249,10 +249,11 @@ export default function Settings({ session, onBack }) {
     async function fetchCodes() {
       const { data } = await supabase
         .from('invites')
-        .select('id, code, used_by, used_at')
+        .select('id, code, used_by, used_at, source')
         .eq('created_by', session.user.id)
         .order('created_at', { ascending: true })
-      setCodes(data || [])
+      // Only the member's own friend codes (not invites sent from the Admin page)
+      setCodes((data || []).filter(c => (c.source || 'friend') === 'friend'))
       setLoadingCodes(false)
     }
 
@@ -335,23 +336,8 @@ export default function Settings({ session, onBack }) {
         </div>
 
         {used.length > 0 && (
-          <div style={{ marginTop: '12px' }}>
-            <div style={{ fontSize: '11px', fontWeight: '600', color: 'var(--muted)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '8px' }}>Used</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              {used.map(c => (
-                <div key={c.id} style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  padding: '10px 14px', background: 'var(--parchment)',
-                  borderRadius: 'var(--radius-md)', opacity: 0.5
-                }}>
-                  <div style={{
-                    fontFamily: 'var(--font-display)', fontSize: '15px',
-                    fontWeight: '700', color: 'var(--ink)', letterSpacing: '0.12em'
-                  }}>{c.code}</div>
-                  <div style={{ fontSize: '11px', color: 'var(--muted)' }}>Used</div>
-                </div>
-              ))}
-            </div>
+          <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '12px' }}>
+            {used.length} friend{used.length !== 1 ? 's' : ''} joined with your codes.
           </div>
         )}
       </div>
