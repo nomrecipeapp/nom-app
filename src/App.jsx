@@ -25,10 +25,9 @@ export default function App() {
   const [loading, setLoading] = useState(true)
   const [onboardingComplete, setOnboardingComplete] = useState(false)
   const [showLogin, setShowLogin] = useState(false)
-  // Public homepage for logged-out web visitors. Skipped in the iOS app and for invite links (?code=).
-  const [showLanding, setShowLanding] = useState(() =>
-    !Capacitor.isNativePlatform() && !new URLSearchParams(window.location.search).get('code')
-  )
+  // Public homepage for every logged-out web visitor, invite links (?code=) included.
+  // Sign-in and sign-up happen in the iOS app for now; the homepage only points to the App Store.
+  const [showLanding, setShowLanding] = useState(() => !Capacitor.isNativePlatform())
   const [screen, setScreen] = useState('feed')
   // Add Recipe can open with "Log a cook right away" already switched on (from Profile's empty state)
   const [addStartLogging, setAddStartLogging] = useState(false)
@@ -268,7 +267,7 @@ export default function App() {
     onSignUp={() => { setStartOnWaitlist(false); setStartOnSignup(true); setShowLanding(false); setShowLogin(false) }}
   />
   if (loading) return null
-  if (!session && showLanding) return <Landing onGetStarted={() => setShowLanding(false)} onSignIn={() => setShowLogin(true)} onRequestInvite={() => { setStartOnWaitlist(true); setShowLanding(false) }} />
+  if (!session && showLanding) return <Landing inviteCode={prefillInviteCode} />
   if (!session) return <Onboarding onComplete={handleOnboardingComplete} prefillInviteCode={prefillInviteCode} startOnWaitlist={startOnWaitlist} startOnSignup={startOnSignup} />
   if (!onboardingComplete) return <Onboarding session={session} onComplete={handleOnboardingComplete} prefillInviteCode={prefillInviteCode} />
 

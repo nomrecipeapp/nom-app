@@ -13,8 +13,7 @@ const css = `
   .nl-wrap { max-width: 1040px; margin: 0 auto; padding: 0 20px; }
   .nl-nav { display: flex; align-items: center; justify-content: space-between; padding: 20px 0; padding-top: calc(20px + env(safe-area-inset-top)); }
   .nl-logo { font-family: var(--font-display); font-weight: 700; font-size: 30px; color: var(--clay); letter-spacing: -1px; line-height: 1; }
-  .nl-signin { background: none; border: 1.5px solid var(--tan); color: var(--charcoal); border-radius: var(--radius-pill); padding: 9px 18px; font-family: var(--font-body); font-size: 14px; font-weight: 600; cursor: pointer; }
-  .nl-signin:active, .nl-btn:active, .nl-btn-ghost:active { transform: scale(0.98); }
+  .nl-btn:active { transform: scale(0.98); }
 
   .nl-hero { display: grid; grid-template-columns: 1fr; gap: 40px; align-items: center; padding: 32px 0 56px; }
   .nl-pill { display: inline-flex; align-items: center; gap: 8px; background: var(--parchment); border: 1px solid var(--tan); color: var(--charcoal); border-radius: var(--radius-pill); padding: 6px 14px; font-size: 13px; font-weight: 600; margin-bottom: 20px; }
@@ -24,10 +23,9 @@ const css = `
   .nl-lede { font-size: 17px; line-height: 1.65; color: var(--charcoal); max-width: 480px; margin: 0 0 28px; }
   .nl-ctas { display: flex; flex-direction: column; gap: 10px; max-width: 360px; }
   .nl-btn { background: var(--clay); color: var(--cream); border: none; border-radius: var(--radius-pill); padding: 15px 24px; font-family: var(--font-body); font-size: 15px; font-weight: 700; cursor: pointer; }
-  .nl-btn-ghost { background: transparent; color: var(--clay); border: 2px solid var(--clay); border-radius: var(--radius-pill); padding: 13px 24px; font-family: var(--font-body); font-size: 15px; font-weight: 600; cursor: pointer; }
   .nl-btn-link { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
   .nl-note { font-size: 13px; color: var(--muted); margin-top: 14px; }
-  .nl-note-link { padding: 0; background: none; border: none; font-family: var(--font-body); font-size: 13px; font-weight: 600; color: var(--clay); cursor: pointer; }
+  .nl-note strong { color: var(--ink); font-weight: 700; letter-spacing: 0.06em; }
 
   .nl-hero-img { justify-self: center; width: 100%; max-width: 330px; height: auto; display: block; filter: drop-shadow(0 24px 40px rgba(28,26,23,0.22)); }
 
@@ -114,7 +112,7 @@ const verdicts = [
   { mood: 'sad', label: 'Never Again', sub: 'Duly noted', bg: '#F4E8E8', border: '#C47070', stroke: '#C47070', fill: '#9B4040' },
 ]
 
-export default function Landing({ onGetStarted, onSignIn, onRequestInvite }) {
+export default function Landing({ inviteCode }) {
   return (
     <div className="nl">
       <style>{css}</style>
@@ -122,7 +120,6 @@ export default function Landing({ onGetStarted, onSignIn, onRequestInvite }) {
 
         <nav className="nl-nav">
           <div className="nl-logo">nom</div>
-          <button className="nl-signin" onClick={onSignIn}>Sign in</button>
         </nav>
 
         <header className="nl-hero">
@@ -134,11 +131,11 @@ export default function Landing({ onGetStarted, onSignIn, onRequestInvite }) {
             </p>
             <div className="nl-ctas">
               <a className="nl-btn nl-btn-link" href={APP_STORE_URL} target="_blank" rel="noopener noreferrer">Download on the App Store</a>
-              <button className="nl-btn-ghost" onClick={onGetStarted}>I have an invite</button>
             </div>
             <div className="nl-note">
-              Nom is invite-only for now.{' '}
-              <button className="nl-note-link" onClick={onRequestInvite}>No code? Request an invite</button>
+              {inviteCode
+                ? <>Your invite code is <strong>{inviteCode}</strong>. Download Nom and enter it when you sign up.</>
+                : <>Nom is invite-only for now. Got a code from a friend? Enter it when you sign up in the app. No code? Request an invite in the app.</>}
             </div>
           </div>
           <img className="nl-hero-img" src="/landing/hero-feed.webp" width="660" height="1435" alt="The Nom app Feed, showing friends' cooks and their verdicts" />
