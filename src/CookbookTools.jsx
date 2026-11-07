@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useLayoutEffect } from 'react'
 import { IconX } from './icons'
 import { addTag, tagKey } from './tags'
 import { LETTERS } from './letters'
@@ -8,10 +8,20 @@ import { LETTERS } from './letters'
 // your finger along it to jump. Letters with no recipes are faded and jump to
 // the closest letter that has some.
 
-export function AlphabetRail({ available, onJump }) {
+export function AlphabetRail({ available, onJump, top }) {
+  const outerRef = useRef(null)
   const columnRef = useRef(null)
   const lastJump = useRef(null)
   const [active, setActive] = useState(null)
+  const [lineHeight, setLineHeight] = useState(15)
+
+  // Shrink the letters to fit when there's less room (like at the very top of the Cookbook)
+  useLayoutEffect(() => {
+    const h = outerRef.current?.getBoundingClientRect().height
+    // Measuring the rail after it's drawn is the point here, so setting state in this effect is intended
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (h) setLineHeight(Math.max(9, Math.min(15, Math.floor(h / LETTERS.length))))
+  }, [top])
 
   function closestAvailable(letter) {
     const i = LETTERS.indexOf(letter)
@@ -41,6 +51,7 @@ export function AlphabetRail({ available, onJump }) {
   return (
     <>
       <div
+        ref={outerRef}
         onTouchStart={e => handle(e.touches[0].clientY)}
         onTouchMove={e => handle(e.touches[0].clientY)}
         onTouchEnd={end}
@@ -50,8 +61,8 @@ export function AlphabetRail({ available, onJump }) {
         style={{
           position: 'fixed', zIndex: 150,
           right: 'max(0px, calc((100vw - 480px) / 2))',
-          top: 'calc(var(--top-bar-h) + 8px)', bottom: 'calc(var(--nav-clearance) + 8px)',
-          width: '26px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          top: top != null ? `${top}px` : 'calc(var(--top-bar-h) + 8px)', bottom: 'calc(var(--nav-clearance) + 8px)',
+          width: '26px', display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
           touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none',
         }}
       >
@@ -59,7 +70,7 @@ export function AlphabetRail({ available, onJump }) {
           {LETTERS.map(l => (
             <div key={l} style={{
               fontFamily: 'var(--font-body)', fontSize: '10px', fontWeight: '700',
-              lineHeight: 'min(15px, calc((100dvh - var(--top-bar-h) - var(--nav-clearance) - 24px) / 27))',
+              lineHeight: `${lineHeight}px`,
               color: available.has(l) ? 'var(--clay)' : 'var(--tan)',
               padding: '0 6px',
             }}>{l}</div>

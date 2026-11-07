@@ -42,6 +42,8 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
   const [tagSheet, setTagSheet] = useState(null) // 'add' | 'remove' | null
   const [working, setWorking] = useState(false)
   const loadedRef = useRef(false)
+  const listRef = useRef(null)
+  const [railTop, setRailTop] = useState(null)
 
   // Load once, then quietly reload every time you come back to the Cookbook,
   // so edits (tags, titles, deletes) show up without restarting the app
@@ -207,6 +209,25 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
     }
   }
   const showRail = isAtoZ && !selecting && filtered.length >= 8
+
+  // The rail starts where the recipe list starts (never over the filters and tags),
+  // then sticks just under the search bar once you scroll past them
+  useEffect(() => {
+    if (!showRail) return
+    const container = document.getElementById('cookbook-scroll-container')
+    function place() {
+      if (!listRef.current || !headerRef.current) return
+      const top = Math.max(headerRef.current.getBoundingClientRect().bottom, listRef.current.getBoundingClientRect().top) + 8
+      setRailTop(Math.round(top))
+    }
+    place()
+    container?.addEventListener('scroll', place, { passive: true })
+    window.addEventListener('resize', place)
+    return () => {
+      container?.removeEventListener('scroll', place)
+      window.removeEventListener('resize', place)
+    }
+  }, [showRail, tagFilters.length, filtered.length, loading, visible])
 
   function jumpToLetter(letter) {
     const container = document.getElementById('cookbook-scroll-container')
@@ -431,7 +452,7 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
         </div>
 
         {/* Scrollable list */}
-        <div style={{
+        <div ref={listRef} style={{
           padding: '16px 24px',
           paddingRight: showRail ? '34px' : '24px',
           paddingBottom: selecting ? 'calc(var(--nav-clearance) + 84px)' : 'var(--nav-clearance)',
@@ -565,7 +586,7 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
       </div>
 
       {showRail && (
-        <AlphabetRail available={new Set(Object.keys(firstOfLetter))} onJump={jumpToLetter} />
+        <AlphabetRail available={new Set(Object.keys(firstOfLetter))} onJump={jumpToLetter} top={railTop} />
       )}
 
       {/* Select mode actions, just above the bottom bar */}
