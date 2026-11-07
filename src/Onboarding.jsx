@@ -384,10 +384,11 @@ export default function Onboarding({ onComplete, session, prefillInviteCode, sta
   }
 
   // ── STEP 1: WELCOME ──
+  // Fits on one screen: the illustration shrinks on smaller iPhones so the buttons never need a scroll
   if (step === 1) return (
-    <div style={{ minHeight: '100vh', background: 'var(--cream)', display: 'flex', flexDirection: 'column', maxWidth: '480px', margin: '0 auto' }}>
-      <div style={{ background: 'linear-gradient(160deg, var(--clay) 0%, var(--ember) 60%, var(--parchment) 100%)', height: '45vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-        <svg width="140" height="140" viewBox="0 0 140 140" fill="none">
+    <div style={{ height: '100dvh', overflowY: 'auto', background: 'var(--cream)', display: 'flex', flexDirection: 'column', maxWidth: '480px', margin: '0 auto' }}>
+      <div style={{ background: 'linear-gradient(160deg, var(--clay) 0%, var(--ember) 60%, var(--parchment) 100%)', flex: '1 1 0', minHeight: 'calc(110px + var(--safe-top))', maxHeight: '40vh', paddingTop: 'var(--safe-top)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <svg viewBox="0 0 140 140" fill="none" style={{ height: '70%', maxHeight: '140px', width: 'auto' }}>
           <ellipse cx="70" cy="95" rx="48" ry="14" fill="rgba(0,0,0,0.15)"/>
           <path d="M30 90 Q30 120 70 125 Q110 120 110 90" fill="rgba(255,255,255,0.2)" stroke="rgba(255,255,255,0.4)" strokeWidth="2"/>
           <ellipse cx="70" cy="90" rx="40" ry="12" fill="rgba(255,255,255,0.25)" stroke="rgba(255,255,255,0.5)" strokeWidth="2"/>
@@ -400,12 +401,12 @@ export default function Onboarding({ onComplete, session, prefillInviteCode, sta
           <path d="M85 65 Q82 55 85 45" stroke="rgba(255,255,255,0.5)" strokeWidth="2" strokeLinecap="round" fill="none"/>
         </svg>
       </div>
-      <div style={{ flex: 1, padding: '32px 28px calc(40px + var(--safe-bottom))', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+      <div style={{ flexShrink: 0, padding: '24px 28px calc(20px + var(--safe-bottom))', display: 'flex', flexDirection: 'column' }}>
         <div>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: '40px', fontWeight: '700', color: 'var(--clay)', letterSpacing: '-1.5px', marginBottom: '12px' }}>nom</div>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: '40px', fontWeight: '700', color: 'var(--clay)', letterSpacing: '-1.5px', marginBottom: '8px' }}>nom</div>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: '26px', fontWeight: '700', color: 'var(--ink)', lineHeight: '1.2', marginBottom: '12px' }}>What's cookin'<br />good lookin'?</div>
           <div style={{ fontSize: '14px', color: 'var(--muted)', lineHeight: '1.6' }}>Finally, a place for all the recipes you've been meaning to cook.</div>
-          <div style={{ marginTop: '16px', marginBottom: '24px', padding: '12px 14px', background: 'var(--parchment)', borderRadius: 'var(--radius-md)', fontSize: '13px', color: 'var(--charcoal)', lineHeight: '1.5' }}>Nom is invite-only for now. Got a code from a friend? You're in.</div>
+          <div style={{ marginTop: '14px', marginBottom: '20px', padding: '12px 14px', background: 'var(--parchment)', borderRadius: 'var(--radius-md)', fontSize: '13px', color: 'var(--charcoal)', lineHeight: '1.5' }}>Nom is invite-only for now. Got a code from a friend? You're in.</div>
         </div>
         <div>
           <button onClick={() => setStep(2)} style={{ width: '100%', padding: '15px', background: 'var(--clay)', color: 'var(--cream)', border: 'none', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)', fontSize: '15px', fontWeight: '700', cursor: 'pointer', marginBottom: '10px' }}>I have an invite code</button>

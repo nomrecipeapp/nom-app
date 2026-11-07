@@ -6,6 +6,7 @@ import FloatingAction from './FloatingAction'
 import { confirmSheet, toast } from './ui'
 import { PRESET_TAGS, tagChoices, addTag, hasTag, tagKey } from './tags'
 import { IngredientList, InstructionList, CopyIngredientsButton, RecipeTimes } from './RecipeContent'
+import { setBackGuard } from './backGuard'
 
 const verdictOptions = [
   { value: 'would_make_again', label: 'Would Make Again', sub: 'A keeper', bg: '#EEF4E5', border: '#7A8C6E', color: '#4A5E42' },
@@ -83,6 +84,18 @@ export default function RecipeDetail({ recipe: initialRecipe, session, onBack, o
     fetchUserTags()
     fetchMyProfile()
   }, [])
+
+  // While editing the recipe or a cook, Back (button or swipe) closes the editor instead of leaving
+  useEffect(() => {
+    if (editing) return setBackGuard(() => { setEditing(false); setEditError(null); return true })
+    if (editingCookId) return setBackGuard(() => { setEditingCookId(null); setEditCookForm(null); return true })
+  }, [editing, editingCookId])
+
+  function openEdit() {
+    setEditForm({ title: recipe.title || '', source_name: recipe.source_name || '', source_url: recipe.source_url || '', image_url: recipe.image_url || '', cook_time: recipe.cook_time || '', prep_time: recipe.prep_time || '', difficulty: recipe.difficulty || '', ingredients: recipe.ingredients || '', instructions: recipe.instructions || '', notes: recipe.notes || '', tags: recipe.tags || [] })
+    setEditing(true)
+    window.scrollTo(0, 0)
+  }
 
   async function fetchUserTags() {
     const { data } = await supabase.from('recipes').select('tags').eq('user_id', session.user.id)
@@ -751,7 +764,6 @@ async function saveEditCook() {
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round"/></svg>
                 {thumbnailUploading ? 'Uploading...' : 'Add photo'}
               </button>
-              <button onClick={() => { setEditForm({ title: recipe.title || '', source_name: recipe.source_name || '', source_url: recipe.source_url || '', image_url: recipe.image_url || '', cook_time: recipe.cook_time || '', prep_time: recipe.prep_time || '', difficulty: recipe.difficulty || '', ingredients: recipe.ingredients || '', instructions: recipe.instructions || '', notes: recipe.notes || '', tags: recipe.tags || [] }); setEditing(true) }} style={{ background: 'var(--parchment)', border: 'none', borderRadius: 'var(--radius-pill)', padding: '6px 14px', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600', color: 'var(--charcoal)', cursor: 'pointer' }}>Edit</button>
             </div>
           )
         }
@@ -818,6 +830,8 @@ async function saveEditCook() {
               <RecipeTimes prep={recipe.prep_time} total={recipe.cook_time} />
               {recipe.difficulty && <span style={{ fontSize: '12px', color: 'var(--muted)' }}>· {recipe.difficulty}</span>}
             </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0, marginLeft: 'auto' }}>
+            <button onClick={openEdit} style={{ background: 'var(--parchment)', border: 'none', borderRadius: 'var(--radius-pill)', padding: '6px 14px', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600', color: 'var(--charcoal)', cursor: 'pointer' }}>Edit</button>
             <button onClick={() => {
               const url = `/?recipe=${recipe.id}`
               const fullUrl = `https://www.nomrecipeapp.com${url}`
@@ -831,7 +845,15 @@ async function saveEditCook() {
                 <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13" stroke="var(--muted)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </button>
+            </div>
           </div>
+          {(recipe.tags || []).length > 0 && (
+            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '12px' }}>
+              {recipe.tags.map(tag => (
+                <span key={tag} style={{ padding: '3px 10px', borderRadius: 'var(--radius-pill)', background: 'var(--parchment)', fontSize: '11px', fontWeight: '600', color: 'var(--charcoal)' }}>{tag}</span>
+              ))}
+            </div>
+          )}
         </div>
 
         {showCircleModal && (
@@ -861,11 +883,6 @@ async function saveEditCook() {
           </a>
         )}
 
-        {recipe.image_url && (
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '8px' }}>
-            <button onClick={() => { setEditForm({ title: recipe.title || '', source_name: recipe.source_name || '', source_url: recipe.source_url || '', image_url: recipe.image_url || '', cook_time: recipe.cook_time || '', prep_time: recipe.prep_time || '', difficulty: recipe.difficulty || '', ingredients: recipe.ingredients || '', instructions: recipe.instructions || '', notes: recipe.notes || '', tags: recipe.tags || [] }); setEditing(true) }} style={{ background: 'var(--parchment)', border: 'none', borderRadius: 'var(--radius-pill)', padding: '6px 14px', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600', color: 'var(--charcoal)', cursor: 'pointer' }}>Edit</button>
-          </div>
-        )}
 
         {!logging && (
           <div style={{ marginBottom: '24px' }}>

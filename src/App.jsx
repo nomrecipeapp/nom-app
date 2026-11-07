@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Capacitor } from '@capacitor/core'
 import { StatusBar, Style } from '@capacitor/status-bar'
 import { supabase } from './supabase'
@@ -19,6 +19,12 @@ import ResetPassword from './ResetPassword'
 import FollowList from './FollowList'
 import Settings from './Settings'
 import Landing from './Landing'
+import { runBackGuard, hasBackGuard } from './backGuard'
+
+// Screens that always show a Back button, even when opened from a shared link
+const DETAIL_SCREENS = ['recipe', 'socialRecipe', 'friendRecipeDetail', 'friendProfile', 'followList', 'notifications']
+// Screens where swiping from the left edge should never go back (forms you could lose)
+const NO_SWIPE_SCREENS = ['feed', 'add', 'resetPassword']
 
 export default function App() {
   const [session, setSession] = useState(null)
@@ -34,12 +40,10 @@ export default function App() {
   const [selectedRecipe, setSelectedRecipe] = useState(null)
   const [selectedCook, setSelectedCook] = useState(null)
   const [selectedUserId, setSelectedUserId] = useState(null)
-  const [prevScreen, setPrevScreen] = useState('feed')
   const [scrollToComments, setScrollToComments] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
   const [selectedPost, setSelectedPost] = useState(null)
   const [selectedSaveRecipe, setSelectedSaveRecipe] = useState(null)
-  const [recipeBackScreen, setRecipeBackScreen] = useState('cookbook')
   const [selectedSaveScrollToComments, setSelectedSaveScrollToComments] = useState(false)
   const [followListUserId, setFollowListUserId] = useState(null)
   const [followListType, setFollowListType] = useState('following')
@@ -55,6 +59,13 @@ export default function App() {
   const [midSignup, setMidSignup] = useState(false)
   const [pendingRecipeId, setPendingRecipeId] = useState(null)
   const [pendingCookId, setPendingCookId] = useState(null)
+  // Back history: each entry is a snapshot of where you were (screen + what was open).
+  // Tapping a bottom tab clears it. Back (button or swipe) pops the last entry.
+  const navRef = useRef([])
+  const [navDepth, setNavDepth] = useState(0)
+  const pendingScrollRef = useRef(null)
+  const swipeRef = useRef(null)
+  const settingsRef = useRef(null)
 
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return
@@ -95,7 +106,8 @@ export default function App() {
         setOnboardingComplete(false)
         setSettingsVisible(false)
         setScreen('feed')
-        setPrevScreen('feed')
+        navRef.current = []
+        setNavDepth(0)
         setShowLanding(!Capacitor.isNativePlatform())
         return
       }
@@ -136,7 +148,7 @@ export default function App() {
         setPendingCookId(null)
         window.history.replaceState({}, '', window.location.pathname)
         if (cook.user_id === session.user.id) {
-          setRecipeBackScreen('feed')
+          pushNav()
           setSelectedRecipe(cook.recipes)
           setScreen('recipe')
           return
@@ -157,7 +169,7 @@ export default function App() {
         setPendingRecipeId(null)
         window.history.replaceState({}, '', window.location.pathname)
         if (recipe.user_id === session.user.id) {
-          setRecipeBackScreen('feed')
+          pushNav()
           setSelectedRecipe(recipe)
           setScreen('recipe')
           return
@@ -175,6 +187,126 @@ export default function App() {
 
     handlePendingShare()
   }, [session, onboardingComplete, pendingRecipeId, pendingCookId])
+
+  // After Back, put the page back where you had scrolled to.
+  // Screens load their data after they appear, so try again a moment later too.
+  useEffect(() => {
+    const y = pendingScrollRef.current
+    if (y === null) return
+    pendingScrollRef.current = null
+    if (!y) return
+    const raf = requestAnimationFrame(() => window.scrollTo(0, y))
+    const t = setTimeout(() => { if (window.scrollY < y - 4) window.scrollTo(0, y) }, 350)
+    return () => { cancelAnimationFrame(raf); clearTimeout(t) }
+  }, [screen, navDepth])
+
+  // Swipe from the left edge to go back, like other iPhone apps.
+  // The current screen follows your finger; let go past a third of the way (or flick) to go back.
+  const swipeStateRef = useRef({ canSwipe: false, goBack: () => {} })
+  useEffect(() => {
+    swipeStateRef.current = {
+      canSwipe: settingsVisible || (!NO_SWIPE_SCREENS.includes(screen) && (navDepth > 0 || DETAIL_SCREENS.includes(screen))),
+      goBack,
+    }
+  })
+
+  useEffect(() => {
+    if (!('ontouchstart' in window)) return
+    const EDGE = 24
+    let start = null
+    let el = null
+    let dragging = false
+    let last = null
+    let velocity = 0
+
+    // Touches on pop-ups and floating buttons inside a screen shouldn't start a swipe
+    function onFixedLayer(target, root) {
+      for (let n = target; n && n !== root; n = n.parentElement) {
+        if (getComputedStyle(n).position === 'fixed') return true
+      }
+      return false
+    }
+
+    function reset(target) {
+      if (!target) return
+      target.style.transition = ''
+      target.style.transform = ''
+      target.style.boxShadow = ''
+      target.style.willChange = ''
+      document.body.style.background = ''
+    }
+
+    function onStart(e) {
+      start = null
+      if (e.touches.length !== 1 || !swipeStateRef.current.canSwipe || hasBackGuard()) return
+      const t = e.touches[0]
+      if (t.clientX > EDGE) return
+      el = settingsRef.current || swipeRef.current
+      if (!el || !el.contains(e.target)) return
+      if (onFixedLayer(e.target, el)) return
+      start = { x: t.clientX, y: t.clientY }
+      last = { x: t.clientX, time: e.timeStamp }
+      velocity = 0
+      dragging = false
+    }
+
+    function onMove(e) {
+      if (!start) return
+      const t = e.touches[0]
+      const dx = t.clientX - start.x
+      const dy = t.clientY - start.y
+      if (!dragging) {
+        if (Math.abs(dy) > 10 && Math.abs(dy) > dx) { start = null; return }
+        if (dx < 8) return
+        dragging = true
+        el.style.transition = 'none'
+        el.style.willChange = 'transform'
+        el.style.boxShadow = '-10px 0 24px rgba(28,26,23,0.14)'
+        // A slightly darker backdrop shows behind the screen as it slides away
+        document.body.style.background = 'var(--parchment)'
+      }
+      e.preventDefault()
+      const dt = e.timeStamp - last.time
+      if (dt > 0) velocity = (t.clientX - last.x) / dt
+      last = { x: t.clientX, time: e.timeStamp }
+      el.style.transform = `translateX(${Math.max(0, dx)}px)`
+    }
+
+    function onEnd(e) {
+      if (!start) return
+      const target = el
+      const wasDragging = dragging
+      const endX = e.changedTouches[0]?.clientX ?? start.x
+      const dx = endX - start.x
+      start = null
+      dragging = false
+      if (!wasDragging) return
+      const width = window.innerWidth
+      const goingBack = dx > width / 3 || (dx > 40 && velocity > 0.5)
+      target.style.transition = 'transform 0.2s ease-out'
+      target.style.transform = goingBack ? `translateX(${width}px)` : 'translateX(0)'
+      setTimeout(() => {
+        if (goingBack) {
+          swipeStateRef.current.goBack()
+          // Let the previous screen draw before sliding this one back into place
+          setTimeout(() => reset(target), 60)
+        } else {
+          reset(target)
+        }
+      }, 200)
+    }
+
+    document.addEventListener('touchstart', onStart, { passive: true })
+    document.addEventListener('touchmove', onMove, { passive: false })
+    document.addEventListener('touchend', onEnd, { passive: true })
+    document.addEventListener('touchcancel', onEnd, { passive: true })
+    return () => {
+      document.removeEventListener('touchstart', onStart)
+      document.removeEventListener('touchmove', onMove)
+      document.removeEventListener('touchend', onEnd)
+      document.removeEventListener('touchcancel', onEnd)
+    }
+  }, [])
 
   async function fetchUnreadCount(userId) {
     const { count } = await supabase
@@ -208,30 +340,72 @@ export default function App() {
     }
   }
 
+  // ── Back history ──
+
+  function snapshot() {
+    return { screen, selectedRecipe, selectedCook, selectedUserId, selectedSaveRecipe, followListUserId, followListType, scrollY: window.scrollY }
+  }
+
+  function pushNav() {
+    navRef.current = [...navRef.current, snapshot()].slice(-40)
+    setNavDepth(navRef.current.length)
+  }
+
+  function resetNav(entries = []) {
+    navRef.current = entries
+    setNavDepth(entries.length)
+  }
+
+  // Bottom tabs start a fresh history
+  function goTab(tab) {
+    resetNav()
+    setScrollToComments(false)
+    setSelectedSaveScrollToComments(false)
+    setScreen(tab)
+  }
+
+  function goBack() {
+    if (runBackGuard()) return
+    if (settingsVisible) { setSettingsVisible(false); return }
+    const stack = navRef.current
+    const prev = stack[stack.length - 1]
+    resetNav(stack.slice(0, -1))
+    setScrollToComments(false)
+    setSelectedSaveScrollToComments(false)
+    if (!prev) { setScreen('feed'); return }
+    if ('selectedRecipe' in prev) setSelectedRecipe(prev.selectedRecipe)
+    if ('selectedCook' in prev) setSelectedCook(prev.selectedCook)
+    if ('selectedUserId' in prev) setSelectedUserId(prev.selectedUserId)
+    if ('selectedSaveRecipe' in prev) setSelectedSaveRecipe(prev.selectedSaveRecipe)
+    if ('followListUserId' in prev) setFollowListUserId(prev.followListUserId)
+    if ('followListType' in prev) setFollowListType(prev.followListType)
+    pendingScrollRef.current = prev.scrollY || 0
+    setScreen(prev.screen)
+  }
+
   function goToFriendRecipeDetail(recipe, toComments = false) {
+    pushNav()
     window.scrollTo(0, 0)
-    setPrevScreen(screen)
     setSelectedSaveRecipe(recipe)
     setSelectedSaveScrollToComments(toComments)
     setScreen('friendRecipeDetail')
   }
 
   function goToSocialRecipe(cook, toComments = false) {
+    pushNav()
     window.scrollTo(0, 0)
-    setPrevScreen(screen)
     setSelectedCook(cook)
     setScrollToComments(toComments)
     setScreen('socialRecipe')
   }
 
   function goToFriendProfile(userId) {
+    pushNav()
     window.scrollTo(0, 0)
     if (session && userId === session.user.id) {
-      setPrevScreen(screen)
       setScreen('profile')
       return
     }
-    setPrevScreen(screen)
     setSelectedUserId(userId)
     setScreen('friendProfile')
   }
@@ -243,21 +417,23 @@ export default function App() {
       .eq('id', recipeId)
       .single()
     if (data) {
-      setRecipeBackScreen(screen)
+      pushNav()
+      window.scrollTo(0, 0)
       setSelectedRecipe(data)
       setScreen('recipe')
     }
   }
 
   function goToFollowList(userId, type) {
-    setPrevScreen(screen)
+    pushNav()
+    window.scrollTo(0, 0)
     setFollowListUserId(userId)
     setFollowListType(type)
     setScreen('followList')
   }
 
   function goToPost(item) {
-    setPrevScreen(screen)
+    pushNav()
     setSelectedPost(item)
     setScreen('postDetail')
   }
@@ -271,7 +447,7 @@ export default function App() {
   if (!session) return <Onboarding onComplete={handleOnboardingComplete} prefillInviteCode={prefillInviteCode} startOnWaitlist={startOnWaitlist} startOnSignup={startOnSignup} />
   if (!onboardingComplete) return <Onboarding session={session} onComplete={handleOnboardingComplete} prefillInviteCode={prefillInviteCode} />
 
-  function openAdd(startLogging = false) { setAddStartLogging(startLogging); setScreen('add') }
+  function openAdd(startLogging = false) { pushNav(); setAddStartLogging(startLogging); setScreen('add') }
 
   const hideNav = screen === 'add'
   const hideTopBar = screen === 'add' || screen === 'resetPassword'
@@ -299,8 +475,8 @@ export default function App() {
           <div style={{ width: '72px' }}>
             {screen === 'feed' ? (
               <div style={{ fontFamily: 'var(--font-display)', fontSize: '24px', fontWeight: '700', color: 'var(--clay)', letterSpacing: '-0.5px' }}>nom</div>
-            ) : ['recipe', 'socialRecipe', 'friendRecipeDetail', 'friendProfile', 'followList', 'notifications'].includes(screen) ? (
-              <button onClick={() => screen === 'recipe' ? setScreen(recipeBackScreen) : setScreen(prevScreen)} style={{
+            ) : (navDepth > 0 || DETAIL_SCREENS.includes(screen)) ? (
+              <button onClick={goBack} style={{
                 display: 'flex', alignItems: 'center', gap: '5px',
                 background: 'none', border: 'none', cursor: 'pointer', padding: 0
               }}>
@@ -333,7 +509,7 @@ export default function App() {
                 Settings
               </button>
             ) : screen === 'notifications' ? null : (
-              <button onClick={() => { setPrevScreen(screen); setScreen('notifications'); setUnreadCount(0) }} style={{
+              <button onClick={() => { pushNav(); setScreen('notifications'); setUnreadCount(0) }} style={{
                 position: 'relative', width: '36px', height: '36px', borderRadius: '50%',
                 background: 'var(--warm-white)', border: '1px solid var(--parchment)',
                 cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -361,7 +537,7 @@ export default function App() {
       )}
 
       {settingsVisible && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'var(--cream)', overflowY: 'auto' }}>
+        <div ref={settingsRef} style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'var(--cream)', overflowY: 'auto' }}>
           <div style={{
             position: 'fixed', top: 0, left: 0, right: 0,
             maxWidth: '480px', margin: '0 auto',
@@ -386,13 +562,15 @@ export default function App() {
         </div>
       )}
 
+      {/* Everything below the top bar; this is what slides when you swipe back */}
+      <div ref={swipeRef} style={{ background: 'var(--cream)', minHeight: '100vh' }}>
       {screen === 'notifications' && (
         <Notifications
           session={session}
           onSelectUser={goToFriendProfile}
           onSelectCook={(cook, toComments) => goToSocialRecipe(cook, toComments)}
           onSelectSaveCard={(recipe, toComments) => goToFriendRecipeDetail(recipe, toComments)}
-          onClose={() => { setScreen(prevScreen); fetchUnreadCount(session.user.id) }}
+          onClose={() => { goBack(); fetchUnreadCount(session.user.id) }}
           onMarkedRead={() => fetchUnreadCount(session.user.id)}
         />
       )}
@@ -402,31 +580,32 @@ export default function App() {
           session={session}
           startLogging={addStartLogging}
           onSave={(recipe, logCookNow) => {
+            setCookbookKey(k => k + 1)
+            setCookbookScrollY(0)
             if (logCookNow && recipe) {
-              setRecipeBackScreen('cookbook')
+              // Back from the new recipe goes to the Cookbook
+              resetNav([{ screen: 'cookbook', scrollY: 0 }])
               setSelectedRecipe(recipe)
               setScreen('recipe')
             } else {
-              setCookbookKey(k => k + 1)
-              setCookbookScrollY(0)
-              setScreen('cookbook')
+              goTab('cookbook')
             }
           }}
-          onCancel={() => setScreen('cookbook')}
+          onCancel={goBack}
         />
       )}
 
       {screen === 'profile' && (
         <Profile
           session={session}
-          onBack={() => setScreen(prevScreen)}
-          onSelectRecipe={(recipe) => { setRecipeBackScreen('profile'); setSelectedRecipe(recipe); setScreen('recipe') }}
+          onBack={goBack}
+          onSelectRecipe={(recipe) => { pushNav(); window.scrollTo(0, 0); setSelectedRecipe(recipe); setScreen('recipe') }}
           onSelectCook={goToSocialRecipe}
           onSelectSave={goToFriendRecipeDetail}
           onViewFollowList={(type) => goToFollowList(session.user.id, type)}
           externalEditing={profileEditing}
           onEditingDone={() => setProfileEditing(false)}
-          onViewCookbook={(filter) => { setCookbookDefaultFilter(filter); setPrevScreen('profile'); setScreen('cookbook') }}
+          onViewCookbook={(filter) => { setCookbookDefaultFilter(filter); setCookbookKey(k => k + 1); goTab('cookbook') }}
           onAddRecipe={() => openAdd()}
           onLogNewCook={() => openAdd(true)}
         />
@@ -436,13 +615,11 @@ export default function App() {
         <RecipeDetail
           recipe={selectedRecipe}
           session={session}
-          onBack={() => setScreen(recipeBackScreen)}
+          onBack={goBack}
           onSelectUser={goToFriendProfile}
           onUpdate={async () => {
             const { data } = await supabase.from('recipes').select('*').eq('id', selectedRecipe.id).single()
             if (data) setSelectedRecipe(data)
-            setScreen('recipe')
-            setRecipeBackScreen(recipeBackScreen)
           }}
         />
       )}
@@ -451,7 +628,7 @@ export default function App() {
         <SocialRecipeDetail
           cook={selectedCook}
           session={session}
-          onBack={() => { setScreen(prevScreen); setScrollToComments(false) }}
+          onBack={goBack}
           onSelectUser={goToFriendProfile}
           scrollToComments={scrollToComments}
           isOwner={selectedCook.user_id === session.user.id}
@@ -463,7 +640,7 @@ export default function App() {
         <FriendRecipeDetail
           recipe={selectedSaveRecipe}
           session={session}
-          onBack={() => { setScreen(prevScreen); setSelectedSaveScrollToComments(false) }}
+          onBack={goBack}
           scrollToComments={selectedSaveScrollToComments}
           isOwner={selectedSaveRecipe.user_id === session.user.id}
           onViewInCookbook={goToRecipeFromId}
@@ -475,7 +652,7 @@ export default function App() {
         <FriendProfile
           userId={selectedUserId}
           session={session}
-          onBack={() => setScreen(prevScreen)}
+          onBack={goBack}
           onSelectCook={goToSocialRecipe}
           onSelectSave={goToFriendRecipeDetail}
           onViewFollowList={(userId, type) => goToFollowList(userId, type)}
@@ -487,7 +664,7 @@ export default function App() {
           userId={followListUserId}
           type={followListType}
           session={session}
-          onBack={() => setScreen(prevScreen)}
+          onBack={goBack}
           onSelectUser={goToFriendProfile}
         />
       )}
@@ -499,8 +676,8 @@ export default function App() {
           onSelectUser={goToFriendProfile}
           onSelectPost={goToPost}
           onSelectSave={goToFriendRecipeDetail}
-          onGoToSearch={() => setScreen('search')}
-          onGoToCookbook={() => setScreen('cookbook')}
+          onGoToSearch={() => goTab('search')}
+          onGoToCookbook={() => goTab('cookbook')}
           savedScrollY={feedScrollY}
           onScrollChange={setFeedScrollY}
         />
@@ -513,7 +690,8 @@ export default function App() {
           onSelectSave={goToFriendRecipeDetail}
           onSelectCook={goToSocialRecipe}
           onSelectRecipe={(recipe) => {
-            setRecipeBackScreen('search')
+            pushNav()
+            window.scrollTo(0, 0)
             setSelectedRecipe(recipe)
             setScreen('recipe')
           }}
@@ -526,9 +704,10 @@ export default function App() {
           session={session}
           onAddRecipe={() => openAdd()}
           defaultFilter={cookbookDefaultFilter}
+          visible={screen === 'cookbook'}
           onSelectRecipe={(recipe) => {
+            pushNav()
             window.scrollTo(0, 0)
-            setRecipeBackScreen('cookbook')
             setSelectedRecipe(recipe)
             setScreen('recipe')
           }}
@@ -539,8 +718,9 @@ export default function App() {
       </div>
 
       {screen === 'resetPassword' && (
-        <ResetPassword onComplete={() => { setScreen('feed') }} />
+        <ResetPassword onComplete={() => goTab('feed')} />
       )}
+      </div>
 
       {!hideNav && (
         <div style={{
@@ -549,7 +729,7 @@ export default function App() {
           display: 'flex', justifyContent: 'space-evenly', alignItems: 'center',
           height: 'var(--bottom-nav-h)', padding: '12px 0 0', paddingBottom: 'var(--bottom-nav-pad)', zIndex: 100
         }}>
-          <button onClick={() => setScreen('feed')} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '4px 0', flex: 1 }}>
+          <button onClick={() => goTab('feed')} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '4px 0', flex: 1 }}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
               <rect x="3" y="3" width="8" height="8" rx="2" stroke={screen === 'feed' ? 'var(--clay)' : 'var(--muted)'} strokeWidth="1.8"/>
               <rect x="13" y="3" width="8" height="8" rx="2" stroke={screen === 'feed' ? 'var(--clay)' : 'var(--muted)'} strokeWidth="1.8"/>
@@ -559,7 +739,7 @@ export default function App() {
             <span style={{ fontSize: '10px', fontWeight: '600', color: screen === 'feed' ? 'var(--clay)' : 'var(--muted)' }}>Feed</span>
           </button>
 
-          <button onClick={() => setScreen('search')} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '4px 0', flex: 1 }}>
+          <button onClick={() => goTab('search')} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '4px 0', flex: 1 }}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
               <circle cx="11" cy="11" r="7" stroke={screen === 'search' ? 'var(--clay)' : 'var(--muted)'} strokeWidth="1.8"/>
               <path d="M16.5 16.5L21 21" stroke={screen === 'search' ? 'var(--clay)' : 'var(--muted)'} strokeWidth="1.8" strokeLinecap="round"/>
@@ -580,7 +760,7 @@ export default function App() {
             </button>
           </div>
 
-          <button onClick={() => setScreen('cookbook')} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '4px 0', flex: 1 }}>
+          <button onClick={() => goTab('cookbook')} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '4px 0', flex: 1 }}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
               <path d="M4 19V8a2 2 0 012-2h12a2 2 0 012 2v11" stroke={screen === 'cookbook' ? 'var(--clay)' : 'var(--muted)'} strokeWidth="1.8" strokeLinecap="round"/>
               <path d="M4 19h16M9 11h6M9 15h4" stroke={screen === 'cookbook' ? 'var(--clay)' : 'var(--muted)'} strokeWidth="1.8" strokeLinecap="round"/>
@@ -588,7 +768,7 @@ export default function App() {
             <span style={{ fontSize: '10px', fontWeight: '600', color: screen === 'cookbook' ? 'var(--clay)' : 'var(--muted)' }}>Cookbook</span>
           </button>
 
-          <button onClick={() => setScreen('profile')} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '4px 0', flex: 1 }}>
+          <button onClick={() => goTab('profile')} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '4px 0', flex: 1 }}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
               <circle cx="12" cy="8" r="4" stroke={screen === 'profile' ? 'var(--clay)' : 'var(--muted)'} strokeWidth="1.8"/>
               <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke={screen === 'profile' ? 'var(--clay)' : 'var(--muted)'} strokeWidth="1.8" strokeLinecap="round"/>

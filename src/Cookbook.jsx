@@ -1,9 +1,12 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from './supabase'
 import CircleFriendsModal from './CircleFriendsModal'
-import { IconX, IconBook, IconBookmark, IconPot, IconPlus } from './icons'
+import { IconX, IconBook, IconBookmark, IconPot, IconPlus, IconCheck } from './icons'
 import EmptyState from './EmptyState'
-import { canonicalSpellings, recipeTags, sortTags, tagKey, hasTag } from './tags'
+import { canonicalSpellings, recipeTags, sortTags, tagKey, hasTag, tagChoices, addTag } from './tags'
+import { AlphabetRail, TagSheet } from './CookbookTools'
+import { letterOf } from './letters'
+import { confirmSheet, toast } from './ui'
 
 const FILTERS = ['All', 'Want to Make', 'Cooked', 'Never Again']
 
@@ -21,7 +24,7 @@ const verdictStyle = {
 
 const SORT_OPTIONS = ['Newest', 'Oldest', 'A to Z', 'Cook Score', 'Friends Have It']
 
-export default function Cookbook({ session, onAddRecipe, onSelectRecipe, defaultFilter, onSelectUser, savedScrollY, onScrollChange }) {
+export default function Cookbook({ session, onAddRecipe, onSelectRecipe, defaultFilter, onSelectUser, savedScrollY, onScrollChange, visible }) {
   const [recipes, setRecipes] = useState([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState(defaultFilter || 'All')
@@ -33,10 +36,24 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
   const [circleModal, setCircleModal] = useState(null)
   const headerRef = useRef(null)
   const [headerHeight, setHeaderHeight] = useState(0)
+  // Select mode: tick recipes, then add a tag, remove a tag, or delete them
+  const [selecting, setSelecting] = useState(false)
+  const [selected, setSelected] = useState(() => new Set())
+  const [tagSheet, setTagSheet] = useState(null) // 'add' | 'remove' | null
+  const [working, setWorking] = useState(false)
+  const loadedRef = useRef(false)
 
+  // Load once, then quietly reload every time you come back to the Cookbook,
+  // so edits (tags, titles, deletes) show up without restarting the app
   useEffect(() => {
-    fetchRecipes()
-  }, [session])
+    if (!loadedRef.current) { loadedRef.current = true; fetchRecipes(); return }
+    if (visible) fetchRecipes(true)
+  }, [session, visible])
+
+  // Leaving the Cookbook ends Select mode
+  useEffect(() => {
+    if (!visible) { setSelecting(false); setSelected(new Set()); setTagSheet(null) }
+  }, [visible])
 
   // Measure header height for sticky offset
   useEffect(() => {
@@ -64,8 +81,8 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
     return () => container.removeEventListener('scroll', handleScroll)
   }, [onScrollChange])
 
-  async function fetchRecipes() {
-    setLoading(true)
+  async function fetchRecipes(quiet = false) {
+    if (!quiet) setLoading(true)
     const { data } = await supabase
       .from('recipes')
       .select('*')
@@ -150,7 +167,15 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
     )
   }
 
-  const filtered = recipes
+  // Search looks at the name first, then tags, ingredients and notes ("feta" finds recipes that use feta)
+  const q = search.trim().toLowerCase()
+  const matchesName = (r) => String(r.title ?? '').toLowerCase().includes(q) || String(r.source_name ?? '').toLowerCase().includes(q)
+  const matchesInside = (r) =>
+    (r.tags || []).some(t => String(t).toLowerCase().includes(q)) ||
+    String(r.ingredients ?? '').toLowerCase().includes(q) ||
+    String(r.notes ?? '').toLowerCase().includes(q)
+
+  const sorted = recipes
     .filter(r => {
       if (filter === 'Want to Make') return r.status === 'want_to_make'
       if (filter === 'Cooked') return r.status === 'cooked'
@@ -161,14 +186,7 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
       if (tagFilters.length === 0) return true
       return tagFilters.some(tag => hasTag(r.tags, tag))
     })
-    .filter(r => {
-      if (!search.trim()) return true
-      const q = search.toLowerCase()
-      return (
-        r.title?.toLowerCase().includes(q) ||
-        r.source_name?.toLowerCase().includes(q)
-      )
-    })
+    .filter(r => !q || matchesName(r) || matchesInside(r))
     .sort((a, b) => {
       if (SORT_OPTIONS[sortIndex] === 'A to Z') return a.title.localeCompare(b.title)
       if (SORT_OPTIONS[sortIndex] === 'Oldest') return new Date(a.created_at) - new Date(b.created_at)
@@ -176,6 +194,100 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
       if (SORT_OPTIONS[sortIndex] === 'Friends Have It') return (circleFriendsMap[b.id]?.count || 0) - (circleFriendsMap[a.id]?.count || 0)
       return new Date(b.created_at) - new Date(a.created_at)
     })
+  // When searching, name matches come first
+  const filtered = q ? [...sorted.filter(matchesName), ...sorted.filter(r => !matchesName(r))] : sorted
+
+  // ── A to Z rail ──
+  const isAtoZ = SORT_OPTIONS[sortIndex] === 'A to Z'
+  const firstOfLetter = {}
+  if (isAtoZ) {
+    for (const r of filtered) {
+      const l = letterOf(r.title)
+      if (!(l in firstOfLetter)) firstOfLetter[l] = r.id
+    }
+  }
+  const showRail = isAtoZ && !selecting && filtered.length >= 8
+
+  function jumpToLetter(letter) {
+    const container = document.getElementById('cookbook-scroll-container')
+    const el = container?.querySelector(`[data-letter="${letter}"]`)
+    if (!container || !el || !headerRef.current) return
+    container.scrollTop += el.getBoundingClientRect().top - headerRef.current.getBoundingClientRect().bottom - 10
+  }
+
+  // ── Select mode ──
+  function startSelecting() { setSelecting(true); setSelected(new Set()) }
+  function stopSelecting() { setSelecting(false); setSelected(new Set()); setTagSheet(null) }
+  function toggleSelected(id) {
+    setSelected(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+  const allShownSelected = filtered.length > 0 && filtered.every(r => selected.has(r.id))
+  function toggleSelectAll() {
+    setSelected(allShownSelected ? new Set() : new Set(filtered.map(r => r.id)))
+  }
+  const selectedRecipes = recipes.filter(r => selected.has(r.id))
+  const n = selectedRecipes.length
+  const recipesWord = (count) => (count === 1 ? '1 recipe' : `${count} recipes`)
+
+  async function saveTags(changes) {
+    const results = await Promise.all(changes.map(({ id, tags }) =>
+      supabase.from('recipes').update({ tags, updated_at: new Date().toISOString() }).eq('id', id)
+    ))
+    const failed = results.filter(r => r.error).length
+    const byId = Object.fromEntries(changes.map(c => [c.id, c.tags]))
+    setRecipes(prev => prev.map(r => (r.id in byId ? { ...r, tags: byId[r.id] } : r)))
+    return failed
+  }
+
+  async function addTagToSelected(tag) {
+    setTagSheet(null)
+    setWorking(true)
+    const choices = tagChoices(recipes.flatMap(r => r.tags || []))
+    const changes = selectedRecipes
+      .filter(r => !hasTag(r.tags, tag))
+      .map(r => ({ id: r.id, tags: addTag(r.tags || [], tag, choices) }))
+    const failed = changes.length ? await saveTags(changes) : 0
+    setWorking(false)
+    if (failed) { toast(`Couldn't update ${recipesWord(failed)}. Try again?`, { icon: null }); return }
+    toast(`Tagged ${recipesWord(n)} ${tag}`)
+    stopSelecting()
+  }
+
+  async function removeTagFromSelected(tag) {
+    setTagSheet(null)
+    setWorking(true)
+    const changes = selectedRecipes
+      .filter(r => hasTag(r.tags, tag))
+      .map(r => ({ id: r.id, tags: (r.tags || []).filter(t => tagKey(t) !== tagKey(tag)) }))
+    const failed = changes.length ? await saveTags(changes) : 0
+    setWorking(false)
+    if (failed) { toast(`Couldn't update ${recipesWord(failed)}. Try again?`, { icon: null }); return }
+    toast(`Removed ${tag} from ${recipesWord(changes.length)}`)
+    stopSelecting()
+  }
+
+  async function deleteSelected() {
+    const ok = await confirmSheet({
+      title: `Delete ${recipesWord(n)}?`,
+      message: "They'll be removed from your Cookbook. This can't be undone.",
+      confirmLabel: 'Delete',
+      destructive: true,
+    })
+    if (!ok) return
+    setWorking(true)
+    const ids = selectedRecipes.map(r => r.id)
+    const { error } = await supabase.from('recipes').delete().in('id', ids)
+    setWorking(false)
+    if (error) { toast("Couldn't delete those. Try again?", { icon: null }); return }
+    setRecipes(prev => prev.filter(r => !selected.has(r.id)))
+    toast(`Deleted ${recipesWord(ids.length)}`)
+    stopSelecting()
+  }
 
   const hasActiveFilters = tagFilters.length > 0
 
@@ -243,7 +355,7 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
             </svg>
             <input
               type="text" value={search} onChange={e => setSearch(e.target.value)}
-              placeholder="Search recipes..."
+              placeholder="Search recipes or ingredients..."
               style={{ flex: 1, border: 'none', background: 'none', fontFamily: 'var(--font-body)', fontSize: '14px', color: 'var(--ink)', outline: 'none' }}
             />
             {search && (
@@ -319,11 +431,31 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
         </div>
 
         {/* Scrollable list */}
-        <div style={{ padding: '16px 24px var(--nav-clearance)' }}>
+        <div style={{
+          padding: '16px 24px',
+          paddingRight: showRail ? '34px' : '24px',
+          paddingBottom: selecting ? 'calc(var(--nav-clearance) + 84px)' : 'var(--nav-clearance)',
+        }}>
 
-          {/* Recipe count */}
-          <div style={{ fontSize: '12px', color: 'var(--muted)', marginBottom: '16px' }}>
-            {filtered.length} {filtered.length === 1 ? 'recipe' : 'recipes'}
+          {/* Recipe count + Select */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', minHeight: '22px' }}>
+            <div style={{ fontSize: '12px', color: selecting ? 'var(--ink)' : 'var(--muted)', fontWeight: selecting ? '600' : '400' }}>
+              {selecting
+                ? (n === 0 ? 'Tap recipes to select' : `${n} selected`)
+                : `${filtered.length} ${filtered.length === 1 ? 'recipe' : 'recipes'}`}
+            </div>
+            {filtered.length > 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                {selecting && (
+                  <button onClick={toggleSelectAll} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '600', color: 'var(--clay)' }}>
+                    {allShownSelected ? 'Select none' : 'Select all'}
+                  </button>
+                )}
+                <button onClick={selecting ? stopSelecting : startSelecting} style={{ background: selecting ? 'var(--clay)' : 'var(--parchment)', color: selecting ? 'var(--cream)' : 'var(--charcoal)', border: 'none', borderRadius: 'var(--radius-pill)', padding: '5px 14px', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600' }}>
+                  {selecting ? 'Done' : 'Select'}
+                </button>
+              </div>
+            )}
           </div>
 
           {circleModal && (
@@ -335,13 +467,29 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
             <EmptyState {...emptyMessage()} />
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {filtered.map(recipe => (
-                <div key={recipe.id} onClick={() => onSelectRecipe(recipe)} style={{
-                  background: 'var(--warm-white)', borderRadius: 'var(--radius-md)',
-                  border: '1px solid var(--parchment)', padding: '16px 18px',
-                  cursor: 'pointer', transition: 'box-shadow 0.15s'
+              {filtered.map(recipe => {
+                const isSelected = selected.has(recipe.id)
+                const foundInside = q && !matchesName(recipe) && String(recipe.ingredients ?? '').toLowerCase().includes(q)
+                return (
+                <div key={recipe.id}
+                  data-letter={showRail && firstOfLetter[letterOf(recipe.title)] === recipe.id ? letterOf(recipe.title) : undefined}
+                  onClick={() => (selecting ? toggleSelected(recipe.id) : onSelectRecipe(recipe))}
+                  style={{
+                  background: isSelected ? '#FBF0E6' : 'var(--warm-white)', borderRadius: 'var(--radius-md)',
+                  border: `1px solid ${isSelected ? 'var(--clay)' : 'var(--parchment)'}`, padding: '16px 18px',
+                  cursor: 'pointer', transition: 'box-shadow 0.15s, background 0.15s, border-color 0.15s'
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                    {selecting && (
+                      <div aria-hidden="true" style={{
+                        width: '24px', height: '24px', borderRadius: '50%', flexShrink: 0,
+                        border: isSelected ? 'none' : '1.5px solid var(--tan)',
+                        background: isSelected ? 'var(--clay)' : 'var(--cream)',
+                        color: 'var(--cream)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}>
+                        {isSelected && <IconCheck size={14} strokeWidth={2.6} />}
+                      </div>
+                    )}
                     {recipe.image_url && (
                       <div style={{
                         width: '52px', height: '52px', borderRadius: 'var(--radius-sm)',
@@ -365,6 +513,9 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
                         {recipe.source_name && <span style={{ fontSize: '11px', color: 'var(--muted)' }}>{recipe.source_name}</span>}
                         {recipe.cook_time && <span style={{ fontSize: '11px', color: 'var(--muted)' }}>· {recipe.cook_time}</span>}
                       </div>
+                      {foundInside && (
+                        <div style={{ fontSize: '11px', color: 'var(--clay)', fontWeight: '600', marginTop: '3px' }}>Uses {search.trim()}</div>
+                      )}
                       {(recipe.tags || []).length > 0 && (
                         <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '5px' }}>
                           {recipeTags(recipe.tags, tagSpellings).map(tag => {
@@ -389,7 +540,7 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
                   </div>
 
                   {circleFriendsMap[recipe.id] && (
-                    <div onClick={e => { e.stopPropagation(); setCircleModal(recipe.source_url) }} style={{
+                    <div onClick={e => { if (selecting) return; e.stopPropagation(); setCircleModal(recipe.source_url) }} style={{
                       display: 'flex', alignItems: 'center', gap: '6px',
                       marginTop: '10px', paddingTop: '10px', borderTop: '1px solid var(--parchment)'
                     }}>
@@ -406,11 +557,59 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
                     </div>
                   )}
                 </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </div>
       </div>
+
+      {showRail && (
+        <AlphabetRail available={new Set(Object.keys(firstOfLetter))} onJump={jumpToLetter} />
+      )}
+
+      {/* Select mode actions, just above the bottom bar */}
+      {selecting && (
+        <div style={{
+          position: 'fixed', left: 0, right: 0, zIndex: 120,
+          bottom: 'var(--nav-clearance)', maxWidth: '480px', margin: '0 auto',
+          padding: '0 16px 4px',
+        }}>
+          <div style={{
+            display: 'flex', gap: '8px', background: 'var(--warm-white)',
+            border: '1px solid var(--parchment)', borderRadius: 'var(--radius-pill)',
+            padding: '6px', boxShadow: '0 6px 24px rgba(28,26,23,0.14)',
+          }}>
+            {[
+              { label: 'Add tag', onClick: () => setTagSheet('add'), color: 'var(--cream)', bg: 'var(--clay)' },
+              { label: 'Remove tag', onClick: () => setTagSheet('remove'), color: 'var(--charcoal)', bg: 'var(--parchment)' },
+              { label: 'Delete', onClick: deleteSelected, color: '#9B4040', bg: '#F4E8E8' },
+            ].map(a => {
+              const off = n === 0 || working
+              return (
+                <button key={a.label} onClick={a.onClick} disabled={off} style={{
+                  flex: 1, padding: '11px 6px', border: 'none', borderRadius: 'var(--radius-pill)',
+                  background: off ? 'var(--parchment)' : a.bg, color: off ? 'var(--tan)' : a.color,
+                  fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '700',
+                  cursor: off ? 'default' : 'pointer', whiteSpace: 'nowrap',
+                }}>{a.label}</button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {tagSheet && (
+        <TagSheet
+          mode={tagSheet}
+          count={n}
+          options={tagSheet === 'add'
+            ? tagChoices(recipes.flatMap(r => r.tags || []))
+            : recipeTags(selectedRecipes.flatMap(r => r.tags || []), tagSpellings)}
+          onPick={tagSheet === 'add' ? addTagToSelected : removeTagFromSelected}
+          onClose={() => setTagSheet(null)}
+        />
+      )}
     </div>
   )
 }

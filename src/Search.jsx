@@ -119,13 +119,24 @@ async function fetchRecentlyViewed() {
   async function runSearch(q) {
     setLoading(true)
 
-    const { data: myRecipeRows = [] } = await supabase
+    // Recipes match on the name or the ingredients ("feta" finds recipes that use feta).
+    // Name matches come first. Characters that would break the filter are swapped for spaces.
+    const safe = q.replace(/[,()*%\\]/g, ' ').trim()
+    const nameOrIngredient = `title.ilike.%${safe}%,ingredients.ilike.%${safe}%`
+    const nameFirst = (rows) => {
+      const lower = safe.toLowerCase()
+      const inName = (r) => r.title?.toLowerCase().includes(lower)
+      return [...rows.filter(inName), ...rows.filter(r => !inName(r))]
+    }
+
+    const { data: myRows } = await supabase
       .from('recipes')
       .select('*')
       .eq('user_id', session.user.id)
-      .ilike('title', `%${q}%`)
+      .or(nameOrIngredient)
       .order('created_at', { ascending: false })
-      .limit(5)
+      .limit(20)
+    const myRecipeRows = nameFirst(myRows || []).slice(0, 5)
 
     const { data: peopleRows } = await supabase
       .from('profiles')
@@ -149,8 +160,8 @@ async function fetchRecentlyViewed() {
         .from('recipes')
         .select('*')
         .in('user_id', friendIds)
-        .ilike('title', `%${q}%`)
-        .limit(5)
+        .or(nameOrIngredient)
+        .limit(20)
 
       if (recipeRows && recipeRows.length > 0) {
         const uids = [...new Set(recipeRows.map(r => r.user_id))]
@@ -158,7 +169,7 @@ async function fetchRecentlyViewed() {
           .from('profiles')
           .select('id, full_name, username, avatar_url')
           .in('id', uids)
-        recipes = recipeRows.map(r => ({
+        recipes = nameFirst(recipeRows).slice(0, 5).map(r => ({
           ...r,
           profiles: profs?.find(p => p.id === r.user_id) || null
         }))
