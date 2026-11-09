@@ -1,10 +1,9 @@
 // Emails nom.recipeapp@gmail.com whenever someone files a report.
 // Triggered by a Database Webhook on INSERT into public.reports (deployed with verify_jwt = false;
 // the report is re-read from the database so fake calls can't send email).
-// Uses RESEND_API_KEY (already set) plus SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY (built in).
+// Uses RESEND_API_KEY (already set) plus SUPABASE_URL and the project's secret key (built in).
 
-const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
-const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+import { dbHeaders, SUPABASE_URL } from '../_shared/alerts.ts'
 
 const reasonLabels: Record<string, string> = {
   spam: 'Spam',
@@ -29,7 +28,7 @@ async function fetchOne(table: string, select: string, id: string | null) {
   if (!id) return null
   try {
     const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?select=${select}&id=eq.${encodeURIComponent(id)}`, {
-      headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` },
+      headers: dbHeaders,
     })
     const rows = await res.json()
     return Array.isArray(rows) ? rows[0] ?? null : null

@@ -7,13 +7,13 @@
 // Uses Resend's batch API (up to 100 per call) with idempotency keys, so running "all"
 // twice within 24 hours will not email anyone twice.
 
-import { SERVICE_KEY, SUPABASE_URL } from '../_shared/alerts.ts'
+import { dbHeaders, SUPABASE_URL } from '../_shared/alerts.ts'
 import { announcementEmail, FROM, REPLY_TO, sendEmail } from '../_shared/emails.ts'
 
 const CAMPAIGN = 'nom-launch-announcement-2026-11'
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
-const db = { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` }
+const db = dbHeaders
 
 function sameSecret(a: string, b: string): boolean {
   if (!a || !b || a.length !== b.length) return false

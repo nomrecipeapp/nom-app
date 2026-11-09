@@ -5,14 +5,14 @@
 // Marks the waitlist row as invited, so the Admin page shows who's been invited.
 // Deployed with verify_jwt = false because the checks below are the lock.
 
-import { fetchColumn, SERVICE_KEY, SUPABASE_URL } from '../_shared/alerts.ts'
+import { dbHeaders, fetchColumn, SERVICE_KEY, SUPABASE_URL } from '../_shared/alerts.ts'
 import { inviteEmail, sendEmail } from '../_shared/emails.ts'
 
 const ALLOWED_ORIGINS = ['https://www.nomrecipeapp.com', 'https://nomrecipeapp.com', 'http://localhost:5173']
 const json = (body: unknown, status = 200, extra: Record<string, string> = {}) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json', ...extra } })
 
-const db = { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` }
+const db = dbHeaders
 
 // Signed in on the Admin page? Returns the admin's user id, or null.
 async function adminFromSession(req: Request): Promise<string | null> {
@@ -90,8 +90,7 @@ Deno.serve(async (req) => {
     const res = await fetch(`${SUPABASE_URL}/rest/v1/invites`, {
       method: 'POST',
       headers: {
-        apikey: SERVICE_KEY,
-        Authorization: `Bearer ${SERVICE_KEY}`,
+        ...dbHeaders,
         'Content-Type': 'application/json',
         Prefer: 'return=minimal',
       },

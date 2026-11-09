@@ -1,12 +1,23 @@
 // Shared helpers for Nom's internal alert emails (sign-ups, waitlist).
-// Uses RESEND_API_KEY (already set) plus SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY (built in).
+// Uses RESEND_API_KEY (already set) plus SUPABASE_URL and the project's secret key (built in).
 
 export const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
-export const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+
+// The server key for reading the database. Prefers the new "default" secret key (sb_secret_...),
+// which Supabase puts in SUPABASE_SECRET_KEYS. Falls back to the legacy service_role key only
+// while the new keys don't exist yet. Secret keys go on the apikey header only (they aren't JWTs).
+function serverKey(): string {
+  try {
+    const k = JSON.parse(Deno.env.get('SUPABASE_SECRET_KEYS') ?? '{}')?.default
+    if (k) return k
+  } catch (_e) { /* fall through */ }
+  return Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+}
+export const SERVICE_KEY = serverKey()
+export const dbHeaders: Record<string, string> = { apikey: SERVICE_KEY }
+
 export const ALERT_TO = 'nom.recipeapp@gmail.com'
 const FROM = 'Nom <hello@nomrecipeapp.com>'
-
-const dbHeaders = { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` }
 
 export function esc(value: unknown): string {
   return String(value ?? '')
