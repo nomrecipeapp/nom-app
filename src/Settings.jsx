@@ -154,8 +154,14 @@ export default function Settings({ session, onBack }) {
     setDeleteError(null)
     let failed = false
     try {
-      const { error } = await supabase.rpc('delete_user')
-      if (error) { console.error('Delete failed:', error); failed = true }
+      // delete-account removes the account and then their photos.
+      // If it can't be reached, fall back to the old database delete (account only).
+      const { error: fnError } = await supabase.functions.invoke('delete-account', { method: 'POST' })
+      if (fnError) {
+        console.error('delete-account failed, falling back:', fnError)
+        const { error } = await supabase.rpc('delete_user')
+        if (error) { console.error('Delete failed:', error); failed = true }
+      }
     } catch (e) {
       console.error('Delete failed:', e)
       failed = true

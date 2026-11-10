@@ -50,3 +50,9 @@ enabled = true
 verify_jwt = false
 import_map = "./functions/send-announcement/deno.json"
 entrypoint = "./functions/send-announcement/index.ts"
+
+[functions.delete-account]
+enabled = true
+verify_jwt = false
+import_map = "./functions/delete-account/deno.json"
+entrypoint = "./functions/delete-account/index.ts"
