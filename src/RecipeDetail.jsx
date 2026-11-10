@@ -283,7 +283,12 @@ export default function RecipeDetail({ recipe: initialRecipe, session, onBack, o
   async function deleteCook(cookId) {
     setDeletingCookId(cookId)
     setOpenCookMenuId(null)
-    await supabase.from('cooks').delete().eq('id', cookId)
+    const { data, error } = await supabase.from('cooks').delete().eq('id', cookId).select('id')
+    if (error || !data?.length) {
+      setDeletingCookId(null)
+      toast("Couldn't delete this cook. Try again?", { icon: null })
+      return
+    }
     await fetchCooks()
     onUpdate()
     setDeletingCookId(null)
@@ -442,7 +447,14 @@ async function saveEditCook() {
   async function deleteRecipe() {
     if (!(await confirmSheet({ title: 'Remove this recipe?', confirmLabel: 'Remove', destructive: true }))) return
     setDeleting(true)
-    await supabase.from('recipes').delete().eq('id', recipe.id)
+    // .select() returns the deleted rows, so a delete that quietly removed
+    // nothing (no error, but zero rows) counts as a failure too
+    const { data, error } = await supabase.from('recipes').delete().eq('id', recipe.id).select('id')
+    if (error || !data?.length) {
+      setDeleting(false)
+      toast("Couldn't remove this recipe. Try again?", { icon: null })
+      return
+    }
     onBack()
   }
 

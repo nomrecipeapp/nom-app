@@ -30,6 +30,9 @@ export default function App() {
   const [session, setSession] = useState(null)
   const [loading, setLoading] = useState(true)
   const [onboardingComplete, setOnboardingComplete] = useState(false)
+  // Mirrors onboardingComplete so the auth listener (set up once) can read it
+  const onboardedRef = useRef(false)
+  useEffect(() => { onboardedRef.current = onboardingComplete }, [onboardingComplete])
   const [showLogin, setShowLogin] = useState(false)
   // Public homepage for every logged-out web visitor, invite links (?code=) included.
   // Sign-in and sign-up happen in the iOS app for now; the homepage only points to the App Store.
@@ -118,6 +121,10 @@ export default function App() {
         setShowLogin(false)
         return
       }
+      // Fresh sign in: hold on the loading screen until we know whether this
+      // person has finished onboarding. Otherwise "not loaded yet" looks like
+      // "new user" and the onboarding screen flashes before the feed.
+      if (event === 'SIGNED_IN' && session && !onboardedRef.current) setLoading(true)
       setSession(session)
       if (session) {
         setShowLogin(false)
@@ -442,7 +449,8 @@ export default function App() {
     onBack={() => { setStartOnWaitlist(false); setStartOnSignup(false); setShowLogin(false) }}
     onSignUp={() => { setStartOnWaitlist(false); setStartOnSignup(true); setShowLanding(false); setShowLogin(false) }}
   />
-  if (loading) return null
+  if (loading) return <div style={{ minHeight: '100vh', background: 'var(--cream)' }} />
+
   if (!session && showLanding) return <Landing inviteCode={prefillInviteCode} />
   if (!session) return <Onboarding onComplete={handleOnboardingComplete} prefillInviteCode={prefillInviteCode} startOnWaitlist={startOnWaitlist} startOnSignup={startOnSignup} />
   if (!onboardingComplete) return <Onboarding session={session} onComplete={handleOnboardingComplete} prefillInviteCode={prefillInviteCode} />

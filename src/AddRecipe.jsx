@@ -670,6 +670,8 @@ export default function AddRecipe({ session, onSave, onCancel, startLogging = fa
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--cream)', padding: '24px', paddingTop: 'calc(24px + var(--safe-top))', paddingBottom: 'calc(60px + var(--safe-bottom))' }}>
+      {/* Solid strip behind the iPhone status bar so content doesn't scroll under the clock */}
+      <div style={{ position: 'fixed', top: 0, left: 0, right: 0, height: 'var(--safe-top)', background: 'var(--cream)', zIndex: 150 }} />
       <div style={{ maxWidth: '480px', margin: '0 auto' }}>
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '32px' }}>
