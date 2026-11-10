@@ -5,7 +5,7 @@
 //   if (!(await confirmSheet({ title: 'Unfollow this cook?', confirmLabel: 'Unfollow' }))) return
 
 import { useEffect, useState } from 'react'
-import { IconCheck } from './icons'
+import { IconCheck, IconEye, IconEyeOff } from './icons'
 
 let setToastState = null
 let setSheetState = null
@@ -99,5 +99,36 @@ export function UIHost() {
 
       <style>{`@keyframes nom-toast-in { from { opacity: 0; transform: translate(-50%, 12px); } }`}</style>
     </>
+  )
+}
+
+// Password field with a show/hide eye. Pass the same props you'd give an <input>
+// (value, onChange, autoComplete, placeholder, style...).
+//   <PasswordInput value={pw} onChange={e => setPw(e.target.value)} autoComplete="current-password" style={inputStyle} />
+export function PasswordInput({ style, ...props }) {
+  const [shown, setShown] = useState(false)
+  return (
+    <div style={{ position: 'relative' }}>
+      <input
+        {...props}
+        type={shown ? 'text' : 'password'}
+        autoCapitalize="none"
+        autoCorrect="off"
+        spellCheck={false}
+        style={{ ...style, paddingRight: '44px' }}
+      />
+      <button
+        type="button"
+        onClick={() => setShown(s => !s)}
+        aria-label={shown ? 'Hide password' : 'Show password'}
+        style={{
+          position: 'absolute', right: '4px', top: '50%', transform: 'translateY(-50%)',
+          width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--muted)',
+        }}
+      >
+        {shown ? <IconEyeOff size={18} /> : <IconEye size={18} />}
+      </button>
+    </div>
   )
 }

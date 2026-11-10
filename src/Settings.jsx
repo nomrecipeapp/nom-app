@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from './supabase'
 import { listBlocked, unblockUser } from './moderation'
 import { IconCheck, IconX } from './icons'
-import { toast } from './ui'
+import { toast, PasswordInput } from './ui'
 
 export default function Settings({ session, onBack }) {
   const [profile, setProfile] = useState({ full_name: '', username: '', email: '', is_private: true })
@@ -359,11 +359,11 @@ export default function Settings({ session, onBack }) {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--charcoal)', marginBottom: '6px' }}>New Password</label>
-                  <input type="password" value={editValue} onChange={e => setEditValue(e.target.value)} placeholder="At least 8 characters" autoFocus style={inputStyle} />
+                  <PasswordInput value={editValue} onChange={e => setEditValue(e.target.value)} autoComplete="new-password" placeholder="At least 8 characters" autoFocus style={inputStyle} />
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--charcoal)', marginBottom: '6px' }}>Confirm Password</label>
-                  <input type="password" value={editValue2} onChange={e => setEditValue2(e.target.value)} placeholder="Repeat new password" style={inputStyle} />
+                  <PasswordInput value={editValue2} onChange={e => setEditValue2(e.target.value)} autoComplete="new-password" placeholder="Repeat new password" style={inputStyle} />
                 </div>
               </div>
             ) : (
@@ -371,6 +371,11 @@ export default function Settings({ session, onBack }) {
                 <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--charcoal)', marginBottom: '6px' }}>{editFieldLabels[editField]}</label>
                 <input
                   type={editField === 'email' ? 'email' : 'text'}
+                  inputMode={editField === 'email' ? 'email' : undefined}
+                  autoComplete={editField === 'email' ? 'email' : editField === 'name' ? 'name' : 'off'}
+                  autoCapitalize={editField === 'name' ? 'words' : 'none'}
+                  autoCorrect="off"
+                  spellCheck={false}
                   value={editValue}
                   onChange={e => {
                     let val = e.target.value

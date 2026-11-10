@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { supabase } from './supabase'
 import { IconChevronLeft } from './icons'
+import { PasswordInput } from './ui'
 
 export default function Auth({ onBack, onSignUp }) {
   const [mode, setMode] = useState('login')
@@ -112,7 +113,18 @@ export default function Auth({ onBack, onSignUp }) {
                 display: 'block', fontSize: '12px', fontWeight: '600',
                 color: 'var(--charcoal)', marginBottom: '6px', letterSpacing: '0.04em'
               }}>Email</label>
-              <input type="email" value={email} onChange={e => setEmail(e.target.value)} required style={inputStyle} />
+              <input
+                type="email"
+                inputMode="email"
+                autoComplete={mode === 'reset' ? 'email' : 'username'}
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                required
+                style={inputStyle}
+              />
             </div>
 
             {/* Password */}
@@ -122,7 +134,7 @@ export default function Auth({ onBack, onSignUp }) {
                   display: 'block', fontSize: '12px', fontWeight: '600',
                   color: 'var(--charcoal)', marginBottom: '6px', letterSpacing: '0.04em'
                 }}>Password</label>
-                <input type="password" value={password} onChange={e => setPassword(e.target.value)} required style={inputStyle} />
+                <PasswordInput value={password} onChange={e => setPassword(e.target.value)} autoComplete="current-password" required style={inputStyle} />
               </div>
             )}
 

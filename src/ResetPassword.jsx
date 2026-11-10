@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { supabase } from './supabase'
 import { IconCheck } from './icons'
+import { PasswordInput } from './ui'
 
 export default function ResetPassword({ onComplete }) {
   const [password, setPassword] = useState('')
@@ -11,7 +12,7 @@ export default function ResetPassword({ onComplete }) {
 
   async function handleReset() {
     setError(null)
-    if (password.length < 6) { setError('Password must be at least 6 characters.'); return }
+    if (password.length < 8) { setError('Password must be at least 8 characters.'); return }
     if (password !== confirm) { setError('Passwords do not match.'); return }
     setSaving(true)
     const { error } = await supabase.auth.updateUser({ password })
@@ -74,23 +75,23 @@ export default function ResetPassword({ onComplete }) {
             display: 'flex', alignItems: 'center', gap: '8px'
           }}><IconCheck size={16} strokeWidth={2.5} />Password updated! Taking you back to Nom...</div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <form onSubmit={e => { e.preventDefault(); if (!saving) handleReset() }} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             <div>
               <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--charcoal)', marginBottom: '6px' }}>New Password</label>
-              <input
-                type="password"
+              <PasswordInput
                 value={password}
                 onChange={e => setPassword(e.target.value)}
-                placeholder="At least 6 characters"
+                autoComplete="new-password"
+                placeholder="At least 8 characters"
                 style={inputStyle}
               />
             </div>
             <div>
               <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--charcoal)', marginBottom: '6px' }}>Confirm Password</label>
-              <input
-                type="password"
+              <PasswordInput
                 value={confirm}
                 onChange={e => setConfirm(e.target.value)}
+                autoComplete="new-password"
                 placeholder="Repeat your new password"
                 style={inputStyle}
               />
@@ -107,7 +108,7 @@ export default function ResetPassword({ onComplete }) {
               }}>{error}</div>
             )}
 
-            <button onClick={handleReset} disabled={saving} style={{
+            <button type="submit" disabled={saving} style={{
               width: '100%',
               padding: '14px',
               background: saving ? 'var(--tan)' : 'var(--clay)',
@@ -120,7 +121,7 @@ export default function ResetPassword({ onComplete }) {
               cursor: saving ? 'not-allowed' : 'pointer',
               marginTop: '4px'
             }}>{saving ? 'Saving...' : 'Update Password'}</button>
-          </div>
+          </form>
         )}
 
       </div>

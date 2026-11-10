@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from './supabase'
 import { importRecipeFromUrl } from './importUrl'
 import { IconCheck } from './icons'
+import { PasswordInput } from './ui'
 
 const TOTAL_STEPS = 5
 
@@ -475,37 +476,40 @@ export default function Onboarding({ onComplete, session, prefillInviteCode, sta
           <div style={{ fontFamily: 'var(--font-display)', fontSize: '24px', fontWeight: '700', color: 'var(--ink)', marginBottom: '4px' }}>Create your account</div>
           <div style={{ fontSize: '13px', color: 'var(--muted)', marginBottom: '28px' }}>Your Cookbook starts here.</div>
 
+          {/* A real form so the keyboard's Go button submits and iPhone offers to save the password */}
+          <form onSubmit={e => { e.preventDefault(); if (!(authLoading || !fullName || !username || !email || !password)) handleCreateAccount() }}>
+
           <div style={{ marginBottom: '14px' }}>
             <label style={labelStyle}>Your name</label>
-            <input type="text" value={fullName} onChange={e => setFullName(e.target.value)} placeholder="Alex" style={inputStyle} />
+            <input type="text" autoComplete="name" autoCapitalize="words" value={fullName} onChange={e => setFullName(e.target.value)} placeholder="Alex" style={inputStyle} />
           </div>
 
           <div style={{ marginBottom: '14px' }}>
             <label style={labelStyle}>Username</label>
             <div style={{ position: 'relative' }}>
               <span style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', fontSize: '14px', color: 'var(--muted)', fontFamily: 'var(--font-body)' }}>@</span>
-              <input type="text" value={username} onChange={e => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))} placeholder="alexcooks" style={{ ...inputStyle, paddingLeft: '28px' }} />
+              <input type="text" autoComplete="off" autoCapitalize="none" autoCorrect="off" spellCheck={false} value={username} onChange={e => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))} placeholder="alexcooks" style={{ ...inputStyle, paddingLeft: '28px' }} />
             </div>
             <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '4px' }}>Letters, numbers, and underscores only</div>
           </div>
 
           <div style={{ marginBottom: '14px' }}>
             <label style={labelStyle}>Email</label>
-            <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" style={inputStyle} />
+            <input type="email" inputMode="email" autoComplete="username" autoCapitalize="none" autoCorrect="off" spellCheck={false} value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" style={inputStyle} />
           </div>
 
           <div style={{ marginBottom: '8px' }}>
             <label style={labelStyle}>Password</label>
-            <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" style={inputStyle} />
+            <PasswordInput value={password} onChange={e => setPassword(e.target.value)} autoComplete="new-password" placeholder="••••••••" style={inputStyle} />
           </div>
           <div style={{ fontSize: '11px', color: 'var(--muted)', marginBottom: '16px' }}>Must be at least 8 characters</div>
 
           <div style={{ marginBottom: '24px' }}>
             <label style={labelStyle}>Invite Code</label>
-            <input type="text" value={inviteCode} onChange={e => setInviteCode(e.target.value.trim().toUpperCase())} placeholder="XXXXXXXX" style={{ ...inputStyle, letterSpacing: '0.1em' }} />
+            <input type="text" autoComplete="off" autoCapitalize="characters" autoCorrect="off" spellCheck={false} value={inviteCode} onChange={e => setInviteCode(e.target.value.trim().toUpperCase())} placeholder="XXXXXXXX" style={{ ...inputStyle, letterSpacing: '0.1em' }} />
             <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '4px' }}>
               You need an invite code to join Nom.{' '}
-              <button onClick={openWaitlist} style={{ padding: 0, background: 'none', border: 'none', fontFamily: 'var(--font-body)', fontSize: '11px', fontWeight: '600', color: 'var(--clay)', cursor: 'pointer' }}>No code? Request one</button>
+              <button type="button" onClick={openWaitlist} style={{ padding: 0, background: 'none', border: 'none', fontFamily: 'var(--font-body)', fontSize: '11px', fontWeight: '600', color: 'var(--clay)', cursor: 'pointer' }}>No code? Request one</button>
             </div>
           </div>
 
@@ -514,7 +518,7 @@ export default function Onboarding({ onComplete, session, prefillInviteCode, sta
           )}
 
           <ProgressDots step={2} />
-          <button onClick={handleCreateAccount} disabled={authLoading || !fullName || !username || !email || !password} style={{
+          <button type="submit" disabled={authLoading || !fullName || !username || !email || !password} style={{
             width: '100%', padding: '15px',
             background: (authLoading || !fullName || !username || !email || !password) ? 'var(--tan)' : 'var(--clay)',
             color: 'var(--cream)', border: 'none', borderRadius: 'var(--radius-pill)',
@@ -522,6 +526,7 @@ export default function Onboarding({ onComplete, session, prefillInviteCode, sta
             cursor: (authLoading || !fullName || !username || !email || !password) ? 'not-allowed' : 'pointer',
             marginBottom: '10px'
           }}>{authLoading ? 'Creating account...' : 'Create Account'}</button>
+          </form>
           <div style={{ fontSize: '11px', color: 'var(--muted)', textAlign: 'center', lineHeight: '1.5' }}>
             By continuing you agree to our{' '}
             <a href="https://app.termly.io/policy-viewer/policy.html?policyUUID=61e1bda6-9414-4896-bd55-972479e2c5ee" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--clay)', textDecoration: 'underline' }}>Terms</a>
