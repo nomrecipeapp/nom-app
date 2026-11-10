@@ -5,6 +5,7 @@ import { IconX, IconBook, IconBookmark, IconPot, IconPlus, IconCheck } from './i
 import EmptyState from './EmptyState'
 import { canonicalSpellings, recipeTags, sortTags, tagKey, hasTag, tagChoices, addTag } from './tags'
 import { AlphabetRail, TagSheet } from './CookbookTools'
+import BottomBar, { BAR_SHADOW } from './BottomBar'
 import { letterOf } from './letters'
 import { confirmSheet, toast } from './ui'
 
@@ -38,6 +39,10 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
   const [headerHeight, setHeaderHeight] = useState(0)
   // Select mode: tick recipes, then add a tag, remove a tag, or delete them
   const [selecting, setSelecting] = useState(false)
+  const [searchFocused, setSearchFocused] = useState(false)
+  const pressTimer = useRef(null)
+  const pressStart = useRef(null)
+  const longPressed = useRef(false)
   const [selected, setSelected] = useState(() => new Set())
   const [tagSheet, setTagSheet] = useState(null) // 'add' | 'remove' | null
   const [working, setWorking] = useState(false)
@@ -238,6 +243,27 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
 
   // ── Select mode ──
   function startSelecting() { setSelecting(true); setSelected(new Set()) }
+
+  // Press and hold a recipe to start selecting, with that recipe already picked
+  function pressDown(e, id) {
+    longPressed.current = false
+    if (selecting || e.touches.length !== 1) return
+    pressStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
+    clearTimeout(pressTimer.current)
+    pressTimer.current = setTimeout(() => {
+      longPressed.current = true
+      setSelecting(true)
+      setSelected(new Set([id]))
+    }, 450)
+  }
+  function pressMove(e) {
+    const p = pressStart.current
+    if (!p) return
+    const t = e.touches[0]
+    if (Math.abs(t.clientX - p.x) > 10 || Math.abs(t.clientY - p.y) > 10) pressUp()
+  }
+  function pressUp() { clearTimeout(pressTimer.current); pressStart.current = null }
+  useEffect(() => () => clearTimeout(pressTimer.current), [])
   function stopSelecting() { setSelecting(false); setSelected(new Set()); setTagSheet(null) }
   function toggleSelected(id) {
     setSelected(prev => {
@@ -365,7 +391,9 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
           borderBottom: '1px solid var(--parchment)',
           paddingBottom: '12px', paddingLeft: '24px', paddingRight: '24px'
         }}>
+          <div style={{ display: 'flex', alignItems: 'center' }}>
           <div style={{
+            flex: 1, minWidth: 0,
             display: 'flex', alignItems: 'center', gap: '10px',
             background: 'var(--warm-white)', borderRadius: 'var(--radius-md)',
             padding: '10px 14px', border: '1.5px solid var(--tan)'
@@ -376,12 +404,32 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
             </svg>
             <input
               type="text" value={search} onChange={e => setSearch(e.target.value)}
+              onFocus={() => setSearchFocused(true)} onBlur={() => setSearchFocused(false)}
               placeholder="Search recipes or ingredients..."
               style={{ flex: 1, border: 'none', background: 'none', fontFamily: 'var(--font-body)', fontSize: '14px', color: 'var(--ink)', outline: 'none' }}
             />
             {search && (
               <button onClick={() => setSearch('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', fontSize: '16px', padding: 0, lineHeight: 1 }}><IconX size={13} strokeWidth={2.2} /></button>
             )}
+          </div>
+
+          {/* Select stays pinned here. It slides away while you search so search gets the full width. */}
+          {(() => {
+            const showSelect = !selecting && !searchFocused && !search && recipes.length > 0
+            return (
+              <div style={{
+                overflow: 'hidden', flexShrink: 0,
+                maxWidth: showSelect ? '90px' : '0px', opacity: showSelect ? 1 : 0,
+                transition: 'max-width 0.2s ease, opacity 0.15s ease',
+              }}>
+                <button onClick={startSelecting} tabIndex={showSelect ? 0 : -1} aria-hidden={!showSelect} style={{
+                  marginLeft: '8px', background: 'var(--parchment)', color: 'var(--charcoal)', border: 'none',
+                  borderRadius: 'var(--radius-pill)', padding: '9px 14px', cursor: 'pointer',
+                  fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600', whiteSpace: 'nowrap',
+                }}>Select</button>
+              </div>
+            )
+          })()}
           </div>
         </div>
 
@@ -455,28 +503,16 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
         <div ref={listRef} style={{
           padding: '16px 24px',
           paddingRight: showRail ? '34px' : '24px',
-          paddingBottom: selecting ? 'calc(var(--nav-clearance) + 84px)' : 'var(--nav-clearance)',
+          paddingBottom: 'var(--nav-clearance)',
         }}>
 
-          {/* Recipe count + Select */}
+          {/* Recipe count */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', minHeight: '22px' }}>
             <div style={{ fontSize: '12px', color: selecting ? 'var(--ink)' : 'var(--muted)', fontWeight: selecting ? '600' : '400' }}>
               {selecting
-                ? (n === 0 ? 'Tap recipes to select' : `${n} selected`)
+                ? 'Tap recipes to select'
                 : `${filtered.length} ${filtered.length === 1 ? 'recipe' : 'recipes'}`}
             </div>
-            {filtered.length > 0 && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                {selecting && (
-                  <button onClick={toggleSelectAll} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '600', color: 'var(--clay)' }}>
-                    {allShownSelected ? 'Select none' : 'Select all'}
-                  </button>
-                )}
-                <button onClick={selecting ? stopSelecting : startSelecting} style={{ background: selecting ? 'var(--clay)' : 'var(--parchment)', color: selecting ? 'var(--cream)' : 'var(--charcoal)', border: 'none', borderRadius: 'var(--radius-pill)', padding: '5px 14px', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600' }}>
-                  {selecting ? 'Done' : 'Select'}
-                </button>
-              </div>
-            )}
           </div>
 
           {circleModal && (
@@ -494,8 +530,18 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
                 return (
                 <div key={recipe.id}
                   data-letter={showRail && firstOfLetter[letterOf(recipe.title)] === recipe.id ? letterOf(recipe.title) : undefined}
-                  onClick={() => (selecting ? toggleSelected(recipe.id) : onSelectRecipe(recipe))}
+                  onTouchStart={e => pressDown(e, recipe.id)}
+                  onTouchMove={pressMove}
+                  onTouchEnd={pressUp}
+                  onTouchCancel={pressUp}
+                  onContextMenu={e => e.preventDefault()}
+                  onClick={() => {
+                    // The tap that ends a press and hold shouldn't also open or unselect the recipe
+                    if (longPressed.current) { longPressed.current = false; return }
+                    selecting ? toggleSelected(recipe.id) : onSelectRecipe(recipe)
+                  }}
                   style={{
+                  WebkitTouchCallout: 'none', WebkitUserSelect: 'none', userSelect: 'none',
                   background: isSelected ? '#FBF0E6' : 'var(--warm-white)', borderRadius: 'var(--radius-md)',
                   border: `1px solid ${isSelected ? 'var(--clay)' : 'var(--parchment)'}`, padding: '16px 18px',
                   cursor: 'pointer', transition: 'box-shadow 0.15s, background 0.15s, border-color 0.15s'
@@ -589,18 +635,26 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
         <AlphabetRail available={new Set(Object.keys(firstOfLetter))} onJump={jumpToLetter} top={railTop} />
       )}
 
-      {/* Select mode actions, just above the bottom bar */}
-      {selecting && (
+      {/* Select mode: count, Select all, Done and the actions all stay pinned above the bottom nav */}
+      <BottomBar visible={selecting} space={selecting ? 116 : 0}>
         <div style={{
-          position: 'fixed', left: 0, right: 0, zIndex: 120,
-          bottom: 'var(--nav-clearance)', maxWidth: '480px', margin: '0 auto',
-          padding: '0 16px 4px',
+          background: 'var(--warm-white)', border: '1px solid var(--parchment)',
+          borderRadius: 'var(--radius-lg)', padding: '10px 8px 8px', boxShadow: BAR_SHADOW,
         }}>
-          <div style={{
-            display: 'flex', gap: '8px', background: 'var(--warm-white)',
-            border: '1px solid var(--parchment)', borderRadius: 'var(--radius-pill)',
-            padding: '6px', boxShadow: '0 6px 24px rgba(28,26,23,0.14)',
-          }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 8px 10px' }}>
+            <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--ink)' }}>
+              {n === 0 ? 'None selected' : `${n} selected`}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <button onClick={toggleSelectAll} tabIndex={selecting ? 0 : -1} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '600', color: 'var(--clay)' }}>
+                {allShownSelected ? 'Select none' : 'Select all'}
+              </button>
+              <button onClick={stopSelecting} tabIndex={selecting ? 0 : -1} style={{ background: 'var(--clay)', color: 'var(--cream)', border: 'none', borderRadius: 'var(--radius-pill)', padding: '5px 14px', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600' }}>
+                Done
+              </button>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: '8px' }}>
             {[
               { label: 'Add tag', onClick: () => setTagSheet('add'), color: 'var(--cream)', bg: 'var(--clay)' },
               { label: 'Remove tag', onClick: () => setTagSheet('remove'), color: 'var(--charcoal)', bg: 'var(--parchment)' },
@@ -608,7 +662,7 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
             ].map(a => {
               const off = n === 0 || working
               return (
-                <button key={a.label} onClick={a.onClick} disabled={off} style={{
+                <button key={a.label} onClick={a.onClick} disabled={off} tabIndex={selecting ? 0 : -1} style={{
                   flex: 1, padding: '11px 6px', border: 'none', borderRadius: 'var(--radius-pill)',
                   background: off ? 'var(--parchment)' : a.bg, color: off ? 'var(--tan)' : a.color,
                   fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '700',
@@ -618,7 +672,7 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
             })}
           </div>
         </div>
-      )}
+      </BottomBar>
 
       {tagSheet && (
         <TagSheet

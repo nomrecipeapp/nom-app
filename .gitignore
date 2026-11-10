@@ -27,3 +27,6 @@ dist-ssr
 ios/App/Pods
 ios/App/build
 ios/.build
+
+# Supabase CLI scratch files (local only)
+supabase/.temp/
