@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from './supabase'
-import { LoadError } from './ui'
+import { LoadError, toast } from './ui'
+import { usePullToRefresh, PullIndicator } from './PullToRefresh'
 import { IconAt, IconBell, IconBookmark, IconCheck, IconComment, IconHeart, IconUserCheck, IconUserPlus } from './icons'
 
 const typeConfig = {
@@ -39,8 +40,11 @@ export default function Notifications({ session, onSelectUser, onSelectCook, onS
     fetchNotifications()
   }, [])
 
-  async function fetchNotifications() {
-    setLoading(true)
+  // Pull down to refresh: keeps the list on screen while it reloads
+  const pull = usePullToRefresh(() => fetchNotifications({ quiet: true }))
+
+  async function fetchNotifications({ quiet = false } = {}) {
+    if (!quiet) setLoading(true)
     setLoadError(false)
 
     const { data, error } = await supabase
@@ -49,7 +53,12 @@ export default function Notifications({ session, onSelectUser, onSelectCook, onS
       .eq('recipient_id', session.user.id)
       .order('created_at', { ascending: false })
       .limit(50)
-    if (error) { setLoadError(true); setLoading(false); return }
+    if (error) {
+      if (quiet && notifications.length > 0) toast("Couldn't refresh. Check your connection.", { icon: null })
+      else setLoadError(true)
+      setLoading(false)
+      return
+    }
 
     if (!data || data.length === 0) {
       setNotifications([])
@@ -143,19 +152,20 @@ export default function Notifications({ session, onSelectUser, onSelectCook, onS
   }
 
   return (
-    <div style={{
+    <div {...pull.handlers} style={{
       minHeight: '100vh',
       background: 'var(--cream)',
       paddingBottom: 'var(--nav-clearance)',
     }}>
       {/* Spacer for top bar */}
       <div style={{ height: 'var(--top-bar-h)' }} />
+      <PullIndicator pull={pull} />
 
       <div style={{ padding: '8px 0' }}>
         {loading ? (
           <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--muted)', fontSize: '14px' }}>Loading...</div>
         ) : loadError ? (
-          <LoadError title="Couldn't load notifications" onRetry={fetchNotifications} />
+          <LoadError title="Couldn't load notifications" onRetry={() => fetchNotifications()} />
         ) : notifications.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '80px 20px' }}>
             <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'var(--parchment)', color: 'var(--clay)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}><IconBell size={26} strokeWidth={1.8} /></div>
