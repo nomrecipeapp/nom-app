@@ -1,4 +1,5 @@
 import SectionTextarea from './SectionTextarea'
+import { openLink } from './openLink'
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from './supabase'
 import { apiPost } from './api'
@@ -638,7 +639,7 @@ export default function AddRecipe({ session, onSave, onCancel, startLogging = fa
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
               {recipe?.source_url && (
-                <button onClick={() => window.open(recipe.source_url, '_blank', 'noopener,noreferrer')} style={{
+                <button onClick={() => openLink(recipe.source_url)} style={{
                   padding: '9px 16px', minHeight: '44px', background: 'var(--clay)', color: 'var(--cream)',
                   border: 'none', borderRadius: 'var(--radius-pill)',
                   fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '600', cursor: 'pointer'

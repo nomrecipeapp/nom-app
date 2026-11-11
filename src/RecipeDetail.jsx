@@ -1,4 +1,5 @@
 import SectionTextarea from './SectionTextarea'
+import { linkProps } from './openLink'
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from './supabase'
 import CircleFriendsModal from './CircleFriendsModal'
@@ -891,7 +892,7 @@ async function saveEditCook() {
         )}
 
         {recipe.source_url && (
-          <a href={recipe.source_url} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--parchment)', padding: '16px 20px', textDecoration: 'none', marginBottom: '16px', alignItems: 'center', justifyContent: 'space-between' }}>
+          <a {...linkProps(recipe.source_url)} style={{ display: 'flex', background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--parchment)', padding: '16px 20px', textDecoration: 'none', marginBottom: '16px', alignItems: 'center', justifyContent: 'space-between' }}>
             <span style={{ fontSize: '13px', fontWeight: '600', color: 'var(--clay)' }}>View original recipe<IconChevronRight size={12} strokeWidth={2.4} style={{ marginLeft: '3px', marginTop: '-1px' }} /></span>
             <span style={{ fontSize: '11px', color: 'var(--muted)' }}>{recipe.source_name}</span>
           </a>

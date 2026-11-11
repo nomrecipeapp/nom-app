@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { linkProps } from './openLink'
 import { supabase } from './supabase'
 import LikesModal from './LikesModal'
 import CircleFriendsModal from './CircleFriendsModal'
@@ -596,7 +597,7 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
         )}
 
         {recipe.source_url && (
-          <a href={recipe.source_url} target="_blank" rel="noopener noreferrer" style={{
+          <a {...linkProps(recipe.source_url)} style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             background: 'var(--parchment)', borderRadius: 'var(--radius-md)',
             padding: '10px 14px', marginBottom: '16px', textDecoration: 'none'
