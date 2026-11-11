@@ -35,7 +35,7 @@ function RecipeThumbnailSmall({ recipe, dashed }) {
       border: dashed ? '1.5px dashed var(--tan)' : 'none',
       background: dashed ? 'transparent' : 'linear-gradient(135deg, var(--clay), var(--ember))',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      position: 'relative', flexShrink: 0
+      position: 'relative'
     }}>
       {recipe.image_url && (
         <img
@@ -317,7 +317,7 @@ export default function Profile({ session, onBack, onSelectRecipe, onSelectCook,
         {editing && (
           <div style={{ margin: '0 20px 20px', background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--parchment)', padding: '20px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
-              <div style={{ fontFamily: 'var(--font-display)', fontSize: '16px', fontWeight: '600', color: 'var(--ink)' }}>Edit Profile</div>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: '16px', fontWeight: '600', color: 'var(--ink)' }}>Edit profile</div>
               <button onClick={handleCancelEdit} style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '600', color: 'var(--muted)', padding: 0 }}>Cancel</button>
             </div>
 
@@ -332,7 +332,7 @@ export default function Profile({ session, onBack, onSelectRecipe, onSelectCook,
                   </div>
                 )}
                 {/* Camera badge */}
-                <button
+                <button aria-label="Change photo"
                   onClick={() => avatarInputRef.current?.click()}
                   disabled={avatarUploading}
                   style={{ position: 'absolute', bottom: 0, right: 0, width: '24px', height: '24px', borderRadius: '50%', background: 'var(--clay)', border: '2px solid var(--cream)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
@@ -349,7 +349,7 @@ export default function Profile({ session, onBack, onSelectRecipe, onSelectCook,
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--charcoal)', marginBottom: '6px' }}>Full Name</label>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--charcoal)', marginBottom: '6px' }}>Full name</label>
                 <input value={profile.full_name || ''} onChange={e => setProfile({ ...profile, full_name: e.target.value })} style={inputStyle} />
               </div>
               <div>
@@ -360,7 +360,7 @@ export default function Profile({ session, onBack, onSelectRecipe, onSelectCook,
             {error && (
               <div style={{ background: '#FDE8E8', border: '1px solid #F5C0C0', borderRadius: 'var(--radius-md)', padding: '10px 14px', fontSize: '13px', color: '#B85252', marginTop: '12px' }}>{error}</div>
             )}
-            <button onClick={saveProfile} disabled={saving} style={{ width: '100%', marginTop: '16px', padding: '12px', background: saving ? 'var(--tan)' : 'var(--clay)', color: 'var(--cream)', border: 'none', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '600', cursor: saving ? 'not-allowed' : 'pointer' }}>{saving ? 'Saving...' : 'Save Changes'}</button>
+            <button onClick={saveProfile} disabled={saving} style={{ width: '100%', marginTop: '16px', padding: '12px', background: saving ? 'var(--tan)' : 'var(--clay)', color: 'var(--cream)', border: 'none', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '600', cursor: saving ? 'not-allowed' : 'pointer' }}>{saving ? 'Saving...' : 'Save changes'}</button>
           </div>
         )}
 
@@ -384,11 +384,11 @@ export default function Profile({ session, onBack, onSelectRecipe, onSelectCook,
             </div>
           )}
           <div style={{ display: 'flex', gap: '32px', textAlign: 'center' }}>
-            <button onClick={() => onViewFollowList('following')} style={{ background: 'none', border: 'none', cursor: 'pointer', textAlign: 'center', padding: 0 }}>
+            <button className="nom-hit" onClick={() => onViewFollowList('following')} style={{ background: 'none', border: 'none', cursor: 'pointer', textAlign: 'center', padding: 0 }}>
               <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: '700', color: 'var(--ink)' }}>{following === null ? '—' : following}</div>
               <div style={{ fontSize: '11px', color: 'var(--muted)' }}>Following</div>
             </button>
-            <button onClick={() => onViewFollowList('followers')} style={{ background: 'none', border: 'none', cursor: 'pointer', textAlign: 'center', padding: 0 }}>
+            <button className="nom-hit" onClick={() => onViewFollowList('followers')} style={{ background: 'none', border: 'none', cursor: 'pointer', textAlign: 'center', padding: 0 }}>
               <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: '700', color: 'var(--ink)' }}>{followers === null ? '—' : followers}</div>
               <div style={{ fontSize: '11px', color: 'var(--muted)' }}>Followers</div>
             </button>
@@ -458,7 +458,7 @@ export default function Profile({ session, onBack, onSelectRecipe, onSelectCook,
           {recentCooks.length > 0 && (
             <div style={{ marginBottom: '20px' }}>
               <div style={{ padding: '0 20px', marginBottom: '12px' }}>
-                <div style={sectionLabel}>Recently Cooked</div>
+                <div style={sectionLabel}>Recently cooked</div>
               </div>
               <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', padding: '0 20px 4px', scrollbarWidth: 'none' }}>
                 {recentCooks.map(cook => {
@@ -494,7 +494,7 @@ export default function Profile({ session, onBack, onSelectRecipe, onSelectCook,
           {/* Top Rated */}
           {topRated.length > 0 && (
             <div style={{ padding: '0 20px', marginBottom: '20px' }}>
-              <div style={sectionLabel}>Top Rated</div>
+              <div style={sectionLabel}>Top rated</div>
               <div style={{ display: 'flex', flexDirection: 'column' }}>
                 {topRated.map(cook => {
                   const recipe = cook.recipes
@@ -638,7 +638,7 @@ export default function Profile({ session, onBack, onSelectRecipe, onSelectCook,
             sessionStorage.removeItem('nom_onboarding_name')
             supabase.auth.signOut()
           }} style=
-            {{ width: '100%', padding: '12px', background: 'transparent', color: 'var(--muted)', border: '1.5px solid var(--parchment)', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>Sign Out</button>
+            {{ width: '100%', padding: '12px', background: 'transparent', color: 'var(--muted)', border: '1.5px solid var(--parchment)', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>Sign out</button>
         </div>
 
       </div>

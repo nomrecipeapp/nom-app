@@ -73,3 +73,18 @@ img { -webkit-user-drag: none; }
 
 /* Sideways-scrolling chip rows: no visible scrollbar */
 .nom-hscroll::-webkit-scrollbar { display: none; }
+
+/* Bigger tap area without changing how a small button looks: the invisible
+   ::after reaches at least 44 x 44 (Apple's minimum) around the button's center. */
+.nom-hit { position: relative; }
+.nom-hit::after {
+  content: ''; position: absolute; top: 50%; left: 50%;
+  width: max(100%, 44px); height: max(100%, 44px);
+  transform: translate(-50%, -50%);
+}
+
+/* Screen transitions (App.jsx animateNext). `left` instead of transform keeps
+   position: fixed bars inside screens anchored to the phone, not the moving screen. */
+@keyframes nom-screen-push { from { left: 32px; opacity: 0; } to { left: 0; opacity: 1; } }
+@keyframes nom-screen-pop  { from { left: -24px; opacity: 0; } to { left: 0; opacity: 1; } }
+@keyframes nom-screen-fade { from { opacity: 0; } to { opacity: 1; } }

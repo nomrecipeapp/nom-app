@@ -5,7 +5,7 @@
 //   if (!(await confirmSheet({ title: 'Unfollow this cook?', confirmLabel: 'Unfollow' }))) return
 
 import { useEffect, useState } from 'react'
-import { IconCheck, IconEye, IconEyeOff } from './icons'
+import { IconCheck, IconEye, IconEyeOff, IconWifiOff } from './icons'
 
 let setToastState = null
 let setSheetState = null
@@ -129,6 +129,53 @@ export function PasswordInput({ style, ...props }) {
       >
         {shown ? <IconEyeOff size={18} /> : <IconEye size={18} />}
       </button>
+    </div>
+  )
+}
+
+// Shown when a screen's data couldn't load (usually no connection), instead of a
+// misleading empty state. Try again re-runs the load.
+//   if (loadError) return <LoadError onRetry={fetchFeed} />
+export function LoadError({ onRetry, title = "Couldn't load this", message = 'Check your connection and try again.', compact = false }) {
+  return (
+    <div role="alert" style={{ textAlign: 'center', padding: compact ? '20px 16px' : '64px 32px' }}>
+      {!compact && (
+        <div style={{ color: 'var(--muted)', display: 'flex', justifyContent: 'center', marginBottom: '14px' }}>
+          <IconWifiOff size={32} strokeWidth={1.6} />
+        </div>
+      )}
+      <div style={{ fontFamily: 'var(--font-display)', fontSize: compact ? '15px' : '20px', fontWeight: '600', color: 'var(--ink)', marginBottom: '6px' }}>{title}</div>
+      <div style={{ fontSize: '13px', color: 'var(--muted)', lineHeight: 1.5, marginBottom: '16px' }}>{message}</div>
+      {onRetry && (
+        <button onClick={onRetry} style={{
+          minHeight: '44px', padding: '0 24px', background: 'var(--clay)', color: 'var(--cream)', border: 'none',
+          borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: '600', cursor: 'pointer'
+        }}>Try again</button>
+      )}
+    </div>
+  )
+}
+
+// Thin strip at the top of the app while the phone has no connection.
+export function OfflineBanner() {
+  const [offline, setOffline] = useState(() => typeof navigator !== 'undefined' && navigator.onLine === false)
+  useEffect(() => {
+    const on = () => setOffline(false)
+    const off = () => setOffline(true)
+    window.addEventListener('online', on)
+    window.addEventListener('offline', off)
+    return () => { window.removeEventListener('online', on); window.removeEventListener('offline', off) }
+  }, [])
+  if (!offline) return null
+  return (
+    <div role="status" style={{
+      position: 'fixed', top: 0, left: 0, right: 0, zIndex: 2100,
+      paddingTop: 'var(--safe-top)', background: 'var(--parchment)', color: 'var(--charcoal)', borderBottom: '1px solid var(--tan)',
+      fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600', textAlign: 'center',
+    }}>
+      <div style={{ padding: '6px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+        <IconWifiOff size={14} strokeWidth={2} />You're offline. Some things won't load.
+      </div>
     </div>
   )
 }

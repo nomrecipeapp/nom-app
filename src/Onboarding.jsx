@@ -528,11 +528,11 @@ export default function Onboarding({ onComplete, session, prefillInviteCode, sta
           <div style={{ fontSize: '11px', color: 'var(--muted)', marginBottom: '16px' }}>Must be at least 8 characters</div>
 
           <div style={{ marginBottom: '24px' }}>
-            <label style={labelStyle}>Invite Code</label>
+            <label style={labelStyle}>Invite code</label>
             <input type="text" autoComplete="off" autoCapitalize="characters" autoCorrect="off" spellCheck={false} value={inviteCode} onChange={e => setInviteCode(e.target.value.trim().toUpperCase())} placeholder="XXXXXXXX" style={{ ...inputStyle, letterSpacing: '0.1em' }} />
             <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '4px' }}>
               You need an invite code to join Nom.{' '}
-              <button type="button" onClick={openWaitlist} style={{ padding: 0, background: 'none', border: 'none', fontFamily: 'var(--font-body)', fontSize: '11px', fontWeight: '600', color: 'var(--clay)', cursor: 'pointer' }}>No code? Request one</button>
+              <button className="nom-hit" type="button" onClick={openWaitlist} style={{ padding: 0, background: 'none', border: 'none', fontFamily: 'var(--font-body)', fontSize: '11px', fontWeight: '600', color: 'var(--clay)', cursor: 'pointer' }}>No code? Request one</button>
             </div>
           </div>
 
@@ -548,7 +548,7 @@ export default function Onboarding({ onComplete, session, prefillInviteCode, sta
             fontFamily: 'var(--font-body)', fontSize: '15px', fontWeight: '700',
             cursor: (authLoading || !fullName || !username || !email || !password) ? 'not-allowed' : 'pointer',
             marginBottom: '10px'
-          }}>{authLoading ? 'Creating account...' : 'Create Account'}</button>
+          }}>{authLoading ? 'Creating account...' : 'Create account'}</button>
           </form>
           <div style={{ fontSize: '11px', color: 'var(--muted)', textAlign: 'center', lineHeight: '1.5' }}>
             By continuing you agree to our{' '}

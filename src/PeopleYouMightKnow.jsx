@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from './supabase'
 import { IconX } from './icons'
 import { toast } from './ui'
+import { tap } from './haptics'
 import { fetchSuggestions, cachedSuggestions, dismissSuggestion, removeFromSuggestions, mutualLine } from './suggestions'
 
 // Sideways row of people your friends follow. Shows the saved list instantly, then refreshes.
@@ -18,6 +19,7 @@ export default function PeopleYouMightKnow({ session, onSelectUser, headerPaddin
   useEffect(() => { onCountChange && onCountChange(people.length) }, [people.length, onCountChange])
 
   async function follow(person) {
+    tap()
     setPeople(prev => prev.filter(p => p.id !== person.id))
     removeFromSuggestions(userId, person.id)
     const { error } = await supabase.from('follows').insert({ follower_id: userId, following_id: person.id, status: 'pending' })

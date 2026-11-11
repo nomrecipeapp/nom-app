@@ -5,6 +5,7 @@ import { apiPost } from './api'
 import { importRecipeFromUrl, friendlySiteName } from './importUrl'
 import { IconCamera, IconCheck, IconChevronLeft, IconX } from './icons'
 import { PRESET_TAGS, tagChoices, addTag, hasTag, tagKey } from './tags'
+import { tap, success } from './haptics'
 
 const verdictOptions = [
   { value: 'would_make_again', label: 'Would Make Again', sub: 'A keeper', bg: '#EEF4E5', border: '#7A8C6E', color: '#4A5E42' },
@@ -156,7 +157,7 @@ export default function AddRecipe({ session, onSave, onCancel, startLogging = fa
           return
         }
         if (data.error) {
-          setError(data.message || 'Could not import this post. Try screenshotting the caption and using From Photo instead.')
+          setError(data.message || 'Could not import this post. Try screenshotting the caption and using From photo instead.')
           setLoading(false)
           return
         }
@@ -175,7 +176,7 @@ export default function AddRecipe({ session, onSave, onCancel, startLogging = fa
           logCookNow: startLogging
         })
       } catch (e) {
-        setError('Could not import this post. Try screenshotting the caption and using From Photo instead.')
+        setError('Could not import this post. Try screenshotting the caption and using From photo instead.')
       }
       setLoading(false)
       refreshImportStatus()
@@ -348,8 +349,10 @@ export default function AddRecipe({ session, onSave, onCancel, startLogging = fa
         notes: cookNotes || null,
         photo_urls: cookPhotoUrls.length > 0 ? cookPhotoUrls : null
       })
+      success()
       onSave(saved, true)
     } else {
+      success()
       onSave()
     }
     setLoading(false)
@@ -387,8 +390,8 @@ export default function AddRecipe({ session, onSave, onCancel, startLogging = fa
   const verdictAndScoresUI = (logCookFlag) => logCookFlag && (
     <div style={{ background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--parchment)', padding: '20px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
       <div>
-        <div style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '4px' }}>Your Cook Photo</div>
-        <div style={{ fontSize: '11px', color: 'var(--muted)', marginBottom: '12px' }}>A photo of how yours turned out — different from the recipe image above.</div>
+        <div style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '4px' }}>Your cook photo</div>
+        <div style={{ fontSize: '11px', color: 'var(--muted)', marginBottom: '12px' }}>A photo of how yours turned out (separate from the recipe photo above).</div>
         <input ref={cookPhotoInputRef} type="file" accept="image/*" multiple style={{ display: 'none' }}
           onChange={e => {
             const files = Array.from(e.target.files || [])
@@ -401,22 +404,22 @@ export default function AddRecipe({ session, onSave, onCancel, startLogging = fa
           {cookPhotoPreviews.map((src, i) => (
             <div key={i} style={{ position: 'relative', width: '80px', height: '80px', borderRadius: 'var(--radius-md)', overflow: 'hidden', flexShrink: 0 }}>
               <img src={src} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              <button onClick={() => {
+              <button className="nom-hit" aria-label="Remove photo" onClick={() => {
                 setCookPhotoFiles(prev => prev.filter((_, j) => j !== i))
                 setCookPhotoPreviews(prev => prev.filter((_, j) => j !== i))
               }} style={{ position: 'absolute', top: '4px', right: '4px', width: '20px', height: '20px', borderRadius: '50%', background: 'rgba(0,0,0,0.55)', border: 'none', color: 'white', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}><IconX size={10} strokeWidth={2.2} /></button>
             </div>
           ))}
-          <button onClick={() => cookPhotoInputRef.current?.click()} style={{ width: '80px', height: '80px', borderRadius: 'var(--radius-md)', border: '1.5px dashed var(--tan)', background: 'var(--parchment)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <button aria-label="Add photo" onClick={() => cookPhotoInputRef.current?.click()} style={{ width: '80px', height: '80px', borderRadius: 'var(--radius-md)', border: '1.5px dashed var(--tan)', background: 'var(--parchment)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round"/></svg>
           </button>
         </div>
       </div>
       <div>
-        <div style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '12px' }}>The Verdict</div>
+        <div style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '12px' }}>The verdict</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {verdictOptions.map(v => (
-            <button key={v.value} onClick={() => setVerdict(v.value)} style={{
+            <button key={v.value} onClick={() => { tap(); setVerdict(v.value) }} style={{
               padding: '12px 16px', borderRadius: 'var(--radius-md)',
               border: `2px solid ${verdict === v.value ? v.border : 'var(--parchment)'}`,
               background: verdict === v.value ? v.bg : 'var(--cream)',
@@ -429,7 +432,7 @@ export default function AddRecipe({ session, onSave, onCancel, startLogging = fa
         </div>
       </div>
       <div>
-        <div style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '12px' }}>Nuance Scores</div>
+        <div style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '12px' }}>Nuance scores</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {nuanceCategories.map(cat => (
             // Label on its own line: inside this card there isn't room for the label, 5 dots and the score side by side on a phone
@@ -438,7 +441,7 @@ export default function AddRecipe({ session, onSave, onCancel, startLogging = fa
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <div style={{ display: 'flex', gap: '8px', flex: 1 }}>
                 {[1,2,3,4,5].map(n => (
-                  <button key={n} onClick={() => setScores(s => ({...s, [cat.key]: n}))} style={{
+                  <button key={n} onClick={() => { tap(); setScores(s => ({...s, [cat.key]: n})) }} style={{
                     width: '32px', height: '32px', borderRadius: '50%', padding: 0, flexShrink: 0,
                     border: `2px solid ${scores[cat.key] >= n ? 'var(--clay)' : 'var(--tan)'}`,
                     background: scores[cat.key] >= n ? 'var(--clay)' : 'transparent',
@@ -457,7 +460,7 @@ export default function AddRecipe({ session, onSave, onCancel, startLogging = fa
         </div>
       </div>
       <div>
-        <label style={labelStyle}>Cook Notes</label>
+        <label style={labelStyle}>Cook notes</label>
         <textarea value={cookNotes} onChange={e => setCookNotes(e.target.value)}
           placeholder="What did you tweak? Would you change anything?" rows={3}
           style={{ ...inputStyle, resize: 'vertical' }} />
@@ -499,7 +502,7 @@ export default function AddRecipe({ session, onSave, onCancel, startLogging = fa
           </div>
         </div>
                 <div>
-          <label style={labelStyle}>Image (optional) <span style={{ fontWeight: '400', color: 'var(--muted)', fontSize: '11px' }}>— this is the recipe photo. Want to add a photo of your own cook? Toggle below and add it there.</span></label>
+          <label style={labelStyle}>Image (optional) <span style={{ fontWeight: '400', color: 'var(--muted)', fontSize: '11px' }}>This is the recipe's photo. For a photo of your own cook, use "Already made this?" below.</span></label>
           <input
             ref={reviewPhotoInputRef}
             type="file"
@@ -551,7 +554,7 @@ export default function AddRecipe({ session, onSave, onCancel, startLogging = fa
                 }}
               />
               <button onClick={() => setRecipe(r => ({ ...r, image_url: '' }))} aria-label="Remove image" style={{ position: 'absolute', top: '8px', right: '8px', width: '28px', height: '28px', borderRadius: '50%', background: 'rgba(0,0,0,0.5)', border: 'none', color: 'white', fontSize: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><IconX size={11} strokeWidth={2.2} /></button>
-              <button onClick={() => reviewPhotoInputRef.current?.click()} style={{ position: 'absolute', top: '8px', right: '44px', width: '28px', height: '28px', borderRadius: '50%', background: 'rgba(0,0,0,0.5)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+              <button className="nom-hit" aria-label="Change photo" onClick={() => reviewPhotoInputRef.current?.click()} style={{ position: 'absolute', top: '8px', right: '44px', width: '28px', height: '28px', borderRadius: '50%', background: 'rgba(0,0,0,0.5)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
               </button>
             </div>
@@ -597,7 +600,7 @@ export default function AddRecipe({ session, onSave, onCancel, startLogging = fa
           {(recipe?.tags || []).filter(t => !hasTag(availableTags, t)).map(tag => (
             <div key={tag} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', marginTop: '6px', marginRight: '6px', padding: '4px 10px', background: 'var(--parchment)', borderRadius: 'var(--radius-pill)', fontSize: '12px', color: 'var(--charcoal)' }}>
               {tag}
-              <button onClick={() => setRecipe({ ...recipe, tags: (recipe?.tags || []).filter(t => t !== tag) })} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', fontSize: '14px', lineHeight: 1, padding: 0 }}><IconX size={11} strokeWidth={2.2} /></button>
+              <button className="nom-hit" aria-label="Remove tag" onClick={() => setRecipe({ ...recipe, tags: (recipe?.tags || []).filter(t => t !== tag) })} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', fontSize: '14px', lineHeight: 1, padding: 0 }}><IconX size={11} strokeWidth={2.2} /></button>
             </div>
           ))}
         </div>
@@ -605,20 +608,20 @@ export default function AddRecipe({ session, onSave, onCancel, startLogging = fa
         <div>
           <label style={labelStyle}>
             Ingredients
-            {recipe?.ingredients ? <span style={{ marginLeft: '8px', fontSize: '10px', color: 'var(--forest)', fontWeight: '700', letterSpacing: '0.06em', display: 'inline-flex', alignItems: 'center', gap: '3px' }}><IconCheck size={11} strokeWidth={3} />IMPORTED</span> : <span style={{ marginLeft: '8px', fontSize: '10px', color: 'var(--muted)', fontWeight: '500' }}>not found — add manually</span>}
+            {recipe?.ingredients ? <span style={{ marginLeft: '8px', fontSize: '10px', color: 'var(--forest)', fontWeight: '700', letterSpacing: '0.06em', display: 'inline-flex', alignItems: 'center', gap: '3px' }}><IconCheck size={11} strokeWidth={3} />IMPORTED</span> : <span style={{ marginLeft: '8px', fontSize: '10px', color: 'var(--muted)', fontWeight: '500' }}>not found, add it below</span>}
           </label>
           <SectionTextarea value={recipe?.ingredients || ''} onChange={v => setRecipe(r => ({ ...r, ingredients: v }))} placeholder="One ingredient per line..." rows={5} style={{ ...inputStyle, resize: 'vertical' }} />
         </div>
         <div>
           <label style={labelStyle}>
             Instructions
-            {recipe?.instructions ? <span style={{ marginLeft: '8px', fontSize: '10px', color: 'var(--forest)', fontWeight: '700', letterSpacing: '0.06em', display: 'inline-flex', alignItems: 'center', gap: '3px' }}><IconCheck size={11} strokeWidth={3} />IMPORTED</span> : <span style={{ marginLeft: '8px', fontSize: '10px', color: 'var(--muted)', fontWeight: '500' }}>not found — add manually</span>}
+            {recipe?.instructions ? <span style={{ marginLeft: '8px', fontSize: '10px', color: 'var(--forest)', fontWeight: '700', letterSpacing: '0.06em', display: 'inline-flex', alignItems: 'center', gap: '3px' }}><IconCheck size={11} strokeWidth={3} />IMPORTED</span> : <span style={{ marginLeft: '8px', fontSize: '10px', color: 'var(--muted)', fontWeight: '500' }}>not found, add it below</span>}
           </label>
           <SectionTextarea value={recipe?.instructions || ''} onChange={v => setRecipe(r => ({ ...r, instructions: v }))} placeholder="Steps..." rows={5} style={{ ...inputStyle, resize: 'vertical' }} />
         </div>
         <div>
-          <label style={labelStyle}>Recipe Notes (optional)</label>
-          <div style={{ fontSize: '11px', color: 'var(--muted)', marginBottom: '6px', marginTop: '-4px' }}>Private reminders — only you can see these.</div>
+          <label style={labelStyle}>Recipe notes (optional)</label>
+          <div style={{ fontSize: '11px', color: 'var(--muted)', marginBottom: '6px', marginTop: '-4px' }}>Private notes. Only you can see these.</div>
           <textarea value={recipe?.notes || ''} onChange={e => setRecipe({...recipe, notes: e.target.value})} placeholder="Tweaks, substitutions, context..." rows={3} style={{ ...inputStyle, resize: 'vertical' }} />
         </div>
 
@@ -688,7 +691,7 @@ export default function AddRecipe({ session, onSave, onCancel, startLogging = fa
       <div style={{ maxWidth: '480px', margin: '0 auto' }}>
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '32px' }}>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: '24px', fontWeight: '500', color: 'var(--ink)' }}>Add Recipe</div>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: '24px', fontWeight: '500', color: 'var(--ink)' }}>Add recipe</div>
           <button onClick={onCancel} style={{
             padding: '8px 16px', background: 'transparent', color: 'var(--muted)',
             border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-pill)',
@@ -706,7 +709,7 @@ export default function AddRecipe({ session, onSave, onCancel, startLogging = fa
                 fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600',
                 cursor: 'pointer', transition: 'all 0.15s'
               }}>
-                {m === 'url' ? 'From URL' : m === 'photo' ? 'From Photo' : 'Manual'}
+                {m === 'url' ? 'From link' : m === 'photo' ? 'From photo' : 'Manual'}
               </button>
             ))}
           </div>
@@ -727,7 +730,7 @@ export default function AddRecipe({ session, onSave, onCancel, startLogging = fa
                 <div style={{ fontSize: '12px', color: 'var(--charcoal)', marginBottom: '10px' }}>"{duplicate.title}" is already saved.</div>
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <button onClick={onCancel} style={{ flex: 1, padding: '8px', background: 'var(--clay)', color: 'var(--cream)', border: 'none', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}>Go to Cookbook</button>
-                  <button onClick={() => { setDuplicate(null); importFromUrl(true) }} style={{ flex: 1, padding: '8px', background: 'transparent', color: 'var(--muted)', border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}>Add Anyway</button>
+                  <button onClick={() => { setDuplicate(null); importFromUrl(true) }} style={{ flex: 1, padding: '8px', background: 'transparent', color: 'var(--muted)', border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}>Add anyway</button>
                 </div>
               </div>
             )}
@@ -774,7 +777,7 @@ export default function AddRecipe({ session, onSave, onCancel, startLogging = fa
                 color: 'var(--cream)', border: 'none', borderRadius: 'var(--radius-pill)',
                 fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: '600',
                 cursor: loading || !url ? 'not-allowed' : 'pointer'
-              }}>{loading ? 'Importing...' : 'Import Recipe'}</button>
+              }}>{loading ? 'Importing...' : 'Import recipe'}</button>
             )}
             {linkImporting && (
               <div style={{ textAlign: 'center', padding: '28px 12px 8px' }}>
@@ -857,7 +860,7 @@ export default function AddRecipe({ session, onSave, onCancel, startLogging = fa
                 <input value={sourceName} onChange={e => setSourceName(e.target.value)} placeholder="e.g. Grandma's recipe, NYT Cooking" style={inputStyle} />
               </div>
               <div>
-                <label style={labelStyle}>Image URL (optional) <span style={{ fontWeight: '400', color: 'var(--muted)', fontSize: '11px' }}>— this is the recipe photo. Want to add a photo of your own cook? Toggle below and add it there.</span></label>
+                <label style={labelStyle}>Image URL (optional) <span style={{ fontWeight: '400', color: 'var(--muted)', fontSize: '11px' }}>This is the recipe's photo. For a photo of your own cook, use "Already made this?" below.</span></label>
                 <input value={url} onChange={e => setUrl(e.target.value)} placeholder="https://..." style={inputStyle} />
               </div>
               <div style={{ display: 'flex', gap: '12px' }}>
@@ -890,8 +893,8 @@ export default function AddRecipe({ session, onSave, onCancel, startLogging = fa
                 <SectionTextarea value={instructions} onChange={setInstructions} placeholder="Steps..." rows={4} style={{ ...inputStyle, resize: 'vertical' }} />
               </div>
               <div>
-                <label style={labelStyle}>Recipe Notes (optional)</label>
-                <div style={{ fontSize: '11px', color: 'var(--muted)', marginBottom: '6px', marginTop: '-4px' }}>Private reminders — only you can see these.</div>
+                <label style={labelStyle}>Recipe notes (optional)</label>
+                <div style={{ fontSize: '11px', color: 'var(--muted)', marginBottom: '6px', marginTop: '-4px' }}>Private notes. Only you can see these.</div>
                 <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Tweaks, substitutions, context..." rows={2} style={{ ...inputStyle, resize: 'vertical' }} />
               </div>
             </div>

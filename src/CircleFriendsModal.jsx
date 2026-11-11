@@ -82,7 +82,7 @@ export default function CircleFriendsModal({ sourceUrl, canonicalId, session, on
           <div style={{ fontFamily: 'var(--font-display)', fontSize: '16px', fontWeight: '600', color: 'var(--ink)' }}>
             Friends with this recipe
           </div>
-          <button onClick={onClose} style={{
+          <button className="nom-hit" aria-label="Close" onClick={onClose} style={{
             width: '28px', height: '28px', borderRadius: '50%',
             background: 'var(--parchment)', border: 'none', cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center',

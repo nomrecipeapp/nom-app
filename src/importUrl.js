@@ -42,7 +42,7 @@ export function friendlySiteName(url) {
 
 // Returns { recipe } on success, or { error, blocked, site } with a message to show the user
 // `hint` is the suggestion added after "We couldn't read this recipe"
-export async function importRecipeFromUrl(url, hint = 'Try a screenshot with From Photo instead.') {
+export async function importRecipeFromUrl(url, hint = 'Try a screenshot with From photo instead.') {
   let blocked = false
   let limitMessage = null
   const aiPromise = apiPost('/api/extract-recipe-url', { url })

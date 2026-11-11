@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react'
 import { supabase } from './supabase'
+import { LoadError } from './ui'
 import { IconX } from './icons'
 
 export default function FollowList({ userId, type, session, onBack, onSelectUser }) {
   const [people, setPeople] = useState([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const [search, setSearch] = useState('')
 
   useEffect(() => {
@@ -13,30 +15,35 @@ export default function FollowList({ userId, type, session, onBack, onSelectUser
 
   async function fetchList() {
     setLoading(true)
+    setLoadError(false)
     let ids = []
+    const failed = () => { setLoadError(true); setLoading(false) }
 
     if (type === 'following') {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('follows')
         .select('following_id')
         .eq('follower_id', userId)
         .eq('status', 'approved')
+      if (error) return failed()
       ids = (data || []).map(f => f.following_id)
     } else {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('follows')
         .select('follower_id')
         .eq('following_id', userId)
         .eq('status', 'approved')
+      if (error) return failed()
       ids = (data || []).map(f => f.follower_id)
     }
 
     if (ids.length === 0) { setPeople([]); setLoading(false); return }
 
-    const { data: profiles } = await supabase
+    const { data: profiles, error: profilesError } = await supabase
       .from('profiles')
       .select('id, full_name, username, avatar_url')
       .in('id', ids)
+    if (profilesError) return failed()
 
     setPeople(profiles || [])
     setLoading(false)
@@ -81,7 +88,7 @@ export default function FollowList({ userId, type, session, onBack, onSelectUser
                 }}
               />
               {search.length > 0 && (
-                <button onClick={() => setSearch('')} style={{
+                <button className="nom-hit" aria-label="Clear search" onClick={() => setSearch('')} style={{
                   background: 'none', border: 'none', cursor: 'pointer',
                   color: 'var(--muted)', fontSize: '18px', padding: 0, lineHeight: 1
                 }}><IconX size={14} strokeWidth={2.2} /></button>
@@ -92,6 +99,8 @@ export default function FollowList({ userId, type, session, onBack, onSelectUser
 
         {loading ? (
           <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--muted)', fontSize: '14px' }}>Loading...</div>
+        ) : loadError ? (
+          <LoadError onRetry={fetchList} />
         ) : people.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--muted)' }}>
             <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: '500', color: 'var(--ink)', marginBottom: '8px' }}>

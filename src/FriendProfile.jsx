@@ -3,7 +3,8 @@ import ModerationSheet, { MoreMenuSheet } from './ModerationSheet'
 import { getHiddenContent, hasBlocked, unblockUser } from './moderation'
 import { supabase } from './supabase'
 import { IconCheck, IconChevronRight, IconX, IconLock } from './icons'
-import { confirmSheet, toast } from './ui'
+import { confirmSheet, toast, LoadError } from './ui'
+import { success } from './haptics'
 
 const verdictStyles = {
   would_make_again: { bg: '#EEF4E5', border: '#7A8C6E', color: '#4A5E42', label: 'Again' },
@@ -99,6 +100,7 @@ function FriendRecipeDetail({ recipe, session, onBack }) {
     })
     setSaving(false)
     setSaved(true)
+    success()
   }
 
   async function addAnyway() {
@@ -119,6 +121,7 @@ function FriendRecipeDetail({ recipe, session, onBack }) {
     })
     setSaving(false)
     setSaved(true)
+    success()
   }
 
   return (
@@ -126,7 +129,7 @@ function FriendRecipeDetail({ recipe, session, onBack }) {
       {recipe.image_url ? (
         <div style={{ position: 'relative' }}>
           <img src={recipe.image_url} alt="" style={{ width: '100%', height: '260px', objectFit: 'cover', display: 'block' }} onError={e => { e.target.style.display = 'none' }} />
-          <button onClick={onBack} style={{
+          <button className="nom-hit" aria-label="Back" onClick={onBack} style={{
             position: 'absolute', top: '16px', left: '16px',
             width: '36px', height: '36px', borderRadius: '50%',
             background: 'rgba(0,0,0,0.35)', border: 'none', cursor: 'pointer',
@@ -139,7 +142,7 @@ function FriendRecipeDetail({ recipe, session, onBack }) {
         </div>
       ) : (
         <div style={{ padding: '16px 16px 0' }}>
-          <button onClick={onBack} style={{
+          <button className="nom-hit" aria-label="Back" onClick={onBack} style={{
             width: '36px', height: '36px', borderRadius: '50%',
             background: 'var(--parchment)', border: 'none', cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center'
@@ -208,7 +211,7 @@ function FriendRecipeDetail({ recipe, session, onBack }) {
                 flex: 1, padding: '8px', background: 'transparent',
                 border: '1px solid #F5C47A', borderRadius: 'var(--radius-pill)',
                 fontSize: '12px', fontWeight: '600', color: '#9A6B1A', cursor: 'pointer'
-              }}>Add Anyway</button>
+              }}>Add anyway</button>
             </div>
           </div>
         )}
@@ -236,6 +239,7 @@ export default function FriendProfile({ userId, session, onBack, onSelectCook, o
   const [stats, setStats] = useState({ saved: 0, cooked: 0 })
   const [followStatus, setFollowStatus] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const [recentCooks, setRecentCooks] = useState([])
   const [topRated, setTopRated] = useState([])
   const [wantToMake, setWantToMake] = useState([])
@@ -319,13 +323,24 @@ export default function FriendProfile({ userId, session, onBack, onSelectCook, o
   }, [followStatus])
 
   async function fetchProfile() {
-    const { data } = await supabase
+    setLoadError(false)
+    const { data, error } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', userId)
       .single()
+    // PGRST116 = no such profile (handled as "not available"); anything else is a load problem
+    if (error && error.code !== 'PGRST116') setLoadError(true)
     if (data) setProfile(data)
     setLoading(false)
+  }
+
+  function retryProfile() {
+    setLoading(true)
+    fetchProfile()
+    fetchFollowStatus()
+    fetchFollowCounts()
+    fetchBlockState()
   }
 
   async function fetchStats() {
@@ -600,6 +615,12 @@ export default function FriendProfile({ userId, session, onBack, onSelectCook, o
     </div>
   )
 
+  if (loadError) return (
+    <div style={{ minHeight: '100vh', background: 'var(--cream)', paddingTop: 'var(--top-bar-h)' }}>
+      <LoadError title="Couldn't load this profile" onRetry={retryProfile} />
+    </div>
+  )
+
   // Show read-only recipe detail
   if (selectedRecipe) return (
     <FriendRecipeDetail
@@ -661,7 +682,7 @@ export default function FriendProfile({ userId, session, onBack, onSelectCook, o
                 padding: '10px 32px', background: 'transparent', color: 'var(--clay)',
                 border: '2px solid var(--clay)', borderRadius: 'var(--radius-pill)',
                 fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '600', cursor: 'pointer'
-              }}>Request to Follow</button>
+              }}>Request to follow</button>
             )}
             {userId !== session.user.id && (
               <button onClick={() => setProfileMenuOpen(true)} aria-label="More options" style={{
@@ -760,7 +781,7 @@ export default function FriendProfile({ userId, session, onBack, onSelectCook, o
             {recentCooks.length > 0 && (
               <div style={{ marginBottom: '24px' }}>
                 <div style={{ padding: '0 20px', marginBottom: '12px' }}>
-                  <div style={sectionLabel}>Recently Cooked</div>
+                  <div style={sectionLabel}>Recently cooked</div>
                 </div>
                 <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', padding: '0 20px 4px', scrollbarWidth: 'none' }}>
                   {recentCooks.map(cook => {
@@ -806,7 +827,7 @@ export default function FriendProfile({ userId, session, onBack, onSelectCook, o
             {/* Top Rated */}
             {topRated.length > 0 && (
               <div style={{ padding: '0 20px', marginBottom: '24px' }}>
-                <div style={sectionLabel}>Top Rated</div>
+                <div style={sectionLabel}>Top rated</div>
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
                   {topRated.map(cook => {
                     const recipe = cook.recipes
@@ -881,7 +902,7 @@ export default function FriendProfile({ userId, session, onBack, onSelectCook, o
                 }}
               />
               {cookbookSearch && (
-                <button onClick={() => setCookbookSearch('')} style={{
+                <button className="nom-hit" aria-label="Clear search" onClick={() => setCookbookSearch('')} style={{
                   background: 'none', border: 'none', cursor: 'pointer',
                   color: 'var(--muted)', fontSize: '16px', padding: 0, lineHeight: 1
                 }}><IconX size={13} strokeWidth={2.2} /></button>
@@ -924,7 +945,7 @@ export default function FriendProfile({ userId, session, onBack, onSelectCook, o
                 <option value="oldest">Oldest</option>
                 <option value="alpha">A to Z</option>
                 <option value="score">Cook Score</option>
-                <option value="friends">Friends Have It</option>
+                <option value="friends">Friends have it</option>
               </select>
             </div>
 

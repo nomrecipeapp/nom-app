@@ -6,8 +6,9 @@ import ModerationSheet, { MoreMenuSheet } from './ModerationSheet'
 import { getHiddenContent, isHidden } from './moderation'
 import { IconCheck, IconChevronRight, IconX, IconPlus } from './icons'
 import FloatingAction from './FloatingAction'
-import { toast } from './ui'
+import { toast, LoadError } from './ui'
 import { IngredientList, InstructionList, CopyIngredientsButton, RecipeTimes } from './RecipeContent'
+import { tap, success } from './haptics'
 
 const verdictStyles = {
   would_make_again: { bg: '#EEF4E5', border: '#7A8C6E', color: '#4A5E42', label: 'Would Make Again' },
@@ -54,6 +55,7 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
   const [commentBody, setCommentBody] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [loadingComments, setLoadingComments] = useState(true)
+  const [commentsError, setCommentsError] = useState(false)
   const [ingredientsOpen, setIngredientsOpen] = useState(true)
   const [directionsOpen, setDirectionsOpen] = useState(true)
   const [showLikesModal, setShowLikesModal] = useState(false)
@@ -183,9 +185,11 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
 
   async function fetchComments() {
     setLoadingComments(true)
-    const { data } = await supabase.from('comments').select('*')
+    setCommentsError(false)
+    const { data, error } = await supabase.from('comments').select('*')
       .eq('target_type', targetType).eq('target_id', targetId)
       .order('created_at', { ascending: true })
+    if (error) { setCommentsError(true); setLoadingComments(false); return }
     const hidden = await getHiddenContent(session.user.id)
     const visible = (data || []).filter(c => !isHidden(hidden, 'comment', c.id, c.user_id))
     if (visible.length === 0) { setComments([]); setLoadingComments(false); return }
@@ -237,6 +241,7 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
   }
 
   async function toggleLike() {
+    tap()
     if (liked) {
       await supabase.from('likes').delete()
         .eq('target_type', targetType).eq('target_id', targetId).eq('user_id', session.user.id)
@@ -273,10 +278,16 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
     if (!commentBody.trim()) return
     setSubmitting(true)
 
-    await supabase.from('comments').insert({
+    const { error: postError } = await supabase.from('comments').insert({
       user_id: session.user.id, target_type: targetType,
       target_id: targetId, body: commentBody.trim()
     })
+    if (postError) {
+      // Keep what they typed so they can try again
+      toast("Couldn't post your comment. Try again?", { icon: null })
+      setSubmitting(false)
+      return
+    }
 
     if (cook.user_id !== session.user.id) {
       await supabase.from('notifications').insert({
@@ -360,6 +371,7 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
     }
     setSaving(false)
     setSaved(true)
+    success()
     const { data: newRecipe } = await supabase
       .from('recipes').select('id')
       .eq('user_id', session.user.id).eq('canonical_id', recipe.canonical_id).maybeSingle()
@@ -413,7 +425,7 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
       {overlayPhotos && (
         <div onClick={closeOverlay} onTouchStart={handleOverlayTouchStart} onTouchEnd={handleOverlayTouchEnd}
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.92)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <button onClick={closeOverlay} style={{ position: 'absolute', top: '20px', right: '20px', background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '50%', width: '36px', height: '36px', color: 'white', fontSize: '20px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><IconX size={16} strokeWidth={2.2} /></button>
+          <button className="nom-hit" aria-label="Close photo" onClick={closeOverlay} style={{ position: 'absolute', top: '20px', right: '20px', background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '50%', width: '36px', height: '36px', color: 'white', fontSize: '20px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><IconX size={16} strokeWidth={2.2} /></button>
           <img src={overlayPhotos[overlayIndex]} alt="" onClick={e => e.stopPropagation()} style={{ maxWidth: '92vw', maxHeight: '82vh', objectFit: 'contain', borderRadius: '8px' }} />
           {overlayPhotos.length > 1 && (
             <>
@@ -474,7 +486,7 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
               {recipe.difficulty && <div style={{ fontSize: '11px', color: 'var(--muted)' }}>· {recipe.difficulty}</div>}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
-            <button onClick={() => {
+            <button aria-label="Share" onClick={() => {
               const fullUrl = `https://www.nomrecipeapp.com/?cook=${cook.id}`
               if (navigator.share) {
                 navigator.share({ title: recipe.title, url: fullUrl }).catch(() => {})
@@ -523,7 +535,7 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
             border: 'none', borderRadius: 'var(--radius-pill)',
             fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: '600',
             cursor: 'pointer', transition: 'background 0.2s', marginBottom: '0'
-          }}>{saving ? 'Saving...' : <><IconPlus size={16} strokeWidth={2.4} style={{ marginRight: '6px', marginTop: '-2px' }} />Save to My Cookbook</>}</button>
+          }}>{saving ? 'Saving...' : <><IconPlus size={16} strokeWidth={2.4} style={{ marginRight: '6px', marginTop: '-2px' }} />Save to my Cookbook</>}</button>
         )}
         {!isOwner && !duplicate && saved && (
           <div style={{ marginBottom: '0' }}>
@@ -548,7 +560,7 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
         {!isOwner && duplicate && (
           <div style={{ background: '#FEF3E2', border: '1px solid #F5C47A', borderRadius: 'var(--radius-md)', padding: '12px 16px', marginBottom: '0' }}>
             <div style={{ fontSize: '13px', fontWeight: '600', color: '#9A6B1A', marginBottom: '8px' }}>Already in your Cookbook: "{duplicate.title}"</div>
-            <button onClick={addAnyway} style={{ width: '100%', padding: '8px', background: 'transparent', border: '1px solid #F5C47A', borderRadius: 'var(--radius-pill)', fontSize: '12px', fontWeight: '600', color: '#9A6B1A', cursor: 'pointer' }}>Add Anyway</button>
+            <button onClick={addAnyway} style={{ width: '100%', padding: '8px', background: 'transparent', border: '1px solid #F5C47A', borderRadius: 'var(--radius-pill)', fontSize: '12px', fontWeight: '600', color: '#9A6B1A', cursor: 'pointer' }}>Add anyway</button>
           </div>
         )}
         </div>
@@ -679,9 +691,9 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
         {circleCooks.length > 0 && (
           <div style={{ background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--parchment)', padding: '20px', marginBottom: '24px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
-              <div style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--muted)' }}>From Your Circle</div>
+              <div style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--muted)' }}>From your circle</div>
               {circleCooks.length > 3 && (
-                <button onClick={() => setShowCircleModal(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: '600', color: 'var(--clay)', padding: 0 }}>See all {circleCooks.length}<IconChevronRight size={12} strokeWidth={2.4} style={{ marginLeft: '3px', marginTop: '-1px' }} /></button>
+                <button className="nom-hit" onClick={() => setShowCircleModal(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: '600', color: 'var(--clay)', padding: 0 }}>See all {circleCooks.length}<IconChevronRight size={12} strokeWidth={2.4} style={{ marginLeft: '3px', marginTop: '-1px' }} /></button>
               )}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
@@ -722,14 +734,14 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <button onClick={toggleLike} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center' }}>
+            <button className="nom-hit" aria-label="Like" onClick={toggleLike} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center' }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill={liked ? 'var(--clay)' : 'none'}>
                 <path d="M12 21C12 21 3 14.5 3 8.5C3 5.42 5.42 3 8.5 3C10.24 3 11.91 3.81 13 5.08C14.09 3.81 15.76 3 17.5 3C20.58 3 23 5.42 23 8.5C23 14.5 12 21 12 21Z"
                   stroke={liked ? 'var(--clay)' : 'var(--muted)'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </button>
             {likeCount > 0 ? (
-              <button onClick={() => setShowLikesModal(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+              <button className="nom-hit" onClick={() => setShowLikesModal(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
                 <span style={{ fontSize: '13px', fontWeight: '600', color: liked ? 'var(--clay)' : 'var(--muted)' }}>{likeCount} {likeCount === 1 ? 'Like' : 'Likes'}</span>
               </button>
             ) : (
@@ -745,6 +757,8 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
 
           {loadingComments ? (
             <div style={{ fontSize: '13px', color: 'var(--muted)', textAlign: 'center', padding: '20px 0' }}>Loading...</div>
+          ) : commentsError ? (
+            <LoadError compact title="Couldn't load comments" onRetry={fetchComments} />
           ) : comments.length === 0 ? (
             <div style={{ fontSize: '13px', color: 'var(--muted)', textAlign: 'center', padding: '20px 0' }}>No comments yet. Be the first!</div>
           ) : (

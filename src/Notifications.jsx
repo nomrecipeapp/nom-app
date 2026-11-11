@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from './supabase'
+import { LoadError } from './ui'
 import { IconAt, IconBell, IconBookmark, IconCheck, IconComment, IconHeart, IconUserCheck, IconUserPlus } from './icons'
 
 const typeConfig = {
@@ -32,6 +33,7 @@ const typeConfig = {
 export default function Notifications({ session, onSelectUser, onSelectCook, onSelectSaveCard, onClose, onMarkedRead }) {
   const [notifications, setNotifications] = useState([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
 
   useEffect(() => {
     fetchNotifications()
@@ -39,13 +41,15 @@ export default function Notifications({ session, onSelectUser, onSelectCook, onS
 
   async function fetchNotifications() {
     setLoading(true)
+    setLoadError(false)
 
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('notifications')
       .select('*')
       .eq('recipient_id', session.user.id)
       .order('created_at', { ascending: false })
       .limit(50)
+    if (error) { setLoadError(true); setLoading(false); return }
 
     if (!data || data.length === 0) {
       setNotifications([])
@@ -150,6 +154,8 @@ export default function Notifications({ session, onSelectUser, onSelectCook, onS
       <div style={{ padding: '8px 0' }}>
         {loading ? (
           <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--muted)', fontSize: '14px' }}>Loading...</div>
+        ) : loadError ? (
+          <LoadError title="Couldn't load notifications" onRetry={fetchNotifications} />
         ) : notifications.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '80px 20px' }}>
             <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'var(--parchment)', color: 'var(--clay)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}><IconBell size={26} strokeWidth={1.8} /></div>
@@ -259,7 +265,7 @@ export default function Notifications({ session, onSelectUser, onSelectCook, onS
                           padding: '6px 14px', background: 'transparent', color: 'var(--clay)',
                           border: '2px solid var(--clay)', borderRadius: 'var(--radius-pill)',
                           fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600', cursor: 'pointer'
-                        }}>Request to Follow Back</button>
+                        }}>Request to follow back</button>
                       )}
                       {n._followsBack === 'pending' && (
                         <div style={{ fontSize: '12px', color: 'var(--muted)' }}>Requested</div>

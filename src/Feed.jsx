@@ -1,9 +1,11 @@
 import PeopleYouMightKnow from './PeopleYouMightKnow'
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from './supabase'
+import { LoadError, toast } from './ui'
 import { getHiddenContent, isHidden } from './moderation'
 import LikesModal from './LikesModal'
 import CircleFriendsModal from './CircleFriendsModal'
+import { tap } from './haptics'
 
 const verdictStyles = {
   would_make_again: { bg: '#EEF4E5', border: '#7A8C6E', color: '#4A5E42', label: 'Would Make Again' },
@@ -37,6 +39,7 @@ function SkeletonCard() {
 export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave, onGoToSearch, onGoToCookbook, savedScrollY, onScrollChange }) {
   const [feed, setFeed] = useState([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const [feedLikes, setFeedLikes] = useState({})
   const [feedLikeCounts, setFeedLikeCounts] = useState({})
   const [feedCommentCounts, setFeedCommentCounts] = useState({})
@@ -118,6 +121,7 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
     touchStartY.current = null
 
     if (pullDistance >= PULL_THRESHOLD) {
+      tap()
       setIsRefreshing(true)
       setPullDistance(0)
       await fetchFeed()
@@ -127,13 +131,26 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
     }
   }
 
+  // Couldn't load: keep what's already on screen (with a toast), or show the error card
+  function feedFailed() {
+    if (feed.length > 0) {
+      toast("Couldn't refresh. Check your connection.", { icon: null })
+    } else {
+      setLoadError(true)
+    }
+    setLoading(false)
+  }
+
   async function fetchFeed() {
-    setLoading(true)
-    const { data: follows } = await supabase
+    // A refresh with posts already showing keeps them on screen instead of flashing skeletons
+    if (feed.length === 0) setLoading(true)
+    setLoadError(false)
+    const { data: follows, error: followsError } = await supabase
       .from('follows')
       .select('following_id')
       .eq('follower_id', session.user.id)
       .eq('status', 'approved')
+    if (followsError) { feedFailed(); return }
 
     setHasFollows(!!follows && follows.length > 0)
     if (!follows || follows.length === 0) {
@@ -144,12 +161,13 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
 
     const ids = [...follows.map(f => f.following_id), session.user.id]
 
-    const [{ data: cooks }, { data: saves }, { data: profiles }, hidden] = await Promise.all([
+    const [{ data: cooks, error: cooksError }, { data: saves, error: savesError }, { data: profiles }, hidden] = await Promise.all([
       supabase.from('cooks').select('*, recipes(*)').in('user_id', ids).order('cooked_at', { ascending: false }).limit(40),
       supabase.from('recipes').select('*').in('user_id', ids).eq('status', 'want_to_make').order('created_at', { ascending: false }).limit(40),
       supabase.from('profiles').select('*').in('id', ids),
       getHiddenContent(session.user.id),
     ])
+    if (cooksError || savesError) { feedFailed(); return }
 
     // Hide posts I've reported and anything from people I've blocked
     const cookItems = (cooks || []).filter(c => !isHidden(hidden, 'cook', c.id, c.user_id)).map(c => ({
@@ -251,6 +269,7 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
   }
 
   async function toggleFeedLike(e, item) {
+    tap()
     e.stopPropagation()
     const key = `${item._type}-${item.id}`
     const isLiked = feedLikes[key]
@@ -279,14 +298,14 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
     <div style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '10px 16px 12px', borderTop: '1px solid var(--parchment)' }}
       onClick={e => e.stopPropagation()}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-        <button onClick={e => toggleFeedLike(e, item)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center' }}>
+        <button className="nom-hit" aria-label="Like" onClick={e => toggleFeedLike(e, item)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center' }}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill={feedLikes[`${type}-${item.id}`] ? 'var(--clay)' : 'none'}>
             <path d="M12 21C12 21 3 14.5 3 8.5C3 5.42 5.42 3 8.5 3C10.24 3 11.91 3.81 13 5.08C14.09 3.81 15.76 3 17.5 3C20.58 3 23 5.42 23 8.5C23 14.5 12 21 12 21Z"
               stroke={feedLikes[`${type}-${item.id}`] ? 'var(--clay)' : 'var(--muted)'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
         </button>
         {feedLikeCounts[`${type}-${item.id}`] > 0 ? (
-          <button onClick={e => { e.stopPropagation(); setLikesModal({ targetType: type, targetId: item.id }) }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+          <button className="nom-hit" onClick={e => { e.stopPropagation(); setLikesModal({ targetType: type, targetId: item.id }) }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
             <span style={{ fontSize: '12px', fontWeight: '600', color: feedLikes[`${type}-${item.id}`] ? 'var(--clay)' : 'var(--muted)' }}>
               {feedLikeCounts[`${type}-${item.id}`]} {feedLikeCounts[`${type}-${item.id}`] === 1 ? 'Like' : 'Likes'}
             </span>
@@ -415,7 +434,9 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
         </div>
       )}
 
-      {loading ? (
+      {loadError && !loading ? (
+        <LoadError title="Couldn't load your feed" onRetry={fetchFeed} />
+      ) : loading ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <SkeletonCard />
           <SkeletonCard />
@@ -465,7 +486,7 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
               padding: '13px 24px', background: 'var(--clay)', color: 'var(--cream)',
               border: 'none', borderRadius: 'var(--radius-pill)',
               fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '700', cursor: 'pointer'
-            }}>{hasFollows ? 'Go to Cookbook' : 'Find Cooks'}</button>
+            }}>{hasFollows ? 'Go to Cookbook' : 'Find cooks'}</button>
             <button onClick={() => hasFollows ? (onGoToSearch && onGoToSearch()) : (onGoToCookbook && onGoToCookbook())} style={{
               padding: '13px 24px', background: 'none', color: 'var(--muted)',
               border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-pill)',

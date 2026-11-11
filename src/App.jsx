@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useLayoutEffect, useRef } from 'react'
 import { Capacitor } from '@capacitor/core'
 import { StatusBar, Style } from '@capacitor/status-bar'
 import { supabase } from './supabase'
@@ -20,6 +20,7 @@ import FollowList from './FollowList'
 import Settings from './Settings'
 import Landing from './Landing'
 import { runBackGuard, hasBackGuard } from './backGuard'
+import { tap } from './haptics'
 
 // Screens that always show a Back button, even when opened from a shared link
 const DETAIL_SCREENS = ['recipe', 'socialRecipe', 'friendRecipeDetail', 'friendProfile', 'followList', 'notifications']
@@ -207,6 +208,31 @@ export default function App() {
     return () => { cancelAnimationFrame(raf); clearTimeout(t) }
   }, [screen, navDepth])
 
+  // Screen transitions: new screens slide in from the right, Back slides in from the left,
+  // tabs cross-fade. Uses `left` (not transform) so floating bars inside screens don't jump.
+  const navAnimRef = useRef(null)
+  const swipingBackRef = useRef(false)
+  const [navAnimKey, setNavAnimKey] = useState(0)
+  function animateNext(kind) {
+    navAnimRef.current = kind
+    setNavAnimKey(k => k + 1)
+  }
+  useLayoutEffect(() => {
+    const kind = navAnimRef.current
+    navAnimRef.current = null
+    const el = swipeRef.current
+    if (!kind || !el) return
+    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    const name = reduce || kind === 'tab' ? 'nom-screen-fade' : kind === 'push' ? 'nom-screen-push' : 'nom-screen-pop'
+    el.style.animation = 'none'
+    void el.offsetWidth // restart the animation even if the same one just ran
+    el.style.position = 'relative'
+    el.style.animation = `${name} ${kind === 'tab' ? 160 : 240}ms cubic-bezier(0.2, 0.8, 0.2, 1)`
+    const done = () => { el.style.animation = ''; el.style.position = '' }
+    el.addEventListener('animationend', done, { once: true })
+    return () => el.removeEventListener('animationend', done)
+  }, [navAnimKey])
+
   // Swipe from the left edge to go back, like other iPhone apps.
   // The current screen follows your finger; let go past a third of the way (or flick) to go back.
   const swipeStateRef = useRef({ canSwipe: false, goBack: () => {} })
@@ -294,6 +320,7 @@ export default function App() {
       target.style.transform = goingBack ? `translateX(${width}px)` : 'translateX(0)'
       setTimeout(() => {
         if (goingBack) {
+          swipingBackRef.current = true
           swipeStateRef.current.goBack()
           // Let the previous screen draw before sliding this one back into place
           setTimeout(() => reset(target), 60)
@@ -356,6 +383,7 @@ export default function App() {
   function pushNav() {
     navRef.current = [...navRef.current, snapshot()].slice(-40)
     setNavDepth(navRef.current.length)
+    animateNext('push')
   }
 
   function resetNav(entries = []) {
@@ -365,6 +393,8 @@ export default function App() {
 
   // Bottom tabs start a fresh history
   function goTab(tab) {
+    tap()
+    if (tab !== screen) animateNext('tab')
     resetNav()
     setScrollToComments(false)
     setSelectedSaveScrollToComments(false)
@@ -374,6 +404,9 @@ export default function App() {
   function goBack() {
     if (runBackGuard()) return
     if (settingsVisible) { setSettingsVisible(false); return }
+    // A swipe already slid the old screen away, so only animate a tapped Back
+    animateNext(swipingBackRef.current ? null : 'pop')
+    swipingBackRef.current = false
     const stack = navRef.current
     const prev = stack[stack.length - 1]
     resetNav(stack.slice(0, -1))
@@ -756,7 +789,7 @@ export default function App() {
           </button>
 
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <button onClick={() => openAdd()} style={{
+            <button aria-label="Add recipe" onClick={() => openAdd()} style={{
               background: 'var(--clay)', border: 'none', cursor: 'pointer',
               width: '48px', height: '48px', borderRadius: '50%',
               display: 'flex', alignItems: 'center', justifyContent: 'center',

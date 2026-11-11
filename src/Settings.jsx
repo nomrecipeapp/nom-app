@@ -185,9 +185,9 @@ export default function Settings({ session, onBack }) {
   }
 
   const editFieldLabels = {
-    name: 'Full Name',
+    name: 'Full name',
     username: 'Username',
-    email: 'Email Address',
+    email: 'Email address',
     password: 'Password',
   }
 
@@ -265,7 +265,7 @@ export default function Settings({ session, onBack }) {
 
     async function shareCode(code) {
         const url = `https://www.nomrecipeapp.com?code=${code}`
-        const message = `Join me on Nom — a private recipe journal for people who actually cook.\n\nUse my invite link: ${url}`
+        const message = `Come cook with me on Nom! Save recipes from anywhere, log what you make, and see what your friends would actually make again.\n\nHere's your invite code: ${code}\nGet the app and use it to sign up: ${url}`
 
         if (navigator.share) {
             try {
@@ -358,17 +358,17 @@ export default function Settings({ session, onBack }) {
           <div onClick={e => e.stopPropagation()} style={{ background: 'var(--cream)', borderRadius: '20px 20px 0 0', width: '100%', maxWidth: '480px', padding: '24px 24px 40px', boxShadow: '0 -8px 40px rgba(0,0,0,0.15)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
               <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: '700', color: 'var(--ink)' }}>Update {editFieldLabels[editField]}</div>
-              <button onClick={closeEdit} style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'var(--parchment)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', color: 'var(--charcoal)', fontWeight: '600' }}><IconX size={13} strokeWidth={2.2} /></button>
+              <button className="nom-hit" aria-label="Close" onClick={closeEdit} style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'var(--parchment)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', color: 'var(--charcoal)', fontWeight: '600' }}><IconX size={13} strokeWidth={2.2} /></button>
             </div>
 
             {editField === 'password' ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--charcoal)', marginBottom: '6px' }}>New Password</label>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--charcoal)', marginBottom: '6px' }}>New password</label>
                   <PasswordInput value={editValue} onChange={e => setEditValue(e.target.value)} autoComplete="new-password" placeholder="At least 8 characters" autoFocus style={inputStyle} />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--charcoal)', marginBottom: '6px' }}>Confirm Password</label>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--charcoal)', marginBottom: '6px' }}>Confirm password</label>
                   <PasswordInput value={editValue2} onChange={e => setEditValue2(e.target.value)} autoComplete="new-password" placeholder="Repeat new password" style={inputStyle} />
                 </div>
               </div>
@@ -458,7 +458,7 @@ export default function Settings({ session, onBack }) {
               <input type="text" value={deleteText} onChange={e => setDeleteText(e.target.value)} placeholder="delete" autoFocus style={{ ...inputStyle, border: '1.5px solid #F0C8C8' }} />
             </div>
             {deleteError && <div style={{ background: '#FDE8E8', border: '1px solid #F5C0C0', borderRadius: 'var(--radius-md)', padding: '10px 14px', fontSize: '13px', color: '#B85252', marginBottom: '12px' }}>{deleteError}</div>}
-            <button onClick={handleDeleteAccount} disabled={deleteText !== 'delete' || deleting} style={{ width: '100%', padding: '14px', background: deleteText === 'delete' ? '#C05050' : 'var(--parchment)', color: deleteText === 'delete' ? 'white' : 'var(--muted)', border: 'none', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: '600', cursor: deleteText === 'delete' ? 'pointer' : 'not-allowed', marginBottom: '10px', transition: 'all 0.15s' }}>{deleting ? 'Deleting...' : 'Delete My Account'}</button>
+            <button onClick={handleDeleteAccount} disabled={deleteText !== 'delete' || deleting} style={{ width: '100%', padding: '14px', background: deleteText === 'delete' ? '#C05050' : 'var(--parchment)', color: deleteText === 'delete' ? 'white' : 'var(--muted)', border: 'none', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: '600', cursor: deleteText === 'delete' ? 'pointer' : 'not-allowed', marginBottom: '10px', transition: 'all 0.15s' }}>{deleting ? 'Deleting...' : 'Delete my account'}</button>
             <button onClick={() => { setShowDeleteConfirm(false); setDeleteText(''); setDeleteError(null) }} style={{ width: '100%', padding: '12px', background: 'none', border: 'none', fontFamily: 'var(--font-body)', fontSize: '13px', color: 'var(--muted)', cursor: 'pointer' }}>Cancel</button>
           </div>
         </div>
@@ -517,7 +517,7 @@ export default function Settings({ session, onBack }) {
                   <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '1px' }}>{profile.is_private ? 'Follow requests need your approval' : 'Anyone can follow you without approval'}</div>
                 </div>
               </div>
-              <button onClick={togglePrivacy} style={{
+              <button onClick={togglePrivacy} className="nom-hit" role="switch" aria-checked={!!profile.is_private} aria-label="Private account" style={{
                 width: '44px', height: '26px', borderRadius: '13px', border: 'none',
                 background: profile.is_private ? 'var(--clay)' : 'var(--tan)',
                 cursor: 'pointer', position: 'relative', transition: 'background 0.2s', flexShrink: 0
@@ -532,7 +532,7 @@ export default function Settings({ session, onBack }) {
 
             {/* How Nom Works */}
             <div style={{ background: 'var(--cream)' }}>
-              <SectionHeader label="How Nom Works" />
+              <SectionHeader label="How Nom works" />
               <div style={{ padding: '4px 20px 16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {[
                   { q: 'Who can see my cookbook?', a: 'Only people you approve to follow you. Your recipes, cooks, and notes are always private unless you choose to follow someone back.' },
@@ -550,13 +550,13 @@ export default function Settings({ session, onBack }) {
 
             {/* Adding Recipes */}
             <div style={{ background: 'var(--cream)' }}>
-              <SectionHeader label="Adding Recipes" />
+              <SectionHeader label="Adding recipes" />
               <div style={{ padding: '4px 20px 16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {[
                   { q: 'What ways can I add a recipe?', a: 'Three ways: paste a URL from any recipe website, scan a photo of a recipe (cookbook, screenshot, handwritten card), or enter it manually.' },
-                  { q: 'Which recipe websites work with URL import?', a: 'Most food blogs and recipe sites work, like Serious Eats, Bon Appétit and Smitten Kitchen. A few sites, like NYT Cooking and Food Network, sometimes block apps from reading their recipes. If a link doesn\'t work, take a screenshot and use From Photo instead. If a site only brings in the title and photo, you can fill in the rest on the review screen.' },
+                  { q: 'Which recipe websites work with link import?', a: 'Most food blogs and recipe sites work, like Serious Eats, Bon Appétit and Smitten Kitchen. A few sites, like NYT Cooking and Food Network, sometimes block apps from reading their recipes. If a link doesn\'t work, take a screenshot and use From photo instead. If a site only brings in the title and photo, you can fill in the rest on the review screen.' },
                   { q: 'Can I scan a recipe from a photo?', a: 'Yes. Take a screenshot or photo of any recipe: a cookbook page, a website, or even a handwritten card. If the recipe spans multiple pages, select all the photos at once and Nom will combine them.' },
-                  { q: 'Can I import from TikTok or Instagram?', a: 'Yes! Paste a TikTok or Instagram link into "From URL" and Nom pulls the recipe from the post\'s caption. It reads the caption, not the video, so it works best when the creator wrote the recipe out. If the recipe is only in the video, or the post won\'t load, screenshot it and use "From Photo" instead.' },
+                  { q: 'Can I import from TikTok or Instagram?', a: 'Yes! Paste a TikTok or Instagram link into "From link" and Nom pulls the recipe from the post\'s caption. It reads the caption, not the video, so it works best when the creator wrote the recipe out. If the recipe is only in the video, or the post won\'t load, screenshot it and use "From photo" instead.' },
                 ].map((item, i, arr) => (
                   <FaqItem key={i} question={item.q} answer={item.a} isLast={i === arr.length - 1} />
                 ))}
@@ -567,7 +567,7 @@ export default function Settings({ session, onBack }) {
 
             {/* Invite Friends */}
             <div style={{ background: 'var(--cream)' }}>
-            <SectionHeader label="Invite Friends" />
+            <SectionHeader label="Invite friends" />
             <InviteSection session={session} />
             </div>
 
@@ -575,7 +575,7 @@ export default function Settings({ session, onBack }) {
 
           {/* Help & Legal */}
           <div style={{ background: 'var(--cream)' }}>
-            <SectionHeader label="Help & Legal" />
+            <SectionHeader label="Help & legal" />
             <SettingsRow iconBg="var(--parchment)" icon={<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1" y="3" width="12" height="8" rx="1.5" stroke="var(--charcoal)" strokeWidth="1.3"/><path d="M1 5l6 4 6-4" stroke="var(--charcoal)" strokeWidth="1.3" strokeLinecap="round"/></svg>} label="Contact us" value="nom.recipeapp@gmail.com" onTap={() => { window.location.href = 'mailto:nom.recipeapp@gmail.com?subject=Nom%20support' }} />
             <SettingsRow iconBg="var(--parchment)" icon={<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1.5l4.5 1.8v3.4c0 2.8-1.9 4.9-4.5 5.8-2.6-.9-4.5-3-4.5-5.8V3.3L7 1.5z" stroke="var(--charcoal)" strokeWidth="1.3" strokeLinejoin="round"/></svg>} label="Privacy Policy" onTap={() => window.open('https://app.termly.io/policy-viewer/policy.html?policyUUID=758a4b17-ed24-4c70-acda-5aaa6c508907', '_blank', 'noopener,noreferrer')} />
             <SettingsRow iconBg="var(--parchment)" icon={<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3.5 1.5h5l2.5 2.5v8.5h-7.5v-11z" stroke="var(--charcoal)" strokeWidth="1.3" strokeLinejoin="round"/><path d="M5 7h4M5 9.5h4" stroke="var(--charcoal)" strokeWidth="1.3" strokeLinecap="round"/></svg>} label="Terms of Service" onTap={() => window.open('https://app.termly.io/policy-viewer/policy.html?policyUUID=61e1bda6-9414-4896-bd55-972479e2c5ee', '_blank', 'noopener,noreferrer')} />
@@ -585,7 +585,7 @@ export default function Settings({ session, onBack }) {
 
             {/* Account actions */}
           <div style={{ background: 'var(--cream)' }}>
-            <SectionHeader label="Account Actions" />
+            <SectionHeader label="Account" />
             <SettingsRow iconBg="#E8E6E2" icon={<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9 2H5a1 1 0 00-1 1v1h6V3a1 1 0 00-1-1zM2 4h10M3 4l.7 7.3A1 1 0 004.7 12h4.6a1 1 0 001-.7L11 4" stroke="#3A3630" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>} label="Log out" onTap={handleLogOut} />
             <SettingsRow iconBg="#FCE8E8" icon={<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="5.5" stroke="#C05050" strokeWidth="1.3"/><path d="M7 4.5v3" stroke="#C05050" strokeWidth="1.5" strokeLinecap="round"/><circle cx="7" cy="9.5" r="0.75" fill="#C05050"/></svg>} label="Delete account" onTap={() => setShowDeleteConfirm(true)} danger />
           </div>

@@ -77,7 +77,7 @@ export default function ResetPassword({ onComplete }) {
         ) : (
           <form onSubmit={e => { e.preventDefault(); if (!saving) handleReset() }} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             <div>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--charcoal)', marginBottom: '6px' }}>New Password</label>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--charcoal)', marginBottom: '6px' }}>New password</label>
               <PasswordInput
                 value={password}
                 onChange={e => setPassword(e.target.value)}
@@ -87,7 +87,7 @@ export default function ResetPassword({ onComplete }) {
               />
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--charcoal)', marginBottom: '6px' }}>Confirm Password</label>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--charcoal)', marginBottom: '6px' }}>Confirm password</label>
               <PasswordInput
                 value={confirm}
                 onChange={e => setConfirm(e.target.value)}
@@ -120,7 +120,7 @@ export default function ResetPassword({ onComplete }) {
               fontWeight: '600',
               cursor: saving ? 'not-allowed' : 'pointer',
               marginTop: '4px'
-            }}>{saving ? 'Saving...' : 'Update Password'}</button>
+            }}>{saving ? 'Saving...' : 'Update password'}</button>
           </form>
         )}
 

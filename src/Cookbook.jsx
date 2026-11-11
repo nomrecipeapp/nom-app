@@ -7,7 +7,7 @@ import { canonicalSpellings, recipeTags, sortTags, tagKey, hasTag, tagChoices, a
 import { AlphabetRail, TagSheet } from './CookbookTools'
 import BottomBar, { BAR_SHADOW } from './BottomBar'
 import { letterOf } from './letters'
-import { confirmSheet, toast } from './ui'
+import { confirmSheet, toast, LoadError } from './ui'
 
 const FILTERS = ['All', 'Want to Make', 'Cooked', 'Never Again']
 
@@ -28,6 +28,7 @@ const SORT_OPTIONS = ['Newest', 'Oldest', 'A to Z', 'Cook Score', 'Friends Have 
 export default function Cookbook({ session, onAddRecipe, onSelectRecipe, defaultFilter, onSelectUser, savedScrollY, onScrollChange, visible }) {
   const [recipes, setRecipes] = useState([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const [filter, setFilter] = useState(defaultFilter || 'All')
   const [tagFilters, setTagFilters] = useState([])
   const [search, setSearch] = useState('')
@@ -106,11 +107,19 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
 
   async function fetchRecipes(quiet = false) {
     if (!quiet) setLoading(true)
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('recipes')
       .select('*')
       .eq('user_id', session.user.id)
       .order('created_at', { ascending: false })
+    // Never show "no recipes yet" just because the connection dropped
+    if (error) {
+      if (recipes.length > 0) toast("Couldn't refresh your Cookbook. Check your connection.", { icon: null })
+      else setLoadError(true)
+      setLoading(false)
+      return
+    }
+    setLoadError(false)
     if (data) {
       setRecipes(data)
       fetchCircleFriendsForRecipes(data)
@@ -425,7 +434,7 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
               style={{ flex: 1, border: 'none', background: 'none', fontFamily: 'var(--font-body)', fontSize: '14px', color: 'var(--ink)', outline: 'none' }}
             />
             {search && (
-              <button onClick={() => setSearch('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', fontSize: '16px', padding: 0, lineHeight: 1 }}><IconX size={13} strokeWidth={2.2} /></button>
+              <button className="nom-hit" aria-label="Clear search" onClick={() => setSearch('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', fontSize: '16px', padding: 0, lineHeight: 1 }}><IconX size={13} strokeWidth={2.2} /></button>
             )}
           </div>
 
@@ -552,7 +561,9 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
               onClose={() => setCircleModal(null)} onSelectUser={onSelectUser} />
           )}
 
-          {loading ? null : filtered.length === 0 ? (
+          {loading ? null : loadError ? (
+            <LoadError title="Couldn't load your Cookbook" onRetry={() => { setLoadError(false); fetchRecipes() }} />
+          ) : filtered.length === 0 ? (
             <EmptyState {...emptyMessage()} />
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -678,7 +689,7 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
               {n === 0 ? 'None selected' : `${n} selected`}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              <button onClick={toggleSelectAll} tabIndex={selecting ? 0 : -1} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '600', color: 'var(--clay)' }}>
+              <button className="nom-hit" onClick={toggleSelectAll} tabIndex={selecting ? 0 : -1} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '600', color: 'var(--clay)' }}>
                 {allShownSelected ? 'Select none' : 'Select all'}
               </button>
               <button onClick={stopSelecting} tabIndex={selecting ? 0 : -1} style={{ background: 'var(--clay)', color: 'var(--cream)', border: 'none', borderRadius: 'var(--radius-pill)', padding: '5px 14px', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600' }}>

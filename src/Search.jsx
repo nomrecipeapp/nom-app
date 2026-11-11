@@ -29,6 +29,7 @@ export default function Search({ session, onSelectUser, onSelectSave, onSelectCo
   const [dropdownResults, setDropdownResults] = useState({ people: [], myRecipes: [], recipes: [] })
   const [showDropdown, setShowDropdown] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [searchError, setSearchError] = useState(false)
   const [followStates, setFollowStates] = useState({})
   const [recentSearches, setRecentSearches] = useState(getRecentSearches())
   const [recentlyViewed, setRecentlyViewed] = useState([])
@@ -90,30 +91,30 @@ async function fetchRecentlyViewed() {
       return [...rows.filter(inName), ...rows.filter(r => !inName(r))]
     }
 
-    const { data: myRows } = await supabase
-      .from('recipes')
-      .select('*')
-      .eq('user_id', session.user.id)
-      .or(nameOrIngredient)
-      .order('created_at', { ascending: false })
-      .limit(20)
-    const myRecipeRows = nameFirst(myRows || []).slice(0, 5)
-
-    const { data: peopleRows } = await supabase
-      .from('profiles')
-      .select('*')
-      .or(`username.ilike.%${q}%,full_name.ilike.%${q}%`)
-      .neq('id', session.user.id)
-      .limit(8)
-    const hidden = await getHiddenContent(session.user.id)
-    const people = (peopleRows || []).filter(p => !hidden.blockedIds.has(p.id)).slice(0, 5)
+    // These four don't depend on each other, so ask for them all at once
+    const [myRes, peopleRes, hidden, followsRes] = await Promise.all([
+      supabase.from('recipes').select('*')
+        .eq('user_id', session.user.id).or(nameOrIngredient)
+        .order('created_at', { ascending: false }).limit(20),
+      supabase.from('profiles').select('*')
+        .or(`username.ilike.%${q}%,full_name.ilike.%${q}%`)
+        .neq('id', session.user.id).limit(8),
+      getHiddenContent(session.user.id),
+      supabase.from('follows').select('following_id')
+        .eq('follower_id', session.user.id).eq('status', 'approved'),
+    ])
+    if (myRes.error || peopleRes.error || followsRes.error) {
+      setSearchError(true)
+      setShowDropdown(true)
+      setLoading(false)
+      return
+    }
+    setSearchError(false)
+    const myRecipeRows = nameFirst(myRes.data || []).slice(0, 5)
+    const people = (peopleRes.data || []).filter(p => !hidden.blockedIds.has(p.id)).slice(0, 5)
 
     let recipes = []
-    const { data: follows } = await supabase
-      .from('follows')
-      .select('following_id')
-      .eq('follower_id', session.user.id)
-      .eq('status', 'approved')
+    const follows = followsRes.data
 
     if (follows && follows.length > 0) {
       const friendIds = follows.map(f => f.following_id)
@@ -233,7 +234,7 @@ async function fetchRecentlyViewed() {
             }}
           />
           {query.length > 0 && (
-            <button onClick={() => { setQuery(''); setShowDropdown(false) }} style={{
+            <button className="nom-hit" aria-label="Clear search" onClick={() => { setQuery(''); setShowDropdown(false) }} style={{
               background: 'none', border: 'none', cursor: 'pointer',
               color: 'var(--muted)', fontSize: '18px', padding: 0, lineHeight: 1
             }}><IconX size={14} strokeWidth={2.2} /></button>
@@ -251,6 +252,8 @@ async function fetchRecentlyViewed() {
           }}>
             {loading ? (
               <div style={{ padding: '20px', textAlign: 'center', fontSize: '13px', color: 'var(--muted)' }}>Searching...</div>
+            ) : searchError ? (
+              <div style={{ padding: '20px', textAlign: 'center', fontSize: '13px', color: 'var(--muted)' }}>Couldn't search right now. Check your connection and try again.</div>
             ) : !hasDropdownResults ? (
               <div style={{ padding: '20px', textAlign: 'center', fontSize: '13px', color: 'var(--muted)' }}>No results for "{query}"</div>
             ) : (
@@ -296,7 +299,7 @@ async function fetchRecentlyViewed() {
                 )}
                 {dropdownResults.myRecipes.length > 0 && (
                   <div>
-                    <div style={{ padding: '10px 16px 6px', fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--muted)' }}>In Your Cookbook</div>
+                    <div style={{ padding: '10px 16px 6px', fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--muted)' }}>In your Cookbook</div>
                     {dropdownResults.myRecipes.map(recipe => {
                       const statusStyles = {
                         cooked: { bg: '#EEF4E5', color: '#4A5E42', label: 'Cooked' },
@@ -379,7 +382,7 @@ async function fetchRecentlyViewed() {
           {/* Recent searches */}
           {recentSearches.length > 0 && (
             <div style={{ marginBottom: '28px' }}>
-              <div style={{ fontSize: '11px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '12px' }}>Recent Searches</div>
+              <div style={{ fontSize: '11px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '12px' }}>Recent searches</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                 {recentSearches.map(term => (
                   <div key={term} onClick={() => handleRecentSearch(term)} style={{
@@ -393,7 +396,7 @@ async function fetchRecentlyViewed() {
                       <path d="M16.5 16.5L21 21" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round"/>
                     </svg>
                     {term}
-                    <button onClick={e => handleRemoveRecent(e, term)} style={{
+                    <button className="nom-hit" aria-label="Remove from recent searches" onClick={e => handleRemoveRecent(e, term)} style={{
                       background: 'none', border: 'none', cursor: 'pointer',
                       color: 'var(--muted)', fontSize: '14px', padding: 0, lineHeight: 1, marginLeft: '2px'
                     }}><IconX size={11} strokeWidth={2.2} /></button>
@@ -405,7 +408,7 @@ async function fetchRecentlyViewed() {
 
           {/* Recently Viewed */}
           <div>
-            <div style={{ fontSize: '11px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '16px' }}>Recently Viewed</div>
+            <div style={{ fontSize: '11px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '16px' }}>Recently viewed</div>
             {loadingViewed ? (
               <div style={{ textAlign: 'center', padding: '40px 0', fontSize: '13px', color: 'var(--muted)' }}>Loading...</div>
             ) : recentlyViewed.length === 0 ? (
