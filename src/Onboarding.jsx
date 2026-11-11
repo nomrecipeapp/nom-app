@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { linkProps } from './openLink'
 import { WHATS_NEW_VERSION } from './WhatsNew'
 import { supabase } from './supabase'
@@ -52,7 +52,12 @@ function ProgressDots({ step }) {
 }
 
 export default function Onboarding({ onComplete, session, prefillInviteCode, startOnWaitlist, startOnSignup }) {
+  const [searchDone, setSearchDone] = useState(false)
   const [step, setStep] = useState(session ? 3 : (prefillInviteCode || startOnSignup) ? 2 : 1)
+  const prevStepRef = useRef(step)
+  const stepDir = step === prevStepRef.current ? 0 : step > prevStepRef.current ? 1 : -1
+  useEffect(() => { prevStepRef.current = step; window.scrollTo(0, 0) }, [step])
+  const reduceMotion = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
   const [accountCreated, setAccountCreated] = useState(!!session)
   const [showPhotoStep, setShowPhotoStep] = useState(false)
 
@@ -231,14 +236,19 @@ export default function Onboarding({ onComplete, session, prefillInviteCode, sta
     e.target.value = ''
   }
 
+  const latestSearchRef = useRef('')
   async function searchUsers(query) {
     setSearchQuery(query)
-    if (query.length < 2) { setSearchResults([]); return }
+    latestSearchRef.current = query
+    if (query.trim().length < 2) { setSearchResults([]); setSearchDone(false); return }
     const { data } = await supabase
       .from('profiles').select('*')
-      .or(`full_name.ilike.%${query}%,username.ilike.%${query}%`)
+      .or(`full_name.ilike.%${query.trim()}%,username.ilike.%${query.trim()}%`)
       .neq('id', userId).limit(5)
+    // Ignore answers to older searches that arrive after a newer one
+    if (latestSearchRef.current !== query) return
     setSearchResults(data || [])
+    setSearchDone(true)
   }
 
   async function sendFollowRequest(targetId) {
@@ -413,9 +423,16 @@ export default function Onboarding({ onComplete, session, prefillInviteCode, sta
     )
   }
 
+  // Each step slides in: from the right going forward, from the left going Back.
+  function wrap(content) {
+    const anim = stepDir === 0 || reduceMotion ? 'none'
+      : `${stepDir > 0 ? 'nom-screen-push' : 'nom-screen-pop'} 0.26s cubic-bezier(0.2, 0.8, 0.2, 1)`
+    return <div key={step} style={{ position: 'relative', animation: anim }}>{content}</div>
+  }
+
   // ── STEP 1: WELCOME ──
   // Fits on one screen: the illustration shrinks on smaller iPhones so the buttons never need a scroll
-  if (step === 1) return (
+  if (step === 1) return wrap(
     <div style={{ height: '100dvh', overflowY: 'auto', background: 'var(--cream)', display: 'flex', flexDirection: 'column', maxWidth: '480px', margin: '0 auto' }}>
       <div style={{ background: 'linear-gradient(160deg, var(--clay) 0%, var(--ember) 60%, var(--parchment) 100%)', flex: '1 1 0', minHeight: 'calc(110px + var(--safe-top))', maxHeight: '40vh', paddingTop: 'var(--safe-top)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <svg viewBox="0 0 140 140" fill="none" style={{ height: '70%', maxHeight: '140px', width: 'auto' }}>
@@ -448,7 +465,7 @@ export default function Onboarding({ onComplete, session, prefillInviteCode, sta
   )
 
   // ── STEP 2: CREATE ACCOUNT (with photo step inline) ──
-  if (step === 2) return (
+  if (step === 2) return wrap(
     <div style={{ minHeight: '100vh', background: 'var(--cream)', display: 'flex', flexDirection: 'column', maxWidth: '480px', margin: '0 auto', padding: 'calc(48px + var(--safe-top)) 28px calc(40px + var(--safe-bottom))' }}>
 
       {showPhotoStep ? (
@@ -566,7 +583,7 @@ export default function Onboarding({ onComplete, session, prefillInviteCode, sta
   )
 
   // ── STEP 3: FIND FELLOW COOKS ──
-  if (step === 3) return (
+  if (step === 3) return wrap(
     <div style={{ minHeight: '100vh', background: 'var(--cream)', display: 'flex', flexDirection: 'column', maxWidth: '480px', margin: '0 auto', padding: 'calc(48px + var(--safe-top)) 28px calc(40px + var(--safe-bottom))' }}>
       <StepBack onClick={() => { setShowPhotoStep(true); setStep(2) }} />
       <div>
@@ -574,12 +591,17 @@ export default function Onboarding({ onComplete, session, prefillInviteCode, sta
         <div style={{ fontSize: '13px', color: 'var(--muted)', marginBottom: '24px' }}>Nom is private by default, so send a request to cook together.</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'var(--parchment)', borderRadius: 'var(--radius-md)', padding: '12px 16px', marginBottom: '16px', border: '1.5px solid var(--tan)' }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="var(--muted)" strokeWidth="1.8"/><path d="M16.5 16.5L21 21" stroke="var(--muted)" strokeWidth="1.8" strokeLinecap="round"/></svg>
-          <input type="text" value={searchQuery} onChange={e => searchUsers(e.target.value)} placeholder="Search by name or username" style={{ flex: 1, border: 'none', background: 'none', fontFamily: 'var(--font-body)', fontSize: '14px', color: 'var(--ink)', outline: 'none' }} />
+          <input type="text" value={searchQuery} onChange={e => searchUsers(e.target.value)} placeholder="Search by name or username" autoCapitalize="none" autoCorrect="off" spellCheck={false} style={{ flex: 1, border: 'none', background: 'none', fontFamily: 'var(--font-body)', fontSize: '14px', color: 'var(--ink)', outline: 'none' }} />
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {searchDone && searchResults.length === 0 && (
+            <div style={{ fontSize: '13px', color: 'var(--muted)', textAlign: 'center', padding: '16px 8px', lineHeight: 1.5 }}>No cooks found for "{searchQuery.trim()}". Try a first name, or invite them later from Settings.</div>
+          )}
           {searchResults.map(u => (
             <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'var(--parchment)', borderRadius: 'var(--radius-md)', padding: '12px 14px' }}>
-              <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--clay), var(--ember))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: '700', color: 'var(--cream)', flexShrink: 0 }}>{(u.full_name || u.username || '?')[0].toUpperCase()}</div>
+              {u.avatar_url
+                ? <img loading="lazy" decoding="async" src={u.avatar_url} alt="" style={{ width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+                : <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--clay), var(--ember))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: '700', color: 'var(--cream)', flexShrink: 0 }}>{(u.full_name || u.username || '?')[0].toUpperCase()}</div>}
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--ink)' }}>{u.full_name || u.username}</div>
                 {u.username && <div style={{ fontSize: '11px', color: 'var(--muted)' }}>@{u.username}</div>}
@@ -600,7 +622,7 @@ export default function Onboarding({ onComplete, session, prefillInviteCode, sta
   )
 
   // ── STEP 4: FIRST RECIPE ──
-  if (step === 4) return (
+  if (step === 4) return wrap(
     <div style={{ minHeight: '100vh', background: 'var(--cream)', display: 'flex', flexDirection: 'column', maxWidth: '480px', margin: '0 auto', padding: 'calc(48px + var(--safe-top)) 28px calc(40px + var(--safe-bottom))' }}>
       <StepBack onClick={() => setStep(3)} />
       <div>
@@ -634,7 +656,7 @@ export default function Onboarding({ onComplete, session, prefillInviteCode, sta
   )
 
   // ── STEP 5: YOU'RE IN ──
-  return (
+  return wrap(
     <div style={{ minHeight: '100vh', background: 'var(--cream)', display: 'flex', flexDirection: 'column', maxWidth: '480px', margin: '0 auto' }}>
       <div style={{ background: 'linear-gradient(160deg, var(--clay) 0%, var(--ember) 55%, var(--parchment) 100%)', height: '52vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, position: 'relative', overflow: 'hidden' }}>
         <svg width="280" height="220" viewBox="0 0 280 220" fill="none">
