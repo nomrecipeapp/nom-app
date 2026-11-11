@@ -22,6 +22,7 @@ import Landing from './Landing'
 import { runBackGuard, hasBackGuard } from './backGuard'
 import { tap } from './haptics'
 import WhatsNew from './WhatsNew'
+import { setupPush, clearBadge } from './push'
 
 // Screens that always show a Back button, even when opened from a shared link
 const DETAIL_SCREENS = ['recipe', 'socialRecipe', 'friendRecipeDetail', 'friendProfile', 'followList', 'notifications']
@@ -136,6 +137,19 @@ export default function App() {
 
     return () => subscription.unsubscribe()
   }, [])
+
+  // Push notifications: set up once per signed-in member (after onboarding).
+  // Tapping a push opens Notifications; the ref keeps that pointing at the latest screen state.
+  const openNotificationsRef = useRef(null)
+  openNotificationsRef.current = () => {
+    if (screen === 'notifications') return
+    pushNav(); setScreen('notifications'); setUnreadCount(0)
+  }
+  useEffect(() => {
+    if (!session?.user?.id || !onboardingComplete) return
+    setupPush(session.user.id, () => openNotificationsRef.current?.())
+  }, [session?.user?.id, onboardingComplete])
+  useEffect(() => { if (screen === 'notifications') clearBadge() }, [screen])
 
   useEffect(() => {
     if (!session) return

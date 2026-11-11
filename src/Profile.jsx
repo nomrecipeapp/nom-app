@@ -3,6 +3,7 @@ import { supabase } from './supabase'
 import EmptyState from './EmptyState'
 import { IconBook, IconPot, IconPlus, IconLock, IconLockOpen } from './icons'
 import { shrinkImage } from './shrinkImage'
+import { unregisterPush } from './push'
 
 const verdictStyles = {
   would_make_again: { bg: '#EEF4E5', border: '#7A8C6E', color: '#4A5E42', label: 'Again' },
@@ -637,7 +638,7 @@ export default function Profile({ session, onBack, onSelectRecipe, onSelectCook,
             sessionStorage.removeItem('nom_onboarding_step')
             sessionStorage.removeItem('nom_onboarding_user')
             sessionStorage.removeItem('nom_onboarding_name')
-            supabase.auth.signOut()
+            unregisterPush().finally(() => supabase.auth.signOut())
           }} style=
             {{ width: '100%', padding: '12px', background: 'transparent', color: 'var(--muted)', border: '1.5px solid var(--parchment)', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>Sign out</button>
         </div>

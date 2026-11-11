@@ -10,9 +10,9 @@ import { supabase } from './supabase'
 export const WHATS_NEW_VERSION = '1.0.3'
 
 const HIGHLIGHTS = [
-  { title: 'Stay signed in', body: 'Nom remembers you, even after your iPhone tidies up.' },
+  { title: 'Notifications on your phone', body: 'Know right away when friends like, comment or want to follow you.' },
   { title: 'Share to feed, or not', body: 'Log a quiet cook that only shows on your profile.' },
-  { title: 'Smoother everywhere', body: 'Faster screens, gentle taps you can feel, and a friendlier offline mode.' },
+  { title: 'Smoother everywhere', body: 'You stay signed in, photos load faster, and taps have a little feel to them.' },
 ]
 
 let whatsNewOpen = false

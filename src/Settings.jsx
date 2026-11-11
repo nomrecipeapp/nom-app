@@ -5,6 +5,7 @@ import { listBlocked, unblockUser } from './moderation'
 import { IconCheck, IconX } from './icons'
 import { toast, PasswordInput } from './ui'
 import { shrinkImage } from './shrinkImage'
+import { unregisterPush } from './push'
 
 export default function Settings({ session, onBack }) {
   const [profile, setProfile] = useState({ full_name: '', username: '', email: '', is_private: true })
@@ -128,6 +129,7 @@ export default function Settings({ session, onBack }) {
     sessionStorage.removeItem('nom_onboarding_step')
     sessionStorage.removeItem('nom_onboarding_user')
     sessionStorage.removeItem('nom_onboarding_name')
+    await unregisterPush()
     await supabase.auth.signOut()
   }
 
