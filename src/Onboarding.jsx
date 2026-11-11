@@ -6,6 +6,7 @@ import { importRecipeFromUrl } from './importUrl'
 import { missingStepsReason } from './recipeCheck'
 import { IconCheck } from './icons'
 import { PasswordInput } from './ui'
+import { shrinkImage } from './shrinkImage'
 
 const TOTAL_STEPS = 5
 
@@ -218,7 +219,7 @@ export default function Onboarding({ onComplete, session, prefillInviteCode, sta
     try {
       const ext = file.name.split('.').pop() || 'jpg'
       const path = `${userId}/${Date.now()}.${ext}`
-      const { error: uploadError } = await supabase.storage.from('avatars').upload(path, file, { upsert: true })
+      const { error: uploadError } = await supabase.storage.from('avatars').upload(path, await shrinkImage(file, 512), { upsert: true })
       if (uploadError) throw uploadError
       const { data } = supabase.storage.from('avatars').getPublicUrl(path)
       await supabase.from('profiles').update({ avatar_url: data.publicUrl }).eq('id', userId)
@@ -464,7 +465,7 @@ export default function Onboarding({ onComplete, session, prefillInviteCode, sta
           <label htmlFor="onboarding-avatar" style={{ cursor: 'pointer', marginBottom: '16px' }}>
             <div style={{ position: 'relative' }}>
               {avatarUrl ? (
-                <img src={avatarUrl} alt="" style={{ width: '120px', height: '120px', borderRadius: '50%', objectFit: 'cover', boxShadow: '0 0 0 4px var(--cream), 0 0 0 6px var(--clay)' }} />
+                <img loading="lazy" decoding="async" src={avatarUrl} alt="" style={{ width: '120px', height: '120px', borderRadius: '50%', objectFit: 'cover', boxShadow: '0 0 0 4px var(--cream), 0 0 0 6px var(--clay)' }} />
               ) : (
                 <div style={{ width: '120px', height: '120px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--clay), var(--ember))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-display)', fontSize: '48px', fontWeight: '700', color: 'var(--cream)', boxShadow: '0 0 0 4px var(--cream), 0 0 0 6px var(--tan)' }}>
                   {(fullName || '?')[0].toUpperCase()}
@@ -615,7 +616,7 @@ export default function Onboarding({ onComplete, session, prefillInviteCode, sta
         {importError && <div style={{ fontSize: '12px', color: '#B85252', marginBottom: '12px' }}>{importError}</div>}
         {importedRecipe && (
           <div style={{ background: 'var(--warm-white)', border: '1px solid var(--parchment)', borderRadius: 'var(--radius-md)', padding: '14px', marginTop: '12px' }}>
-            {importedRecipe.image_url && <img src={importedRecipe.image_url} alt="" style={{ width: '100%', height: '140px', objectFit: 'cover', borderRadius: '8px', marginBottom: '10px' }} />}
+            {importedRecipe.image_url && <img loading="lazy" decoding="async" src={importedRecipe.image_url} alt="" style={{ width: '100%', height: '140px', objectFit: 'cover', borderRadius: '8px', marginBottom: '10px' }} />}
             <div style={{ fontFamily: 'var(--font-display)', fontSize: '15px', fontWeight: '600', color: 'var(--ink)', marginBottom: '4px' }}>{importedRecipe.title}</div>
             {importedRecipe.source_name && <div style={{ fontSize: '11px', color: 'var(--muted)' }}>{importedRecipe.source_name}</div>}
             {importedRecipe.mightBeMissingSteps && <div style={{ fontSize: '12px', color: 'var(--charcoal)', marginTop: '8px', lineHeight: 1.45 }}>This one might be missing some steps. You can check the original and fill them in from the recipe later.</div>}

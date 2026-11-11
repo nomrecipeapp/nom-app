@@ -195,7 +195,7 @@ export default function Notifications({ session, onSelectUser, onSelectCook, onS
                   fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: '700', color: 'var(--cream)'
                 }}>
                   {n.actorProfile?.avatar_url
-                    ? <img src={n.actorProfile.avatar_url} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                    ? <img loading="lazy" decoding="async" src={n.actorProfile.avatar_url} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
                     : actorName[0].toUpperCase()}
                 </div>
 

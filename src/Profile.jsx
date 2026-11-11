@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from './supabase'
 import EmptyState from './EmptyState'
 import { IconBook, IconPot, IconPlus, IconLock, IconLockOpen } from './icons'
+import { shrinkImage } from './shrinkImage'
 
 const verdictStyles = {
   would_make_again: { bg: '#EEF4E5', border: '#7A8C6E', color: '#4A5E42', label: 'Again' },
@@ -38,7 +39,7 @@ function RecipeThumbnailSmall({ recipe, dashed }) {
       position: 'relative'
     }}>
       {recipe.image_url && (
-        <img
+        <img loading="lazy" decoding="async"
           src={recipe.image_url}
           alt=""
           style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }}
@@ -213,7 +214,7 @@ export default function Profile({ session, onBack, onSelectRecipe, onSelectCook,
     try {
       const ext = file.name.split('.').pop() || 'jpg'
       const path = `${session.user.id}/${Date.now()}.${ext}`
-      const { error: uploadError } = await supabase.storage.from('avatars').upload(path, file, { upsert: true })
+      const { error: uploadError } = await supabase.storage.from('avatars').upload(path, await shrinkImage(file, 512), { upsert: true })
       if (uploadError) throw uploadError
       const { data } = supabase.storage.from('avatars').getPublicUrl(path)
       const { error: updateError } = await supabase.from('profiles')
@@ -265,7 +266,7 @@ export default function Profile({ session, onBack, onSelectRecipe, onSelectCook,
   const avatarCircle = (size, fontSize) => (
     <div style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
       {profile.avatar_url ? (
-        <img src={profile.avatar_url} alt="" style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', boxShadow: '0 0 0 3px var(--cream), 0 0 0 5px var(--tan)' }} onError={e => { e.target.style.display = 'none' }} />
+        <img loading="lazy" decoding="async" src={profile.avatar_url} alt="" style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', boxShadow: '0 0 0 3px var(--cream), 0 0 0 5px var(--tan)' }} onError={e => { e.target.style.display = 'none' }} />
       ) : (
         <div style={{
           width: size, height: size, borderRadius: '50%',
@@ -325,7 +326,7 @@ export default function Profile({ session, onBack, onSelectRecipe, onSelectCook,
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '20px' }}>
               <div style={{ position: 'relative', marginBottom: '10px' }}>
                 {profile.avatar_url ? (
-                  <img src={profile.avatar_url} alt="" style={{ width: '72px', height: '72px', borderRadius: '50%', objectFit: 'cover', boxShadow: '0 0 0 3px var(--cream), 0 0 0 5px var(--tan)' }} />
+                  <img loading="lazy" decoding="async" src={profile.avatar_url} alt="" style={{ width: '72px', height: '72px', borderRadius: '50%', objectFit: 'cover', boxShadow: '0 0 0 3px var(--cream), 0 0 0 5px var(--tan)' }} />
                 ) : (
                   <div style={{ width: '72px', height: '72px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--clay), var(--ember))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-display)', fontSize: '28px', fontWeight: '700', color: 'var(--cream)', boxShadow: '0 0 0 3px var(--cream), 0 0 0 5px var(--tan)' }}>
                     {(profile.full_name || profile.username || session.user.email || '?')[0].toUpperCase()}
@@ -469,7 +470,7 @@ export default function Profile({ session, onBack, onSelectRecipe, onSelectCook,
                     <div key={cook.id} onClick={() => onSelectRecipe(recipe)} style={{ flexShrink: 0, width: '88px', cursor: 'pointer' }}>
                       <div style={{ width: '88px', height: '88px', borderRadius: 'var(--radius-md)', background: 'linear-gradient(135deg, var(--clay), var(--ember))', marginBottom: '6px', position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         {recipe.image_url && (
-                          <img
+                          <img loading="lazy" decoding="async"
                             src={recipe.image_url}
                             alt=""
                             style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }}
@@ -560,7 +561,7 @@ export default function Profile({ session, onBack, onSelectRecipe, onSelectCook,
                           display: 'flex', alignItems: 'center', justifyContent: 'center'
                         }}>
                           {item.image_url && (
-                            <img src={item.image_url} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} onError={e => e.target.style.display = 'none'} />
+                            <img loading="lazy" decoding="async" src={item.image_url} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} onError={e => e.target.style.display = 'none'} />
                           )}
                           <span style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: '700', color: 'var(--cream)' }}>{(item.title || '?')[0].toUpperCase()}</span>
                         </div>
@@ -602,7 +603,7 @@ export default function Profile({ session, onBack, onSelectRecipe, onSelectCook,
                       border: '1px solid var(--parchment)', overflow: 'hidden', cursor: 'pointer'
                     }}>
                       {(item.photo_urls?.[0] || recipe.image_url) && (
-                        <img src={item.photo_urls?.[0] || recipe.image_url} alt="" style={{ width: '100%', height: '160px', objectFit: 'cover', display: 'block' }} onError={e => e.target.style.display = 'none'} />
+                        <img loading="lazy" decoding="async" src={item.photo_urls?.[0] || recipe.image_url} alt="" style={{ width: '100%', height: '160px', objectFit: 'cover', display: 'block' }} onError={e => e.target.style.display = 'none'} />
                       )}
                       <div style={{ padding: '14px 16px' }}>
                         {v && (

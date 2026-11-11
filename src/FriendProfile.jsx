@@ -50,7 +50,7 @@ function RecipeThumbnailSmall({ recipe }) {
       position: 'relative'
     }}>
       {recipe.image_url && (
-        <img
+        <img loading="lazy" decoding="async"
           src={recipe.image_url}
           alt=""
           style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }}
@@ -129,7 +129,7 @@ function FriendRecipeDetail({ recipe, session, onBack }) {
     <div style={{ maxWidth: '480px', margin: '0 auto', paddingBottom: 'var(--nav-clearance)' }}>
       {recipe.image_url ? (
         <div style={{ position: 'relative' }}>
-          <img src={recipe.image_url} alt="" style={{ width: '100%', height: '260px', objectFit: 'cover', display: 'block' }} onError={e => { e.target.style.display = 'none' }} />
+          <img loading="lazy" decoding="async" src={recipe.image_url} alt="" style={{ width: '100%', height: '260px', objectFit: 'cover', display: 'block' }} onError={e => { e.target.style.display = 'none' }} />
           <button className="nom-hit" aria-label="Back" onClick={onBack} style={{
             position: 'absolute', top: '16px', left: '16px',
             width: '36px', height: '36px', borderRadius: '50%',
@@ -641,7 +641,7 @@ export default function FriendProfile({ userId, session, onBack, onSelectCook, o
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '24px 20px 20px' }}>
           <div style={{ position: 'relative', marginBottom: '12px' }}>
             {profile?.avatar_url ? (
-              <img src={profile.avatar_url} alt="" style={{ width: '72px', height: '72px', borderRadius: '50%', objectFit: 'cover', boxShadow: '0 0 0 3px var(--cream), 0 0 0 5px var(--tan)', display: 'block' }} onError={e => e.target.style.display = 'none'} />
+              <img loading="lazy" decoding="async" src={profile.avatar_url} alt="" style={{ width: '72px', height: '72px', borderRadius: '50%', objectFit: 'cover', boxShadow: '0 0 0 3px var(--cream), 0 0 0 5px var(--tan)', display: 'block' }} onError={e => e.target.style.display = 'none'} />
             ) : (
               <div style={{ width: '72px', height: '72px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--clay), var(--ember))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-display)', fontSize: '28px', fontWeight: '700', color: 'var(--cream)', boxShadow: '0 0 0 3px var(--cream), 0 0 0 5px var(--tan)' }}>
                 {(profile?.full_name || profile?.username || '?')[0].toUpperCase()}
@@ -798,7 +798,7 @@ export default function FriendProfile({ userId, session, onBack, onSelectCook, o
                           display: 'flex', alignItems: 'center', justifyContent: 'center'
                         }}>
                           {recipe.image_url && (
-                            <img
+                            <img loading="lazy" decoding="async"
                               src={recipe.image_url}
                               alt=""
                               style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }}
@@ -970,7 +970,7 @@ export default function FriendProfile({ userId, session, onBack, onSelectCook, o
                     <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
                       {recipe.image_url && (
                         <div style={{ width: '52px', height: '52px', borderRadius: 'var(--radius-sm)', background: 'var(--parchment)', flexShrink: 0, overflow: 'hidden' }}>
-                          <img src={recipe.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          <img loading="lazy" decoding="async" src={recipe.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                             onError={e => e.target.parentElement.style.display = 'none'} />
                         </div>
                       )}
@@ -1034,7 +1034,7 @@ export default function FriendProfile({ userId, session, onBack, onSelectCook, o
                             display: 'flex', alignItems: 'center', justifyContent: 'center'
                           }}>
                             {item.image_url && (
-                              <img src={item.image_url} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} onError={e => e.target.style.display = 'none'} />
+                              <img loading="lazy" decoding="async" src={item.image_url} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} onError={e => e.target.style.display = 'none'} />
                             )}
                             <span style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: '700', color: 'var(--cream)' }}>{(item.title || '?')[0].toUpperCase()}</span>
                           </div>
@@ -1076,7 +1076,7 @@ export default function FriendProfile({ userId, session, onBack, onSelectCook, o
                       border: '1px solid var(--parchment)', overflow: 'hidden', cursor: 'pointer'
                     }}>
                       {(item.photo_urls?.[0] || recipe.image_url) && (
-                        <img src={item.photo_urls?.[0] || recipe.image_url} alt="" style={{ width: '100%', height: '160px', objectFit: 'cover', display: 'block' }} onError={e => e.target.style.display = 'none'} />
+                        <img loading="lazy" decoding="async" src={item.photo_urls?.[0] || recipe.image_url} alt="" style={{ width: '100%', height: '160px', objectFit: 'cover', display: 'block' }} onError={e => e.target.style.display = 'none'} />
                       )}
                       <div style={{ padding: '14px 16px' }}>
                         {v && (

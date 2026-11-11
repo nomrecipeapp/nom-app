@@ -57,7 +57,7 @@ export default function PeopleYouMightKnow({ session, onSelectUser, headerPaddin
                 background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', padding: 0
               }}><IconX size={12} strokeWidth={2.2} /></button>
               {person.avatar_url
-                ? <img src={person.avatar_url} alt="" style={{ width: '56px', height: '56px', borderRadius: '50%', objectFit: 'cover' }} onError={e => e.target.style.display = 'none'} />
+                ? <img loading="lazy" decoding="async" src={person.avatar_url} alt="" style={{ width: '56px', height: '56px', borderRadius: '50%', objectFit: 'cover' }} onError={e => e.target.style.display = 'none'} />
                 : <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--clay), var(--ember))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: '700', color: 'var(--cream)' }}>{(person.full_name || person.username || '?')[0].toUpperCase()}</div>
               }
               <div style={{ fontSize: '12px', fontWeight: '600', color: 'var(--ink)', textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%' }}>{person.full_name || person.username}</div>

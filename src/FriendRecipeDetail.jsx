@@ -468,7 +468,7 @@ async function fetchCircleCookPhotos() {
         <div onClick={closeOverlay} onTouchStart={handleOverlayTouchStart} onTouchEnd={handleOverlayTouchEnd}
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.92)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <button className="nom-hit" aria-label="Close photo" onClick={closeOverlay} style={{ position: 'absolute', top: '20px', right: '20px', background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '50%', width: '36px', height: '36px', color: 'white', fontSize: '20px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><IconX size={16} strokeWidth={2.2} /></button>
-          <img src={overlayPhotos[overlayIndex]} alt="" onClick={e => e.stopPropagation()} style={{ maxWidth: '92vw', maxHeight: '82vh', objectFit: 'contain', borderRadius: '8px' }} />
+          <img loading="lazy" decoding="async" src={overlayPhotos[overlayIndex]} alt="" onClick={e => e.stopPropagation()} style={{ maxWidth: '92vw', maxHeight: '82vh', objectFit: 'contain', borderRadius: '8px' }} />
           {overlayPhotos.length > 1 && (
             <>
               <button onClick={e => { e.stopPropagation(); overlayPrev() }} style={{ position: 'absolute', left: '12px', background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '50%', width: '40px', height: '40px', color: 'white', fontSize: '20px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</button>
@@ -488,13 +488,13 @@ async function fetchCircleCookPhotos() {
         <div style={{ overflowX: 'auto', display: 'flex', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch', paddingLeft: '16px', paddingBottom: '4px' }}>
           {stripPhotos.map((photo, i) => (
             <div key={i} onClick={() => openOverlay(i)} style={{ position: 'relative', flexShrink: 0, width: '85vw', maxWidth: '400px', height: '240px', borderRadius: 'var(--radius-lg)', overflow: 'hidden', marginRight: '10px', cursor: 'pointer', background: 'var(--parchment)' }}>
-              <img src={photo.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} onError={e => e.target.style.display = 'none'} />
+              <img loading="lazy" decoding="async" src={photo.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} onError={e => e.target.style.display = 'none'} />
               {!photo.isStock && photo.profile && (
                 <div onClick={e => { e.stopPropagation(); onSelectUser && onSelectUser(photo.profile.id) }}
                   style={{ position: 'absolute', bottom: '10px', left: '10px', display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(0,0,0,0.45)', borderRadius: 'var(--radius-pill)', padding: '4px 10px 4px 4px', cursor: 'pointer' }}>
                   <div style={{ width: '22px', height: '22px', borderRadius: '50%', border: '1.5px solid white', overflow: 'hidden', background: 'linear-gradient(135deg, var(--clay), var(--ember))', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     {photo.profile.avatar_url
-                      ? <img src={photo.profile.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => e.target.style.display = 'none'} />
+                      ? <img loading="lazy" decoding="async" src={photo.profile.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => e.target.style.display = 'none'} />
                       : <span style={{ fontFamily: 'var(--font-display)', fontSize: '9px', fontWeight: '700', color: 'var(--cream)' }}>{(photo.profile.full_name || photo.profile.username || '?')[0].toUpperCase()}</span>
                     }
                   </div>
@@ -511,7 +511,7 @@ async function fetchCircleCookPhotos() {
           <div style={{ flexShrink: 0, width: '6px' }} />
         </div>
       ) : recipe?.image_url ? (
-        <img src={recipe.image_url} alt="" style={{ width: '100%', height: '260px', objectFit: 'cover', display: 'block' }} onError={e => e.target.style.display = 'none'} />
+        <img loading="lazy" decoding="async" src={recipe.image_url} alt="" style={{ width: '100%', height: '260px', objectFit: 'cover', display: 'block' }} onError={e => e.target.style.display = 'none'} />
       ) : null}
 
       <div style={{ padding: '20px 20px 0' }}>
@@ -557,7 +557,7 @@ async function fetchCircleCookPhotos() {
           {savedByProfile && recipe.user_id !== session.user.id && (
             <div onClick={() => onSelectUser && onSelectUser(savedByProfile.id)} style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
               {savedByProfile.avatar_url
-                ? <img src={savedByProfile.avatar_url} alt="" style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+                ? <img loading="lazy" decoding="async" src={savedByProfile.avatar_url} alt="" style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
                 : <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--clay), var(--ember))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: '700', color: 'var(--cream)', flexShrink: 0 }}>{(savedByProfile.full_name || savedByProfile.username || '?')[0].toUpperCase()}</div>
               }
               <div>
@@ -766,7 +766,7 @@ async function fetchCircleCookPhotos() {
                 return (
                   <div key={comment.id} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
                     {comment.profiles?.avatar_url ? (
-                      <img src={comment.profiles.avatar_url} alt="" style={{ width: '30px', height: '30px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+                      <img loading="lazy" decoding="async" src={comment.profiles.avatar_url} alt="" style={{ width: '30px', height: '30px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
                     ) : (
                       <div style={{ width: '30px', height: '30px', borderRadius: '50%', flexShrink: 0, background: 'linear-gradient(135deg, var(--clay), var(--ember))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: '700', color: 'var(--cream)' }}>{name[0].toUpperCase()}</div>
                     )}
@@ -897,7 +897,7 @@ async function fetchCircleCookPhotos() {
 
             <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
               {myProfile?.avatar_url ? (
-                  <img src={myProfile.avatar_url} alt="" style={{ width: '30px', height: '30px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+                  <img loading="lazy" decoding="async" src={myProfile.avatar_url} alt="" style={{ width: '30px', height: '30px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
                 ) : (
                   <div style={{ width: '30px', height: '30px', borderRadius: '50%', flexShrink: 0, background: 'linear-gradient(135deg, var(--clay), var(--ember))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: '700', color: 'var(--cream)' }}>{(session.user.email || '?')[0].toUpperCase()}</div>
                 )}

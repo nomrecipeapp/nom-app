@@ -11,6 +11,7 @@ import { PRESET_TAGS, tagChoices, addTag, hasTag, tagKey } from './tags'
 import { IngredientList, InstructionList, CopyIngredientsButton, RecipeTimes } from './RecipeContent'
 import { setBackGuard } from './backGuard'
 import { tap, success } from './haptics'
+import { shrinkImage } from './shrinkImage'
 
 const verdictOptions = [
   { value: 'would_make_again', label: 'Would Make Again', sub: 'A keeper', bg: '#EEF4E5', border: '#7A8C6E', color: '#4A5E42' },
@@ -216,7 +217,7 @@ export default function RecipeDetail({ recipe: initialRecipe, session, onBack, o
   async function uploadFileToStorage(file, bucket) {
     const ext = file.name.split('.').pop() || 'jpg'
     const path = `${session.user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
-    const { error } = await supabase.storage.from(bucket).upload(path, file, { upsert: false })
+    const { error } = await supabase.storage.from(bucket).upload(path, await shrinkImage(file), { upsert: false })
     if (error) throw error
     const { data } = supabase.storage.from(bucket).getPublicUrl(path)
     return data.publicUrl
@@ -516,14 +517,14 @@ async function saveEditCook() {
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 {editCookForm.existingPhotos.map((url, i) => (
                   <div key={`existing-${i}`} style={{ position: 'relative', width: '80px', height: '80px', borderRadius: 'var(--radius-md)', overflow: 'hidden', flexShrink: 0 }}>
-                    <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <img loading="lazy" decoding="async" src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     <button className="nom-hit" aria-label="Remove photo" onClick={() => setEditCookForm(f => ({ ...f, existingPhotos: f.existingPhotos.filter((_, j) => j !== i) }))}
                       style={{ position: 'absolute', top: '4px', right: '4px', width: '20px', height: '20px', borderRadius: '50%', background: 'rgba(0,0,0,0.55)', border: 'none', color: 'white', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}><IconX size={10} strokeWidth={2.2} /></button>
                   </div>
                 ))}
                 {editCookPhotoPreviews.map((src, i) => (
                   <div key={`new-${i}`} style={{ position: 'relative', width: '80px', height: '80px', borderRadius: 'var(--radius-md)', overflow: 'hidden', flexShrink: 0 }}>
-                    <img src={src} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <img loading="lazy" decoding="async" src={src} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     <button className="nom-hit" aria-label="Remove photo" onClick={() => {
                       setEditCookPhotoFiles(prev => prev.filter((_, j) => j !== i))
                       setEditCookPhotoPreviews(prev => prev.filter((_, j) => j !== i))
@@ -615,7 +616,7 @@ async function saveEditCook() {
                 setEditPhotoUploading(true)
                 const ext = file.name.split('.').pop() || 'jpg'
                 const path = `${session.user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
-                const { error } = await supabase.storage.from('recipe-images').upload(path, file, { upsert: false })
+                const { error } = await supabase.storage.from('recipe-images').upload(path, await shrinkImage(file), { upsert: false })
                 if (!error) {
                   const { data } = supabase.storage.from('recipe-images').getPublicUrl(path)
                   setEditForm(f => ({ ...f, image_url: data.publicUrl }))
@@ -626,7 +627,7 @@ async function saveEditCook() {
             />
             {editForm.image_url ? (
               <div style={{ position: 'relative', height: '160px', borderRadius: 'var(--radius-md)', overflow: 'hidden', marginBottom: '8px' }}>
-                <img src={editForm.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => e.target.style.display = 'none'} />
+                <img loading="lazy" decoding="async" src={editForm.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => e.target.style.display = 'none'} />
                 <button className="nom-hit" aria-label="Remove photo" onClick={() => setEditForm(f => ({ ...f, image_url: '' }))} style={{ position: 'absolute', top: '8px', right: '8px', width: '28px', height: '28px', borderRadius: '50%', background: 'rgba(0,0,0,0.5)', border: 'none', color: 'white', fontSize: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><IconX size={11} strokeWidth={2.2} /></button>
                 <button className="nom-hit" aria-label="Change photo" onClick={() => editPhotoInputRef.current?.click()} style={{ position: 'absolute', top: '8px', right: '44px', width: '28px', height: '28px', borderRadius: '50%', background: 'rgba(0,0,0,0.5)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
@@ -727,7 +728,7 @@ async function saveEditCook() {
           onTouchEnd={handleOverlayTouchEnd}
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.92)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <button className="nom-hit" aria-label="Close photo" onClick={closeOverlay} style={{ position: 'absolute', top: '20px', right: '20px', background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '50%', width: '36px', height: '36px', color: 'white', fontSize: '20px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><IconX size={16} strokeWidth={2.2} /></button>
-          <img
+          <img loading="lazy" decoding="async"
             src={overlayPhotos[overlayIndex]}
             alt=""
             onClick={e => e.stopPropagation()}
@@ -765,7 +766,7 @@ async function saveEditCook() {
           // Fallback: stock hero as today
           return recipe.image_url ? (
             <div style={{ height: '220px', background: 'var(--parchment)', position: 'relative', overflow: 'hidden', marginTop: 'var(--top-bar-h)' }}>
-              <img src={recipe.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              <img loading="lazy" decoding="async" src={recipe.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                 onError={e => { e.target.style.display = 'none'; e.target.parentElement.style.display = 'none' }} />
               <button className="nom-hit" aria-label="Change photo" onClick={() => thumbnailInputRef.current?.click()} disabled={thumbnailUploading} style={{ position: 'absolute', top: '12px', right: '12px', width: '32px', height: '32px', borderRadius: '50%', background: 'rgba(28,26,23,0.55)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', backdropFilter: 'blur(4px)' }}>
                 {thumbnailUploading
@@ -796,7 +797,7 @@ async function saveEditCook() {
                 const allUrls = stripPhotos.map(p => p.url)
                 return (
                   <div key={i} onClick={() => openOverlay(allUrls, i)} style={{ position: 'relative', flexShrink: 0, width: '85vw', maxWidth: '400px', height: '240px', borderRadius: 'var(--radius-lg)', overflow: 'hidden', marginRight: '10px', cursor: 'pointer', background: 'var(--parchment)' }}>
-                    <img src={photo.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} onError={e => e.target.style.display = 'none'} />
+                    <img loading="lazy" decoding="async" src={photo.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} onError={e => e.target.style.display = 'none'} />
                     {photo.isStock && (
                       <>
                         <div style={{ position: 'absolute', bottom: '10px', left: '10px', background: 'rgba(0,0,0,0.45)', borderRadius: 'var(--radius-pill)', padding: '3px 8px' }}>
@@ -812,7 +813,7 @@ async function saveEditCook() {
                       <div style={{ position: 'absolute', bottom: '10px', left: '10px', display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(0,0,0,0.45)', borderRadius: 'var(--radius-pill)', padding: '4px 10px 4px 4px' }}>
                         <div style={{ width: '22px', height: '22px', borderRadius: '50%', border: '1.5px solid white', overflow: 'hidden', background: 'linear-gradient(135deg, var(--clay), var(--ember))', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                           {myProfile?.avatar_url
-                            ? <img src={myProfile.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => e.target.style.display = 'none'} />
+                            ? <img loading="lazy" decoding="async" src={myProfile.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => e.target.style.display = 'none'} />
                             : <span style={{ fontFamily: 'var(--font-display)', fontSize: '9px', fontWeight: '700', color: 'var(--cream)' }}>{(myProfile?.full_name || myProfile?.username || session.user.email || '?')[0].toUpperCase()}</span>
                           }
                         </div>
@@ -824,7 +825,7 @@ async function saveEditCook() {
                         style={{ position: 'absolute', bottom: '10px', left: '10px', display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(0,0,0,0.45)', borderRadius: 'var(--radius-pill)', padding: '4px 10px 4px 4px', cursor: 'pointer' }}>
                         <div style={{ width: '22px', height: '22px', borderRadius: '50%', border: '1.5px solid white', overflow: 'hidden', background: 'linear-gradient(135deg, var(--clay), var(--ember))', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                           {photo.profile.avatar_url
-                            ? <img src={photo.profile.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => e.target.style.display = 'none'} />
+                            ? <img loading="lazy" decoding="async" src={photo.profile.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => e.target.style.display = 'none'} />
                             : <span style={{ fontFamily: 'var(--font-display)', fontSize: '9px', fontWeight: '700', color: 'var(--cream)' }}>{(photo.profile.full_name || photo.profile.username || '?')[0].toUpperCase()}</span>
                           }
                         </div>
@@ -923,7 +924,7 @@ async function saveEditCook() {
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '10px' }}>
                   {cookPhotoPreviews.map((src, i) => (
                     <div key={i} style={{ position: 'relative', width: '80px', height: '80px', borderRadius: 'var(--radius-md)', overflow: 'hidden', flexShrink: 0 }}>
-                      <img src={src} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <img loading="lazy" decoding="async" src={src} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       <button className="nom-hit" aria-label="Remove photo" onClick={() => removeCookPhoto(i)} style={{ position: 'absolute', top: '4px', right: '4px', width: '20px', height: '20px', borderRadius: '50%', background: 'rgba(0,0,0,0.55)', border: 'none', color: 'white', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}><IconX size={10} strokeWidth={2.2} /></button>
                     </div>
                   ))}
@@ -1088,7 +1089,7 @@ async function saveEditCook() {
                     {cook.photo_urls && cook.photo_urls.length > 0 && (
                       <div style={{ display: 'flex', gap: '6px', marginBottom: '8px', flexWrap: 'wrap' }}>
                         {cook.photo_urls.map((url, pi) => (
-                          <img
+                          <img loading="lazy" decoding="async"
                             key={pi}
                             src={url}
                             alt=""

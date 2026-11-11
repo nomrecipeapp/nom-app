@@ -512,7 +512,7 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
                   <div onClick={e => { e.stopPropagation(); onSelectUser && onSelectUser(item.user_id) }}
                     style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 16px', cursor: 'pointer' }}>
                     {profile?.avatar_url
-                      ? <img src={profile.avatar_url} alt="" style={{ width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+                      ? <img loading="lazy" decoding="async" src={profile.avatar_url} alt="" style={{ width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
                       : <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--clay), var(--ember))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: '700', color: 'var(--cream)', flexShrink: 0 }}>{(profile?.full_name || profile?.username || '?')[0].toUpperCase()}</div>
                     }
                     <div style={{ flex: 1, minWidth: 0 }}>
@@ -533,7 +533,7 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
                       display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative'
                     }}>
                       {item.image_url && (
-                        <img src={item.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }}
+                        <img loading="lazy" decoding="async" src={item.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }}
                           onError={e => e.target.style.display = 'none'} />
                       )}
                       <span style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: '700', color: 'var(--cream)' }}>
@@ -564,7 +564,7 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
                 <div onClick={e => { e.stopPropagation(); onSelectUser && onSelectUser(item.user_id) }}
                   style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '14px 16px', cursor: 'pointer' }}>
                   {profile?.avatar_url
-                    ? <img src={profile.avatar_url} alt="" style={{ width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+                    ? <img loading="lazy" decoding="async" src={profile.avatar_url} alt="" style={{ width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
                     : <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--clay), var(--ember))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: '700', color: 'var(--cream)', flexShrink: 0 }}>{(profile?.full_name || profile?.username || '?')[0].toUpperCase()}</div>
                   }
                   <div>
@@ -584,7 +584,7 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
                   if (stripPhotos.length === 1) {
                     return (
                       <div style={{ position: 'relative' }}>
-                        <img src={stripPhotos[0].url} alt="" style={{ width: '100%', height: '200px', objectFit: 'cover', display: 'block' }} onError={e => { e.target.style.display = 'none'; e.target.parentElement.style.display = 'none' }} />
+                        <img loading="lazy" decoding="async" src={stripPhotos[0].url} alt="" style={{ width: '100%', height: '200px', objectFit: 'cover', display: 'block' }} onError={e => { e.target.style.display = 'none'; e.target.parentElement.style.display = 'none' }} />
                         {stripPhotos[0].isStock ? (
                           <div style={{ position: 'absolute', bottom: '10px', left: '10px', background: 'rgba(0,0,0,0.45)', borderRadius: 'var(--radius-pill)', padding: '3px 8px' }}>
                             <span style={{ fontSize: '10px', fontWeight: '600', color: 'white' }}>Recipe photo</span>
@@ -594,7 +594,7 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
                             style={{ position: 'absolute', bottom: '8px', left: '8px', display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(0,0,0,0.45)', borderRadius: 'var(--radius-pill)', padding: '4px 10px 4px 4px', cursor: 'pointer' }}>
                             <div style={{ width: '22px', height: '22px', borderRadius: '50%', border: '1.5px solid white', overflow: 'hidden', background: 'linear-gradient(135deg, var(--clay), var(--ember))', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                               {profile?.avatar_url
-                                ? <img src={profile.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => e.target.style.display = 'none'} />
+                                ? <img loading="lazy" decoding="async" src={profile.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => e.target.style.display = 'none'} />
                                 : <span style={{ fontFamily: 'var(--font-display)', fontSize: '9px', fontWeight: '700', color: 'var(--cream)' }}>{(profile?.full_name || profile?.username || '?')[0].toUpperCase()}</span>
                               }
                             </div>
@@ -608,13 +608,13 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
                     <div onClick={e => e.stopPropagation()} style={{ overflowX: 'auto', display: 'flex', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch', paddingLeft: '12px', paddingRight: '4px' }}>
                       {stripPhotos.map((photo, pi) => (
                         <div key={pi} style={{ position: 'relative', flexShrink: 0, width: '80vw', maxWidth: '340px', height: '200px', borderRadius: 'var(--radius-md)', overflow: 'hidden', marginRight: '8px', background: 'var(--parchment)' }}>
-                          <img src={photo.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} onError={e => { e.target.style.display = 'none'; e.target.parentElement.style.display = 'none' }} />
+                          <img loading="lazy" decoding="async" src={photo.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} onError={e => { e.target.style.display = 'none'; e.target.parentElement.style.display = 'none' }} />
                           {!photo.isStock && profile && (
                             <div onClick={e => { e.stopPropagation(); onSelectUser && onSelectUser(item.user_id) }}
                               style={{ position: 'absolute', bottom: '8px', left: '8px', display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(0,0,0,0.45)', borderRadius: 'var(--radius-pill)', padding: '4px 10px 4px 4px', cursor: 'pointer' }}>
                               <div style={{ width: '22px', height: '22px', borderRadius: '50%', border: '1.5px solid white', overflow: 'hidden', background: 'linear-gradient(135deg, var(--clay), var(--ember))', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                                 {profile?.avatar_url
-                                  ? <img src={profile.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => e.target.style.display = 'none'} />
+                                  ? <img loading="lazy" decoding="async" src={profile.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => e.target.style.display = 'none'} />
                                   : <span style={{ fontFamily: 'var(--font-display)', fontSize: '9px', fontWeight: '700', color: 'var(--cream)' }}>{(profile?.full_name || profile?.username || '?')[0].toUpperCase()}</span>
                                 }
                               </div>

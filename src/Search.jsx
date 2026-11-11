@@ -277,7 +277,7 @@ async function fetchRecentlyViewed() {
                             position: 'relative', overflow: 'hidden'
                           }}>
                             {profile.avatar_url && (
-                              <img src={profile.avatar_url} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} onError={e => e.target.style.display = 'none'} />
+                              <img loading="lazy" decoding="async" src={profile.avatar_url} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} onError={e => e.target.style.display = 'none'} />
                             )}
                             {(profile.full_name || profile.username || '?')[0].toUpperCase()}
                           </div>
@@ -321,7 +321,7 @@ async function fetchRecentlyViewed() {
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                             position: 'relative'
                           }}>
-                            {recipe.image_url && <img src={recipe.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }} onError={e => e.target.style.display = 'none'} />}
+                            {recipe.image_url && <img loading="lazy" decoding="async" src={recipe.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }} onError={e => e.target.style.display = 'none'} />}
                             <span style={{ fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: '700', color: 'var(--cream)', position: 'relative' }}>{(recipe.title || '?')[0].toUpperCase()}</span>
                           </div>
                           <div style={{ flex: 1, minWidth: 0 }}>
@@ -352,7 +352,7 @@ async function fetchRecentlyViewed() {
                           position: 'relative'
                         }}>
                           {recipe.image_url
-                            ? <img src={recipe.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => { e.target.style.display = 'none' }} />
+                            ? <img loading="lazy" decoding="async" src={recipe.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => { e.target.style.display = 'none' }} />
                             : null
                           }
                         <span style={{ fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: '700', color: 'var(--cream)', position: 'absolute' }}>{(recipe.title || '?')[0].toUpperCase()}</span>
@@ -436,7 +436,7 @@ async function fetchRecentlyViewed() {
                         position: 'relative'
                       }}>
                         {recipe.image_url && (
-                          <img
+                          <img loading="lazy" decoding="async"
                             src={recipe.image_url}
                             alt=""
                             style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }}

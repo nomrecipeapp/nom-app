@@ -10,6 +10,7 @@ import { IconCamera, IconCheck, IconChevronLeft, IconX } from './icons'
 import { PRESET_TAGS, tagChoices, addTag, hasTag, tagKey } from './tags'
 import { tap, success } from './haptics'
 import { missingStepsReason } from './recipeCheck'
+import { shrinkImage } from './shrinkImage'
 
 const verdictOptions = [
   { value: 'would_make_again', label: 'Would Make Again', sub: 'A keeper', bg: '#EEF4E5', border: '#7A8C6E', color: '#4A5E42' },
@@ -342,7 +343,7 @@ export default function AddRecipe({ session, onSave, onCancel, startLogging = fa
             cookPhotoFiles.map(async f => {
               const ext = f.name.split('.').pop() || 'jpg'
               const path = `${session.user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
-              const { error } = await supabase.storage.from('cook-photos').upload(path, f, { upsert: false })
+              const { error } = await supabase.storage.from('cook-photos').upload(path, await shrinkImage(f), { upsert: false })
               if (error) throw error
               const { data } = supabase.storage.from('cook-photos').getPublicUrl(path)
               return data.publicUrl
@@ -423,7 +424,7 @@ export default function AddRecipe({ session, onSave, onCancel, startLogging = fa
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           {cookPhotoPreviews.map((src, i) => (
             <div key={i} style={{ position: 'relative', width: '80px', height: '80px', borderRadius: 'var(--radius-md)', overflow: 'hidden', flexShrink: 0 }}>
-              <img src={src} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <img loading="lazy" decoding="async" src={src} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               <button className="nom-hit" aria-label="Remove photo" onClick={() => {
                 setCookPhotoFiles(prev => prev.filter((_, j) => j !== i))
                 setCookPhotoPreviews(prev => prev.filter((_, j) => j !== i))
@@ -535,7 +536,7 @@ export default function AddRecipe({ session, onSave, onCancel, startLogging = fa
               setReviewPhotoUploading(true)
               const ext = file.name.split('.').pop() || 'jpg'
               const path = `${session.user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
-              const { error } = await supabase.storage.from('recipe-images').upload(path, file, { upsert: false })
+              const { error } = await supabase.storage.from('recipe-images').upload(path, await shrinkImage(file), { upsert: false })
               if (!error) {
                 const { data } = supabase.storage.from('recipe-images').getPublicUrl(path)
                 setRecipe({ ...recipe, image_url: data.publicUrl })
@@ -546,7 +547,7 @@ export default function AddRecipe({ session, onSave, onCancel, startLogging = fa
           />
           {recipe?.image_url ? (
             <div style={{ position: 'relative', height: '140px', borderRadius: 'var(--radius-md)', overflow: 'hidden', marginBottom: '8px' }}>
-              <img
+              <img loading="lazy" decoding="async"
                 key={recipe.image_url}
                 src={recipe.image_url}
                 alt=""
@@ -877,7 +878,7 @@ export default function AddRecipe({ session, onSave, onCancel, startLogging = fa
               <div style={{ textAlign: 'center', padding: '48px 24px' }}>
                 {photoPreview && (
                   <div style={{ height: '140px', borderRadius: 'var(--radius-md)', overflow: 'hidden', marginBottom: '24px', opacity: 0.6 }}>
-                    <img src={photoPreview} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <img loading="lazy" decoding="async" src={photoPreview} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   </div>
                 )}
                 <div style={{ width: '36px', height: '36px', border: '3px solid var(--parchment)', borderTop: '3px solid var(--clay)', borderRadius: '50%', margin: '0 auto 16px', animation: 'spin 1s linear infinite' }} />

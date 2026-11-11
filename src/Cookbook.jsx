@@ -605,7 +605,7 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
                         width: '52px', height: '52px', borderRadius: 'var(--radius-sm)',
                         background: 'var(--parchment)', flexShrink: 0, overflow: 'hidden'
                       }}>
-                        <img
+                        <img loading="lazy" decoding="async"
                           src={recipe.image_url}
                           alt=""
                           style={{ width: '100%', height: '100%', objectFit: 'cover' }}

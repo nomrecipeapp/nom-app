@@ -117,7 +117,7 @@ export default function CircleFriendsModal({ sourceUrl, canonicalId, session, on
                     overflow: 'hidden', position: 'relative'
                   }}>
                     {f.profile?.avatar_url
-                      ? <img src={f.profile.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }} onError={e => e.target.style.display = 'none'} />
+                      ? <img loading="lazy" decoding="async" src={f.profile.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }} onError={e => e.target.style.display = 'none'} />
                       : null
                     }
                     <span>{name[0].toUpperCase()}</span>

@@ -4,6 +4,7 @@ import { supabase } from './supabase'
 import { listBlocked, unblockUser } from './moderation'
 import { IconCheck, IconX } from './icons'
 import { toast, PasswordInput } from './ui'
+import { shrinkImage } from './shrinkImage'
 
 export default function Settings({ session, onBack }) {
   const [profile, setProfile] = useState({ full_name: '', username: '', email: '', is_private: true })
@@ -55,7 +56,7 @@ export default function Settings({ session, onBack }) {
     try {
       const ext = file.name.split('.').pop() || 'jpg'
       const path = `${session.user.id}/${Date.now()}.${ext}`
-      const { error: uploadError } = await supabase.storage.from('avatars').upload(path, file, { upsert: true })
+      const { error: uploadError } = await supabase.storage.from('avatars').upload(path, await shrinkImage(file, 512), { upsert: true })
       if (uploadError) throw uploadError
       const { data } = supabase.storage.from('avatars').getPublicUrl(path)
       await supabase.from('profiles').update({ avatar_url: data.publicUrl }).eq('id', session.user.id)
@@ -430,7 +431,7 @@ export default function Settings({ session, onBack }) {
                   return (
                     <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 0', borderBottom: i < blocked.length - 1 ? '1px solid var(--parchment)' : 'none' }}>
                       {p.avatar_url
-                        ? <img src={p.avatar_url} alt="" style={{ width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+                        ? <img loading="lazy" decoding="async" src={p.avatar_url} alt="" style={{ width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
                         : <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--clay), var(--ember))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: '700', color: 'var(--cream)', flexShrink: 0 }}>{name[0].toUpperCase()}</div>}
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--ink)' }}>{name}</div>
@@ -475,7 +476,7 @@ export default function Settings({ session, onBack }) {
             <input ref={avatarInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleAvatarChange} />
             <div style={{ position: 'relative', flexShrink: 0 }} onClick={() => avatarInputRef.current?.click()}>
               {profile.avatar_url ? (
-                <img src={profile.avatar_url} alt="" style={{ width: '56px', height: '56px', borderRadius: '50%', objectFit: 'cover', cursor: 'pointer' }} />
+                <img loading="lazy" decoding="async" src={profile.avatar_url} alt="" style={{ width: '56px', height: '56px', borderRadius: '50%', objectFit: 'cover', cursor: 'pointer' }} />
               ) : (
                 <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--clay), var(--ember))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: '700', color: 'var(--cream)', cursor: 'pointer' }}>
                   {(profile.full_name || profile.username || session.user.email || '?')[0].toUpperCase()}
