@@ -430,11 +430,13 @@ export default function AddRecipe({ session, onSave, onCancel, startLogging = fa
       </div>
       <div>
         <div style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '12px' }}>Nuance Scores</div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {nuanceCategories.map(cat => (
-            <div key={cat.key} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <span style={{ fontSize: '13px', fontWeight: '500', color: 'var(--charcoal)', flex: 1, minWidth: 0 }}>{cat.label}</span>
-              <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+            // Label on its own line: inside this card there isn't room for the label, 5 dots and the score side by side on a phone
+            <div key={cat.key}>
+            <div style={{ fontSize: '13px', fontWeight: '500', color: 'var(--charcoal)', marginBottom: '6px' }}>{cat.label}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{ display: 'flex', gap: '8px', flex: 1 }}>
                 {[1,2,3,4,5].map(n => (
                   <button key={n} onClick={() => setScores(s => ({...s, [cat.key]: n}))} style={{
                     width: '32px', height: '32px', borderRadius: '50%', padding: 0, flexShrink: 0,
@@ -449,6 +451,7 @@ export default function AddRecipe({ session, onSave, onCancel, startLogging = fa
               <span style={{ fontFamily: 'var(--font-display)', fontSize: '15px', fontWeight: '700', color: 'var(--clay)', width: '36px', flexShrink: 0, whiteSpace: 'nowrap', textAlign: 'right' }}>
                 {scores[cat.key] > 0 ? `${scores[cat.key]}/5` : '–'}
               </span>
+            </div>
             </div>
           ))}
         </div>
