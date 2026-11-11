@@ -3,6 +3,16 @@ import { supabase } from './supabase'
 import { IconChevronLeft } from './icons'
 import { PasswordInput } from './ui'
 
+// Supabase's own error text is technical ("Invalid login credentials"). Say it like a person.
+function friendlyAuthError(error) {
+  const m = (error?.message || '').toLowerCase()
+  if (m.includes('invalid login credentials')) return "That email and password don't match. Try again, or tap Forgot password?"
+  if (m.includes('email not confirmed')) return 'Check your inbox to confirm your email first, then sign in.'
+  if (m.includes('rate limit') || m.includes('too many') || error?.status === 429) return 'Too many tries in a row. Wait a minute, then try again.'
+  if (m.includes('fetch') || m.includes('network')) return "Can't reach Nom right now. Check your connection and try again."
+  return 'Something went wrong. Please try again.'
+}
+
 export default function Auth({ onBack, onSignUp }) {
   const [mode, setMode] = useState('login')
   const [email, setEmail] = useState('')
@@ -21,12 +31,12 @@ export default function Auth({ onBack, onSignUp }) {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: 'https://www.nomrecipeapp.com'
       })
-      if (error) setError(error.message)
+      if (error) setError(friendlyAuthError(error))
       else setMessage('Check your email for a password reset link.')
 
     } else {
       const { error } = await supabase.auth.signInWithPassword({ email, password })
-      if (error) setError(error.message)
+      if (error) setError(friendlyAuthError(error))
     }
 
     setLoading(false)

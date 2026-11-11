@@ -1,3 +1,4 @@
+import SectionTextarea from './SectionTextarea'
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from './supabase'
 import { apiPost } from './api'
@@ -84,6 +85,16 @@ export default function AddRecipe({ session, onSave, onCancel, startLogging = fa
     fetchUserTags()
     refreshImportStatus()
   }, [])
+
+  // Link imports take a few seconds: rotate the progress message while they run (photo import does its own)
+  const linkImporting = loading && mode === 'url' && !recipe
+  useEffect(() => {
+    if (!linkImporting) return
+    let i = 0
+    setLoadingMsg(loadingMessages[0])
+    const t = setInterval(() => { i = (i + 1) % loadingMessages.length; setLoadingMsg(loadingMessages[i]) }, 2000)
+    return () => { clearInterval(t); setLoadingMsg(loadingMessages[0]) }
+  }, [linkImporting])
 
   // How many AI imports are left today (see claim_import in Supabase). Quietly does nothing if unavailable.
   async function refreshImportStatus() {
@@ -422,11 +433,11 @@ export default function AddRecipe({ session, onSave, onCancel, startLogging = fa
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {nuanceCategories.map(cat => (
             <div key={cat.key} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <span style={{ fontSize: '12px', fontWeight: '500', color: 'var(--charcoal)', width: '120px', flexShrink: 0 }}>{cat.label}</span>
-              <div style={{ display: 'flex', gap: '5px', flex: 1 }}>
+              <span style={{ fontSize: '13px', fontWeight: '500', color: 'var(--charcoal)', flex: 1, minWidth: 0 }}>{cat.label}</span>
+              <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
                 {[1,2,3,4,5].map(n => (
                   <button key={n} onClick={() => setScores(s => ({...s, [cat.key]: n}))} style={{
-                    width: '30px', height: '30px', borderRadius: '50%',
+                    width: '32px', height: '32px', borderRadius: '50%', padding: 0, flexShrink: 0,
                     border: `2px solid ${scores[cat.key] >= n ? 'var(--clay)' : 'var(--tan)'}`,
                     background: scores[cat.key] >= n ? 'var(--clay)' : 'transparent',
                     color: scores[cat.key] >= n ? 'var(--cream)' : 'var(--muted)',
@@ -435,8 +446,8 @@ export default function AddRecipe({ session, onSave, onCancel, startLogging = fa
                   }}>{n}</button>
                 ))}
               </div>
-              <span style={{ fontFamily: 'var(--font-display)', fontSize: '13px', fontWeight: '700', color: 'var(--clay)', width: '36px', flexShrink: 0, whiteSpace: 'nowrap', textAlign: 'right' }}>
-                {scores[cat.key] > 0 ? `${scores[cat.key]}/5` : '—'}
+              <span style={{ fontFamily: 'var(--font-display)', fontSize: '15px', fontWeight: '700', color: 'var(--clay)', width: '36px', flexShrink: 0, whiteSpace: 'nowrap', textAlign: 'right' }}>
+                {scores[cat.key] > 0 ? `${scores[cat.key]}/5` : '–'}
               </span>
             </div>
           ))}
@@ -593,15 +604,14 @@ export default function AddRecipe({ session, onSave, onCancel, startLogging = fa
             Ingredients
             {recipe?.ingredients ? <span style={{ marginLeft: '8px', fontSize: '10px', color: 'var(--forest)', fontWeight: '700', letterSpacing: '0.06em', display: 'inline-flex', alignItems: 'center', gap: '3px' }}><IconCheck size={11} strokeWidth={3} />IMPORTED</span> : <span style={{ marginLeft: '8px', fontSize: '10px', color: 'var(--muted)', fontWeight: '500' }}>not found — add manually</span>}
           </label>
-          <textarea value={recipe?.ingredients || ''} onChange={e => setRecipe({...recipe, ingredients: e.target.value})} placeholder="One ingredient per line..." rows={5} style={{ ...inputStyle, resize: 'vertical' }} />
-          <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '4px' }}>Tip: add a line like “Dressing:” to start a new section.</div>
+          <SectionTextarea value={recipe?.ingredients || ''} onChange={v => setRecipe(r => ({ ...r, ingredients: v }))} placeholder="One ingredient per line..." rows={5} style={{ ...inputStyle, resize: 'vertical' }} />
         </div>
         <div>
           <label style={labelStyle}>
             Instructions
             {recipe?.instructions ? <span style={{ marginLeft: '8px', fontSize: '10px', color: 'var(--forest)', fontWeight: '700', letterSpacing: '0.06em', display: 'inline-flex', alignItems: 'center', gap: '3px' }}><IconCheck size={11} strokeWidth={3} />IMPORTED</span> : <span style={{ marginLeft: '8px', fontSize: '10px', color: 'var(--muted)', fontWeight: '500' }}>not found — add manually</span>}
           </label>
-          <textarea value={recipe?.instructions || ''} onChange={e => setRecipe({...recipe, instructions: e.target.value})} placeholder="Steps..." rows={5} style={{ ...inputStyle, resize: 'vertical' }} />
+          <SectionTextarea value={recipe?.instructions || ''} onChange={v => setRecipe(r => ({ ...r, instructions: v }))} placeholder="Steps..." rows={5} style={{ ...inputStyle, resize: 'vertical' }} />
         </div>
         <div>
           <label style={labelStyle}>Recipe Notes (optional)</label>
@@ -761,9 +771,16 @@ export default function AddRecipe({ session, onSave, onCancel, startLogging = fa
                 color: 'var(--cream)', border: 'none', borderRadius: 'var(--radius-pill)',
                 fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: '600',
                 cursor: loading || !url ? 'not-allowed' : 'pointer'
-              }}>{loading ? 'Fetching recipe...' : 'Import Recipe'}</button>
+              }}>{loading ? 'Importing...' : 'Import Recipe'}</button>
             )}
-            {!duplicate && importsLeftNote}
+            {linkImporting && (
+              <div style={{ textAlign: 'center', padding: '28px 12px 8px' }}>
+                <div style={{ width: '36px', height: '36px', border: '3px solid var(--parchment)', borderTop: '3px solid var(--clay)', borderRadius: '50%', margin: '0 auto 16px', animation: 'spin 1s linear infinite' }} />
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: '16px', fontWeight: '600', color: 'var(--ink)', marginBottom: '4px' }}>{loadingMsg}</div>
+                <div style={{ fontSize: '12px', color: 'var(--muted)' }}>This takes about 10 to 15 seconds</div>
+              </div>
+            )}
+            {!duplicate && !linkImporting && importsLeftNote}
           </div>
         )}
 
@@ -813,7 +830,7 @@ export default function AddRecipe({ session, onSave, onCancel, startLogging = fa
                 )}
                 <div style={{ width: '36px', height: '36px', border: '3px solid var(--parchment)', borderTop: '3px solid var(--clay)', borderRadius: '50%', margin: '0 auto 16px', animation: 'spin 1s linear infinite' }} />
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: '16px', fontWeight: '600', color: 'var(--ink)', marginBottom: '4px' }}>{loadingMsg}</div>
-                <div style={{ fontSize: '12px', color: 'var(--muted)' }}>This takes about 10–15 seconds</div>
+                <div style={{ fontSize: '12px', color: 'var(--muted)' }}>This takes about 10 to 15 seconds</div>
               </div>
             )}
 
@@ -863,12 +880,11 @@ export default function AddRecipe({ session, onSave, onCancel, startLogging = fa
               </div>
               <div>
                 <label style={labelStyle}>Ingredients</label>
-                <textarea value={ingredients} onChange={e => setIngredients(e.target.value)} placeholder="One ingredient per line..." rows={4} style={{ ...inputStyle, resize: 'vertical' }} />
-                <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '4px' }}>Tip: add a line like “Dressing:” to start a new section.</div>
+                <SectionTextarea value={ingredients} onChange={setIngredients} placeholder="One ingredient per line..." rows={4} style={{ ...inputStyle, resize: 'vertical' }} />
               </div>
               <div>
                 <label style={labelStyle}>Instructions</label>
-                <textarea value={instructions} onChange={e => setInstructions(e.target.value)} placeholder="Steps..." rows={4} style={{ ...inputStyle, resize: 'vertical' }} />
+                <SectionTextarea value={instructions} onChange={setInstructions} placeholder="Steps..." rows={4} style={{ ...inputStyle, resize: 'vertical' }} />
               </div>
               <div>
                 <label style={labelStyle}>Recipe Notes (optional)</label>

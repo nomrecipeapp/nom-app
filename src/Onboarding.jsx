@@ -6,6 +6,31 @@ import { PasswordInput } from './ui'
 
 const TOTAL_STEPS = 5
 
+// Same bottom block on every step so the main button never jumps around.
+// The second line always takes up its space, even when there's nothing in it.
+function StepFooter({ step, primaryLabel, onPrimary, primaryDisabled = false, secondaryLabel, onSecondary }) {
+  return (
+    <div style={{ marginTop: 'auto', paddingTop: '24px', flexShrink: 0 }}>
+      <ProgressDots step={step} />
+      <button onClick={onPrimary} disabled={primaryDisabled} style={{ width: '100%', height: '52px', background: primaryDisabled ? 'var(--tan)' : 'var(--clay)', color: 'var(--cream)', border: 'none', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)', fontSize: '15px', fontWeight: '700', cursor: primaryDisabled ? 'not-allowed' : 'pointer' }}>{primaryLabel}</button>
+      <div style={{ height: '44px', marginTop: '4px' }}>
+        {secondaryLabel && (
+          <button onClick={onSecondary} style={{ width: '100%', height: '44px', background: 'none', border: 'none', fontFamily: 'var(--font-body)', fontSize: '13px', color: 'var(--muted)', cursor: 'pointer' }}>{secondaryLabel}</button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function StepBack({ onClick }) {
+  return (
+    <button onClick={onClick} style={{ alignSelf: 'flex-start', minHeight: '44px', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--muted)', fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '600', padding: '0 0 12px', marginTop: '-12px' }}>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M19 12H5M5 12l7-7M5 12l7 7" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+      Back
+    </button>
+  )
+}
+
 function ProgressDots({ step }) {
   return (
     <div style={{ display: 'flex', gap: '6px', justifyContent: 'center', marginBottom: '16px' }}>
@@ -424,6 +449,7 @@ export default function Onboarding({ onComplete, session, prefillInviteCode, sta
 
       {showPhotoStep ? (
         // ── PHOTO STEP (inside step 2, survives re-render) ──
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: '26px', fontWeight: '700', color: 'var(--ink)', lineHeight: '1.2', marginBottom: '8px', textAlign: 'center' }}>
             Put a face to the name.
@@ -449,21 +475,18 @@ export default function Onboarding({ onComplete, session, prefillInviteCode, sta
               </div>
             </div>
           </label>
-          <div style={{ fontSize: '13px', color: 'var(--muted)', marginBottom: '40px' }}>
+          <div style={{ fontSize: '13px', color: 'var(--muted)' }}>
             {avatarUploading ? 'Uploading...' : avatarUrl ? 'Tap to change' : 'Tap to add a photo'}
           </div>
-          <div style={{ width: '100%' }}>
-            <ProgressDots step={2} />
-            <button onClick={() => { setShowPhotoStep(false); setStep(3) }} style={{ width: '100%', padding: '15px', background: 'var(--clay)', color: 'var(--cream)', border: 'none', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)', fontSize: '15px', fontWeight: '700', cursor: 'pointer', marginBottom: '10px' }}>
-              Continue
-            </button>
-            {!avatarUrl && (
-              <button onClick={() => { setShowPhotoStep(false); setStep(3) }} style={{ width: '100%', padding: '10px', background: 'none', border: 'none', fontFamily: 'var(--font-body)', fontSize: '13px', color: 'var(--muted)', cursor: 'pointer' }}>
-                Skip for now
-              </button>
-            )}
-          </div>
           <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+        </div>
+        <StepFooter
+          step={2}
+          primaryLabel="Continue"
+          onPrimary={() => { setShowPhotoStep(false); setStep(3) }}
+          secondaryLabel={avatarUrl ? null : 'Skip for now'}
+          onSecondary={() => { setShowPhotoStep(false); setStep(3) }}
+        />
         </div>
       ) : (
         // ── ACCOUNT CREATION FORM ──
@@ -541,10 +564,10 @@ export default function Onboarding({ onComplete, session, prefillInviteCode, sta
   // ── STEP 3: FIND FELLOW COOKS ──
   if (step === 3) return (
     <div style={{ minHeight: '100vh', background: 'var(--cream)', display: 'flex', flexDirection: 'column', maxWidth: '480px', margin: '0 auto', padding: 'calc(48px + var(--safe-top)) 28px calc(40px + var(--safe-bottom))' }}>
-      {accountCreated && <div style={{ paddingBottom: '24px' }} />}
-      <div style={{ flex: 1 }}>
+      <StepBack onClick={() => { setShowPhotoStep(true); setStep(2) }} />
+      <div>
         <div style={{ fontFamily: 'var(--font-display)', fontSize: '24px', fontWeight: '700', color: 'var(--ink)', lineHeight: '1.2', marginBottom: '4px' }}>Find fellow<br />friendly cooks.</div>
-        <div style={{ fontSize: '13px', color: 'var(--muted)', marginBottom: '24px' }}>Nom is private by default — send a request to cook together.</div>
+        <div style={{ fontSize: '13px', color: 'var(--muted)', marginBottom: '24px' }}>Nom is private by default, so send a request to cook together.</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'var(--parchment)', borderRadius: 'var(--radius-md)', padding: '12px 16px', marginBottom: '16px', border: '1.5px solid var(--tan)' }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="var(--muted)" strokeWidth="1.8"/><path d="M16.5 16.5L21 21" stroke="var(--muted)" strokeWidth="1.8" strokeLinecap="round"/></svg>
           <input type="text" value={searchQuery} onChange={e => searchUsers(e.target.value)} placeholder="Search by name or username" style={{ flex: 1, border: 'none', background: 'none', fontFamily: 'var(--font-body)', fontSize: '14px', color: 'var(--ink)', outline: 'none' }} />
@@ -562,29 +585,28 @@ export default function Onboarding({ onComplete, session, prefillInviteCode, sta
           ))}
         </div>
       </div>
-      <div>
-        <ProgressDots step={3} />
-        <button onClick={() => setStep(4)} style={{ width: '100%', padding: '15px', background: 'var(--clay)', color: 'var(--cream)', border: 'none', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)', fontSize: '15px', fontWeight: '700', cursor: 'pointer', marginBottom: '10px' }}>Continue</button>
-        <button onClick={() => setStep(4)} style={{ width: '100%', padding: '10px', background: 'none', border: 'none', fontFamily: 'var(--font-body)', fontSize: '13px', color: 'var(--muted)', cursor: 'pointer' }}>Skip for now</button>
-      </div>
+      <StepFooter
+        step={3}
+        primaryLabel="Continue"
+        onPrimary={() => setStep(4)}
+        secondaryLabel={Object.values(requested).some(Boolean) ? null : 'Skip for now'}
+        onSecondary={() => setStep(4)}
+      />
     </div>
   )
 
   // ── STEP 4: FIRST RECIPE ──
   if (step === 4) return (
     <div style={{ minHeight: '100vh', background: 'var(--cream)', display: 'flex', flexDirection: 'column', maxWidth: '480px', margin: '0 auto', padding: 'calc(48px + var(--safe-top)) 28px calc(40px + var(--safe-bottom))' }}>
-      <button onClick={() => setStep(3)} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--muted)', fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '600', padding: '0 0 24px' }}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M19 12H5M5 12l7-7M5 12l7 7" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-        Back
-      </button>
-      <div style={{ flex: 1 }}>
+      <StepBack onClick={() => setStep(3)} />
+      <div>
         <div style={{ fontFamily: 'var(--font-display)', fontSize: '24px', fontWeight: '700', color: 'var(--ink)', lineHeight: '1.2', marginBottom: '4px' }}>Ready to chef<br />it up?</div>
         <div style={{ fontSize: '13px', color: 'var(--muted)', marginBottom: '24px' }}>Save your first recipe to your Cookbook.</div>
         <div style={{ marginBottom: '8px' }}>
           <div style={{ fontSize: '11px', fontWeight: '700', color: 'var(--charcoal)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '6px' }}>Paste a link</div>
           <div style={{ display: 'flex', gap: '8px' }}>
-            <input type="url" value={recipeUrl} onChange={e => { setRecipeUrl(e.target.value); setImportedRecipe(null); setImportError(null) }} placeholder="https://nytcooking.com/recipe..." style={{ ...inputStyle, flex: 1 }} />
-            <button onClick={importRecipe} disabled={importing || !recipeUrl.trim()} style={{ padding: '13px 16px', background: importing || !recipeUrl.trim() ? 'var(--tan)' : 'var(--clay)', color: 'var(--cream)', border: 'none', borderRadius: 'var(--radius-md)', fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '600', cursor: importing || !recipeUrl.trim() ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap' }}>{importing ? '...' : 'Import'}</button>
+            <input type="url" value={recipeUrl} onChange={e => { setRecipeUrl(e.target.value); setImportedRecipe(null); setImportError(null) }} placeholder="Paste a recipe or TikTok link" style={{ ...inputStyle, flex: 1 }} />
+            <button onClick={importRecipe} disabled={importing || !recipeUrl.trim()} style={{ padding: '13px 16px', background: importing || !recipeUrl.trim() ? 'var(--tan)' : 'var(--clay)', color: 'var(--cream)', border: 'none', borderRadius: 'var(--radius-md)', fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '600', cursor: importing || !recipeUrl.trim() ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap' }}>{importing ? 'Importing...' : 'Import'}</button>
           </div>
         </div>
         {importError && <div style={{ fontSize: '12px', color: '#B85252', marginBottom: '12px' }}>{importError}</div>}
@@ -596,15 +618,13 @@ export default function Onboarding({ onComplete, session, prefillInviteCode, sta
           </div>
         )}
       </div>
-      <div style={{ paddingTop: '24px' }}>
-        <ProgressDots step={4} />
-        <button onClick={importedRecipe ? saveFirstRecipe : () => setStep(5)} style={{ width: '100%', padding: '15px', background: 'var(--clay)', color: 'var(--cream)', border: 'none', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)', fontSize: '15px', fontWeight: '700', cursor: 'pointer', marginBottom: '12px' }}>
-          {importedRecipe ? 'Save to Cookbook' : 'Skip for now'}
-        </button>
-        {importedRecipe && (
-          <button onClick={() => setStep(5)} style={{ width: '100%', padding: '8px', background: 'none', border: 'none', fontFamily: 'var(--font-body)', fontSize: '13px', color: 'var(--muted)', cursor: 'pointer' }}>I'll do this later</button>
-        )}
-      </div>
+      <StepFooter
+        step={4}
+        primaryLabel={importedRecipe ? 'Save to Cookbook' : 'Skip for now'}
+        onPrimary={importedRecipe ? saveFirstRecipe : () => setStep(5)}
+        secondaryLabel={importedRecipe ? "I'll do this later" : null}
+        onSecondary={() => setStep(5)}
+      />
     </div>
   )
 
@@ -649,10 +669,7 @@ export default function Onboarding({ onComplete, session, prefillInviteCode, sta
           <div style={{ fontFamily: 'var(--font-display)', fontSize: '32px', fontWeight: '700', color: 'var(--ink)', lineHeight: '1.15', marginBottom: '10px' }}>Your Cookbook<br />is open.</div>
           <div style={{ fontSize: '14px', color: 'var(--muted)', lineHeight: '1.6' }}>Now go find something delicious.</div>
         </div>
-        <div>
-          <ProgressDots step={5} />
-          <button onClick={finishOnboarding} style={{ width: '100%', padding: '15px', background: 'var(--clay)', color: 'var(--cream)', border: 'none', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)', fontSize: '15px', fontWeight: '700', cursor: 'pointer' }}>Take me in</button>
-        </div>
+        <StepFooter step={5} primaryLabel="Take me in" onPrimary={finishOnboarding} />
       </div>
     </div>
   )

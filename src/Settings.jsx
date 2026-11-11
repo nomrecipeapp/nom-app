@@ -537,7 +537,7 @@ export default function Settings({ session, onBack }) {
                 {[
                   { q: 'Who can see my cookbook?', a: 'Only people you approve to follow you. Your recipes, cooks, and notes are always private unless you choose to follow someone back.' },
                   { q: 'What does following someone mean?', a: 'When you follow someone and they approve, you can see their cookbook and cook logs in your Feed. They can see yours too if they follow you back.' },
-                  { q: 'Are my cook logs public?', a: 'Cook logs are visible to your approved followers in their Feed. There\'s no way to hide individual cooks — if you want something private, don\'t log it.' },
+                  { q: 'Are my cook logs public?', a: 'Cook logs are visible to your approved followers in their Feed. There\'s no way to hide individual cooks yet, so if you want something private, don\'t log it.' },
                   { q: 'What is "Want to Make"?', a: 'Recipes you\'ve saved but haven\'t cooked yet. These are visible to your approved followers in your cookbook.' },
                   { q: 'Can I block or report someone?', a: 'Yes. Tap the three dots next to the Follow button on their profile to report or block them. You can also report a post or comment from its three-dot menu. Blocking removes them as a follower and stops them from finding you. We review every report within 24 hours. Manage blocked accounts in Privacy above.' },
                 ].map((item, i, arr) => (
@@ -554,8 +554,8 @@ export default function Settings({ session, onBack }) {
               <div style={{ padding: '4px 20px 16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {[
                   { q: 'What ways can I add a recipe?', a: 'Three ways: paste a URL from any recipe website, scan a photo of a recipe (cookbook, screenshot, handwritten card), or enter it manually.' },
-                  { q: 'Which recipe websites work with URL import?', a: 'Most major food sites work — NYT Cooking, Serious Eats, Food Network, Bon Appétit, Smitten Kitchen, and more. Older blogs may import the title and image but not ingredients or steps — you can fill those in manually on the review screen.' },
-                  { q: 'Can I scan a recipe from a photo?', a: 'Yes. Take a screenshot or photo of any recipe — a cookbook page, a website screenshot, or even a handwritten card. If the recipe spans multiple pages, select all the photos at once and Nom will combine them.' },
+                  { q: 'Which recipe websites work with URL import?', a: 'Most food blogs and recipe sites work, like Serious Eats, Bon Appétit and Smitten Kitchen. A few sites, like NYT Cooking and Food Network, sometimes block apps from reading their recipes. If a link doesn\'t work, take a screenshot and use From Photo instead. If a site only brings in the title and photo, you can fill in the rest on the review screen.' },
+                  { q: 'Can I scan a recipe from a photo?', a: 'Yes. Take a screenshot or photo of any recipe: a cookbook page, a website, or even a handwritten card. If the recipe spans multiple pages, select all the photos at once and Nom will combine them.' },
                   { q: 'Can I import from TikTok or Instagram?', a: 'Yes! Paste a TikTok or Instagram link into "From URL" and Nom pulls the recipe from the post\'s caption. It reads the caption, not the video, so it works best when the creator wrote the recipe out. If the recipe is only in the video, or the post won\'t load, screenshot it and use "From Photo" instead.' },
                 ].map((item, i, arr) => (
                   <FaqItem key={i} question={item.q} answer={item.a} isLast={i === arr.length - 1} />

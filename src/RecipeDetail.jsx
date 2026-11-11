@@ -1,3 +1,4 @@
+import SectionTextarea from './SectionTextarea'
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from './supabase'
 import CircleFriendsModal from './CircleFriendsModal'
@@ -657,12 +658,11 @@ async function saveEditCook() {
             </div>
             <div>
               <label style={fieldLabel}>Ingredients</label>
-              <textarea value={editForm.ingredients} onChange={e => setEditForm(f => ({ ...f, ingredients: e.target.value }))} rows={8} placeholder="One ingredient per line" style={textareaStyle} />
-              <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '4px' }}>Tip: add a line like “Dressing:” to start a new section.</div>
+              <SectionTextarea value={editForm.ingredients} onChange={v => setEditForm(f => ({ ...f, ingredients: v }))} rows={8} placeholder="One ingredient per line" style={textareaStyle} />
             </div>
             <div>
               <label style={fieldLabel}>Instructions</label>
-              <textarea value={editForm.instructions} onChange={e => setEditForm(f => ({ ...f, instructions: e.target.value }))} rows={10} placeholder="One step per line" style={textareaStyle} />
+              <SectionTextarea value={editForm.instructions} onChange={v => setEditForm(f => ({ ...f, instructions: v }))} rows={10} placeholder="One step per line" style={textareaStyle} />
             </div>
             <div>
               <label style={fieldLabel}>Tags</label>

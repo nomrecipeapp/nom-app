@@ -261,6 +261,9 @@ async function fetchCircleCookPhotos() {
   function handleCommentChange(e) {
     const val = e.target.value
     setCommentBody(val)
+    // Grow the box with the comment (up to about 5 lines) instead of scrolling inside one line
+    e.target.style.height = 'auto'
+    e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px'
     const cursor = e.target.selectionStart
     const textUpToCursor = val.slice(0, cursor)
     const match = textUpToCursor.match(/@(\w*)$/)
@@ -360,6 +363,7 @@ async function fetchCircleCookPhotos() {
     }
 
     setCommentBody('')
+    if (textareaRef.current) textareaRef.current.style.height = 'auto'
     setMentionQuery(null)
     setMentionResults([])
     await fetchComments()
@@ -886,10 +890,10 @@ async function fetchCircleCookPhotos() {
                   ref={textareaRef}
                   value={commentBody}
                   onChange={handleCommentChange}
-                  placeholder="Add a comment... (type @ to mention)"
+                  placeholder="Add a comment..."
                   rows={1}
                   style={{
-                    flex: 1, padding: '10px 14px',
+                    flex: 1, minWidth: 0, padding: '10px 14px',
                     border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-md)',
                     background: 'var(--cream)', fontFamily: 'var(--font-body)',
                     fontSize: '14px', color: 'var(--ink)', outline: 'none',

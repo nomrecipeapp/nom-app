@@ -77,6 +77,22 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
     }
   }, [loading])
 
+  // Once the filter chips scroll up under the search bar, show what's filtered in the sticky header
+  const filtersRef = useRef(null)
+  const [filtersHidden, setFiltersHidden] = useState(false)
+  useEffect(() => {
+    const container = document.getElementById('cookbook-scroll-container')
+    if (!container) return
+    function check() {
+      const f = filtersRef.current, h = headerRef.current
+      if (!f || !h) return
+      setFiltersHidden(f.getBoundingClientRect().bottom < h.getBoundingClientRect().bottom)
+    }
+    check()
+    container.addEventListener('scroll', check, { passive: true })
+    return () => container.removeEventListener('scroll', check)
+  }, [loading])
+
   // Save scroll position on scroll
   useEffect(() => {
     const container = document.getElementById('cookbook-scroll-container')
@@ -431,6 +447,20 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
             )
           })()}
           </div>
+
+          {/* What's filtered, once the chips have scrolled out of sight */}
+          {filtersHidden && (filter !== 'All' || tagFilters.length > 0) && (
+            // Hangs just under the search bar (absolute) so the list doesn't jump when it appears
+            <div className="nom-hscroll" style={{ position: 'absolute', top: '100%', left: 0, right: 0, display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 24px', background: 'var(--cream)', borderBottom: '1px solid var(--parchment)', overflowX: 'auto', scrollbarWidth: 'none' }}>
+              <span style={{ fontSize: '12px', color: 'var(--muted)', flexShrink: 0 }}>Showing</span>
+              {filter !== 'All' && (
+                <button onClick={() => setFilter('All')} aria-label={`Remove ${filter} filter`} style={{ ...chipStyle(true), padding: '5px 10px' }}>{filter}<IconX size={11} strokeWidth={2.4} /></button>
+              )}
+              {tagFilters.map(tag => (
+                <button key={tag} onClick={() => toggleTag(tag)} aria-label={`Remove ${tag} filter`} style={{ ...chipStyle(true), padding: '5px 10px' }}>{tag}<IconX size={11} strokeWidth={2.4} /></button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Scrollable filters + list */}
@@ -496,6 +526,8 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
           ) : (
             <div style={{ fontSize: '12px', color: 'var(--muted)', marginBottom: '8px' }}>Add tags to a recipe to filter by them here.</div>
           )}
+          {/* Marks the bottom of the filters, for the "Showing" strip in the sticky header */}
+          <div ref={filtersRef} />
 
         </div>
 
