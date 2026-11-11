@@ -179,3 +179,23 @@ export function OfflineBanner() {
     </div>
   )
 }
+
+// "Share to feed" switch on Log a Cook. On by default.
+// When off, the cook skips friends' feeds but still shows on your profile.
+export function ShareToFeedToggle({ value, onChange }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: '12px 14px', background: 'var(--cream)', border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-md)' }}>
+      <div>
+        <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--ink)' }}>Share to feed</div>
+        <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '1px' }}>{value ? 'Friends will see this cook in their feed' : 'Only shows on your profile, not in feeds'}</div>
+      </div>
+      <button type="button" onClick={() => onChange(!value)} className="nom-hit" role="switch" aria-checked={!!value} aria-label="Share to feed" style={{
+        width: '44px', height: '26px', borderRadius: '13px', border: 'none',
+        background: value ? 'var(--clay)' : 'var(--tan)',
+        cursor: 'pointer', position: 'relative', transition: 'background 0.2s', flexShrink: 0
+      }}>
+        <div style={{ position: 'absolute', top: '3px', left: value ? '21px' : '3px', width: '20px', height: '20px', borderRadius: '50%', background: 'white', transition: 'left 0.2s' }} />
+      </button>
+    </div>
+  )
+}

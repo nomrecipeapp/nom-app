@@ -1,11 +1,12 @@
 import SectionTextarea from './SectionTextarea'
 import { linkProps } from './openLink'
+import { maybeAskForRating } from './rating'
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from './supabase'
 import CircleFriendsModal from './CircleFriendsModal'
 import { IconChevronRight, IconX, IconPot } from './icons'
 import FloatingAction from './FloatingAction'
-import { confirmSheet, toast } from './ui'
+import { confirmSheet, toast, ShareToFeedToggle } from './ui'
 import { PRESET_TAGS, tagChoices, addTag, hasTag, tagKey } from './tags'
 import { IngredientList, InstructionList, CopyIngredientsButton, RecipeTimes } from './RecipeContent'
 import { setBackGuard } from './backGuard'
@@ -38,6 +39,7 @@ export default function RecipeDetail({ recipe: initialRecipe, session, onBack, o
   const [verdict, setVerdict] = useState(null)
   const [scores, setScores] = useState({ flavor: 0, effort: 0, would_share: 0, true_to_recipe: 0 })
   const [cookNotes, setCookNotes] = useState('')
+  const [shareToFeed, setShareToFeed] = useState(true)
   const [saving, setSaving] = useState(false)
   const [savingEdit, setSavingEdit] = useState(false)
   const [error, setError] = useState(null)
@@ -400,6 +402,7 @@ async function saveEditCook() {
       true_to_recipe: scores.true_to_recipe || null,
       notes: cookNotes || null,
       photo_urls: photoUrls.length > 0 ? photoUrls : null,
+      ...(shareToFeed ? {} : { shared_to_feed: false }),
     })
 
     if (cookError) { setError(cookError.message); setSaving(false); return }
@@ -409,10 +412,12 @@ async function saveEditCook() {
       .eq('id', recipe.id)
 
     success()
+    maybeAskForRating(session.user.id, verdict)
     setLogging(false)
     setVerdict(null)
     setScores({ flavor: 0, effort: 0, would_share: 0, true_to_recipe: 0 })
     setCookNotes('')
+    setShareToFeed(true)
     setCookPhotoFiles([])
     setCookPhotoPreviews([])
     await fetchCooks()
@@ -961,8 +966,12 @@ async function saveEditCook() {
 
             <div style={{ marginBottom: '20px' }}>
               <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--charcoal)', marginBottom: '2px', letterSpacing: '0.04em' }}>Cook notes</label>
-              <div style={{ fontSize: '11px', color: 'var(--muted)', marginBottom: '6px' }}>How did this cook go? This shows on your feed.</div>
+              <div style={{ fontSize: '11px', color: 'var(--muted)', marginBottom: '6px' }}>How did this cook go? Friends see this with your cook.</div>
               <textarea value={cookNotes} onChange={e => setCookNotes(e.target.value)} placeholder="What did you tweak? Would you change anything?" rows={3} style={{ width: '100%', padding: '10px 14px', border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-md)', background: 'var(--cream)', fontFamily: 'var(--font-body)', fontSize: '14px', color: 'var(--ink)', outline: 'none', resize: 'vertical' }} />
+            </div>
+
+            <div style={{ marginBottom: '20px' }}>
+              <ShareToFeedToggle value={shareToFeed} onChange={setShareToFeed} />
             </div>
 
             {error && <div style={{ background: '#FDE8E8', border: '1px solid #F5C0C0', borderRadius: 'var(--radius-md)', padding: '10px 14px', fontSize: '13px', color: '#B85252', marginBottom: '16px' }}>{error}</div>}

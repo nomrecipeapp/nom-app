@@ -170,7 +170,9 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
     if (cooksError || savesError) { feedFailed(); return }
 
     // Hide posts I've reported and anything from people I've blocked
-    const cookItems = (cooks || []).filter(c => !isHidden(hidden, 'cook', c.id, c.user_id)).map(c => ({
+    // Cooks logged with "Share to feed" off stay on the cook's profile only (your own still show here)
+    const cookItems = (cooks || []).filter(c => !isHidden(hidden, 'cook', c.id, c.user_id))
+      .filter(c => c.shared_to_feed !== false || c.user_id === session.user.id).map(c => ({
       ...c, _type: 'cook', _date: c.cooked_at,
       profiles: profiles?.find(p => p.id === c.user_id) || null
     }))

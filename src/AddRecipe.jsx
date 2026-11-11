@@ -1,5 +1,7 @@
 import SectionTextarea from './SectionTextarea'
+import { ShareToFeedToggle } from './ui'
 import { openLink } from './openLink'
+import { maybeAskForRating } from './rating'
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from './supabase'
 import { apiPost } from './api'
@@ -75,6 +77,7 @@ export default function AddRecipe({ session, onSave, onCancel, startLogging = fa
   const [availableTags, setAvailableTags] = useState(PRESET_TAGS)
   const [scores, setScores] = useState({ flavor: 0, effort: 0, would_share: 0, true_to_recipe: 0 })
   const [cookNotes, setCookNotes] = useState('')
+  const [shareToFeed, setShareToFeed] = useState(true)
 
   // Manual form fields
   const [title, setTitle] = useState('')
@@ -362,9 +365,11 @@ export default function AddRecipe({ session, onSave, onCancel, startLogging = fa
         would_share: scores.would_share || null,
         true_to_recipe: scores.true_to_recipe || null,
         notes: cookNotes || null,
-        photo_urls: cookPhotoUrls.length > 0 ? cookPhotoUrls : null
+        photo_urls: cookPhotoUrls.length > 0 ? cookPhotoUrls : null,
+        ...(shareToFeed ? {} : { shared_to_feed: false }),
       })
       success()
+      maybeAskForRating(session.user.id, verdict)
       onSave(saved, true)
     } else {
       success()
@@ -480,6 +485,7 @@ export default function AddRecipe({ session, onSave, onCancel, startLogging = fa
           placeholder="What did you tweak? Would you change anything?" rows={3}
           style={{ ...inputStyle, resize: 'vertical' }} />
       </div>
+      <ShareToFeedToggle value={shareToFeed} onChange={setShareToFeed} />
     </div>
   )
 

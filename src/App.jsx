@@ -21,6 +21,7 @@ import Settings from './Settings'
 import Landing from './Landing'
 import { runBackGuard, hasBackGuard } from './backGuard'
 import { tap } from './haptics'
+import WhatsNew from './WhatsNew'
 
 // Screens that always show a Back button, even when opened from a shared link
 const DETAIL_SCREENS = ['recipe', 'socialRecipe', 'friendRecipeDetail', 'friendProfile', 'followList', 'notifications']
@@ -504,6 +505,7 @@ export default function App() {
 
   return (
     <>
+      <WhatsNew session={session} />
       {!hideTopBar && (
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0,

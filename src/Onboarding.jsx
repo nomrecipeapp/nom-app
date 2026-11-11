@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { linkProps } from './openLink'
+import { WHATS_NEW_VERSION } from './WhatsNew'
 import { supabase } from './supabase'
 import { importRecipeFromUrl } from './importUrl'
 import { missingStepsReason } from './recipeCheck'
@@ -291,7 +292,7 @@ export default function Onboarding({ onComplete, session, prefillInviteCode, sta
 
       if (profileError) throw profileError
 
-      await supabase.auth.updateUser({ data: { onboarding_complete: true } })
+      await supabase.auth.updateUser({ data: { onboarding_complete: true, whats_new_seen: WHATS_NEW_VERSION } })
 
       onComplete()
     } catch (e) {
@@ -299,7 +300,7 @@ export default function Onboarding({ onComplete, session, prefillInviteCode, sta
       // Try one more time silently, then let them through anyway
       try {
         await supabase.from('profiles').update({ onboarding_complete: true }).eq('id', id)
-        await supabase.auth.updateUser({ data: { onboarding_complete: true } })
+        await supabase.auth.updateUser({ data: { onboarding_complete: true, whats_new_seen: WHATS_NEW_VERSION } })
       } catch {}
       onComplete()
     }
