@@ -7,6 +7,8 @@ export const RECIPE_FORMAT_RULES = `Formatting rules:
 - "instructions": one step per line, each step starting with its number ("1. ", "2. "). If the steps are grouped into parts, put the part name on its own line ending with a colon (not numbered), then restart numbering at 1 for that part. If there are no groups, do not add any.
 - "prep_time": the prep (active preparation) time if the recipe states it, like "15 min" or "1 hr 10 min". Otherwise empty string.
 - "cook_time": the TOTAL time from start to finish if the recipe states it (or prep plus cook time added together when both are given), like "45 min" or "1 hr 30 min". Otherwise empty string.
+- Include every step from the recipe, in full and in order. Do not summarize, shorten, merge or skip steps.
+- "incomplete": true if the source itself looks cut off or missing steps (for example the text stops mid-step, ends with "see more", or the photos only show part of the recipe). Otherwise false.
 - Never use em dashes in any field.`
 
-export const RECIPE_FIELDS = `{"title": "", "ingredients": "", "instructions": "", "prep_time": "", "cook_time": "", "difficulty": "Easy or Medium or Hard or empty string", "source_name": ""}`
+export const RECIPE_FIELDS = `{"title": "", "ingredients": "", "instructions": "", "prep_time": "", "cook_time": "", "difficulty": "Easy or Medium or Hard or empty string", "source_name": "", "incomplete": false}`

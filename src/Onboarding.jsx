@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from './supabase'
 import { importRecipeFromUrl } from './importUrl'
+import { missingStepsReason } from './recipeCheck'
 import { IconCheck } from './icons'
 import { PasswordInput } from './ui'
 
@@ -250,7 +251,7 @@ export default function Onboarding({ onComplete, session, prefillInviteCode, sta
     try {
       const result = await importRecipeFromUrl(recipeUrl.trim(), 'Try a link from another site.')
       if (result.error) setImportError(result.error)
-      else setImportedRecipe(result.recipe)
+      else setImportedRecipe({ ...result.recipe, mightBeMissingSteps: !!missingStepsReason(result.recipe, result.check) })
     } catch {
       setImportError("Couldn't fetch that URL. Try another link.")
     }
@@ -615,6 +616,7 @@ export default function Onboarding({ onComplete, session, prefillInviteCode, sta
             {importedRecipe.image_url && <img src={importedRecipe.image_url} alt="" style={{ width: '100%', height: '140px', objectFit: 'cover', borderRadius: '8px', marginBottom: '10px' }} />}
             <div style={{ fontFamily: 'var(--font-display)', fontSize: '15px', fontWeight: '600', color: 'var(--ink)', marginBottom: '4px' }}>{importedRecipe.title}</div>
             {importedRecipe.source_name && <div style={{ fontSize: '11px', color: 'var(--muted)' }}>{importedRecipe.source_name}</div>}
+            {importedRecipe.mightBeMissingSteps && <div style={{ fontSize: '12px', color: 'var(--charcoal)', marginTop: '8px', lineHeight: 1.45 }}>This one might be missing some steps. You can check the original and fill them in from the recipe later.</div>}
           </div>
         )}
       </div>

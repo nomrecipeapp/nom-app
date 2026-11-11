@@ -6,6 +6,7 @@ import { importRecipeFromUrl, friendlySiteName } from './importUrl'
 import { IconCamera, IconCheck, IconChevronLeft, IconX } from './icons'
 import { PRESET_TAGS, tagChoices, addTag, hasTag, tagKey } from './tags'
 import { tap, success } from './haptics'
+import { missingStepsReason } from './recipeCheck'
 
 const verdictOptions = [
   { value: 'would_make_again', label: 'Would Make Again', sub: 'A keeper', bg: '#EEF4E5', border: '#7A8C6E', color: '#4A5E42' },
@@ -48,6 +49,8 @@ function importLimitCopy(limit) {
 export default function AddRecipe({ session, onSave, onCancel, startLogging = false }) {
   const [mode, setMode] = useState('url')
   const [importIssue, setImportIssue] = useState(null) // { blocked, site } when a link can't be read
+  const [importCheck, setImportCheck] = useState(null) // hints for the 'might be missing some steps' card
+  const [stepsCheckDismissed, setStepsCheckDismissed] = useState(false)
   const [importLimit, setImportLimit] = useState(null) // { cap, first_week, reset_at } when today's imports are used up
   const [importsLeft, setImportsLeft] = useState(null) // for the "2 imports left today" heads-up
   const [url, setUrl] = useState('')
@@ -175,6 +178,8 @@ export default function AddRecipe({ session, onSave, onCancel, startLogging = fa
           tags: [],
           logCookNow: startLogging
         })
+        setImportCheck({ sourceIncomplete: !!data.incomplete })
+        setStepsCheckDismissed(false)
       } catch (e) {
         setError('Could not import this post. Try screenshotting the caption and using From photo instead.')
       }
@@ -194,6 +199,8 @@ export default function AddRecipe({ session, onSave, onCancel, startLogging = fa
         setError(result.error)
       } else {
         setRecipe({ ...result.recipe, notes: '', tags: [], logCookNow: startLogging })
+        setImportCheck(result.check || null)
+        setStepsCheckDismissed(false)
       }
     } catch {
       setError('Could not fetch recipe. Try adding it manually.')
@@ -261,6 +268,8 @@ export default function AddRecipe({ session, onSave, onCancel, startLogging = fa
         tags: [],
         logCookNow: startLogging
       })
+      setImportCheck({ sourceIncomplete: !!parsed.incomplete, fromPhoto: true })
+      setStepsCheckDismissed(false)
     } catch (e) {
       console.error('Photo import error:', e)
       if (!e.limitReached) setError('Could not read the recipe from this image. Try a clearer photo or add manually.')
@@ -279,6 +288,11 @@ export default function AddRecipe({ session, onSave, onCancel, startLogging = fa
     setPhotoPreview(objectUrl)
     importFromPhoto(files)
   }
+
+  // Live, so the card goes away as soon as the missing steps are filled in
+  const stepsCheckReason = recipe && importCheck && !stepsCheckDismissed
+    ? missingStepsReason(recipe, importCheck)
+    : null
 
   async function saveRecipe(recipeData) {
     if (recipeData.logCookNow && !verdict) {
@@ -612,6 +626,31 @@ export default function AddRecipe({ session, onSave, onCancel, startLogging = fa
           </label>
           <SectionTextarea value={recipe?.ingredients || ''} onChange={v => setRecipe(r => ({ ...r, ingredients: v }))} placeholder="One ingredient per line..." rows={5} style={{ ...inputStyle, resize: 'vertical' }} />
         </div>
+        {stepsCheckReason && (
+          <div style={{ background: 'var(--cream)', border: '1px solid var(--ember)', borderRadius: 'var(--radius-md)', padding: '14px 16px' }}>
+            <div style={{ fontSize: '14px', fontWeight: '600', color: 'var(--ink)', marginBottom: '4px' }}>
+              {stepsCheckReason === 'no_steps' ? "We couldn't find the steps" : 'This recipe might be missing some steps'}
+            </div>
+            <div style={{ fontSize: '13px', color: 'var(--charcoal)', marginBottom: '12px', lineHeight: 1.45 }}>
+              {importCheck?.fromPhoto
+                ? 'If the recipe runs onto another page, go back and add a photo of it too, or type the missing steps below.'
+                : 'Check the original and add anything missing below.'}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+              {recipe?.source_url && (
+                <button onClick={() => window.open(recipe.source_url, '_blank', 'noopener,noreferrer')} style={{
+                  padding: '9px 16px', minHeight: '44px', background: 'var(--clay)', color: 'var(--cream)',
+                  border: 'none', borderRadius: 'var(--radius-pill)',
+                  fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '600', cursor: 'pointer'
+                }}>Open the original</button>
+              )}
+              <button onClick={() => setStepsCheckDismissed(true)} style={{
+                padding: '9px 4px', minHeight: '44px', background: 'none', border: 'none', color: 'var(--muted)',
+                fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '600', cursor: 'pointer'
+              }}>Looks right</button>
+            </div>
+          </div>
+        )}
         <div>
           <label style={labelStyle}>
             Instructions

@@ -48,6 +48,35 @@ export function extractJsonLdRecipe(html) {
   return null
 }
 
+// How many steps the page's recipe data lists (HowToStep, HowToSection or plain
+// strings). Returns 0 when we can't tell, so callers can skip the comparison.
+export function countSourceSteps(instructions) {
+  if (!instructions) return 0
+  if (typeof instructions === 'string') {
+    const lines = instructions.split(/\n+/).map(l => l.trim()).filter(Boolean)
+    return lines.length > 1 ? lines.length : 0
+  }
+  if (Array.isArray(instructions)) {
+    return instructions.reduce((n, item) => {
+      if (typeof item === 'string') return n + (item.trim() ? 1 : 0)
+      if (item && item.itemListElement) return n + countSourceSteps([].concat(item.itemListElement))
+      if (item && (item.text || item.name)) return n + 1
+      return n
+    }, 0)
+  }
+  if (instructions.itemListElement) return countSourceSteps([].concat(instructions.itemListElement))
+  return 0
+}
+
+// Recipe plugins most food blogs use. On long pages the card can sit past our
+// text cap, so we start reading from the card when we can find one.
+const RECIPE_CARD = /<[^>]+class=["'][^"']*(wprm-recipe-container|tasty-recipes|mv-create-card|recipe-card|easyrecipe|zlrecipe)/i
+
+export function recipeCardStart(html) {
+  const m = html.match(RECIPE_CARD)
+  return m ? m.index : -1
+}
+
 // The page's <title>, for the server logs
 export function pageTitle(html) {
   const m = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)

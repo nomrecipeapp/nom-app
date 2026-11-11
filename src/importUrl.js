@@ -3,6 +3,7 @@
 // (Spoonacular sometimes grabs the wrong recipe on busy pages), and throws
 // out anything that looks like an error page (sites like NYT block servers).
 import { apiPost } from './api'
+import { countSteps, missingStepsReason } from './recipeCheck'
 
 function formatMinutes(mins) {
   const h = Math.floor(mins / 60), m = mins % 60
@@ -40,7 +41,7 @@ export function friendlySiteName(url) {
   return SITE_NAMES[host] || host
 }
 
-// Returns { recipe } on success, or { error, blocked, site } with a message to show the user
+// Returns { recipe, check } on success, or { error, blocked, site } with a message to show the user
 // `hint` is the suggestion added after "We couldn't read this recipe"
 export async function importRecipeFromUrl(url, hint = 'Try a screenshot with From photo instead.') {
   let blocked = false
@@ -93,7 +94,16 @@ export async function importRecipeFromUrl(url, hint = 'Try a screenshot with Fro
 
   const title = aiOk ? ai.title : data.title
   const ingredients = aiOk ? ai.ingredients : spoonIngredients
-  const instructions = (aiOk && ai.instructions) ? ai.instructions : (spoonOk ? spoonInstructions : '')
+  // Steps: the AI's first, unless Spoonacular clearly found more of them
+  // (the AI's answer can come back short on very long recipes)
+  let instructions = (aiOk && ai.instructions) ? ai.instructions : (spoonOk ? spoonInstructions : '')
+  const sourceSteps = (aiOk && ai.source_steps) || 0
+  if (aiOk && spoonOk && spoonInstructions) {
+    const aiSteps = countSteps(ai.instructions)
+    const spoonSteps = countSteps(spoonInstructions)
+    const aiShort = sourceSteps ? aiSteps < sourceSteps - 1 : !!missingStepsReason(ai)
+    if (aiShort && spoonSteps > aiSteps) instructions = spoonInstructions
+  }
 
   let cookTime = aiOk ? (ai.cook_time || '') : ''
   let prepTime = aiOk ? (ai.prep_time || '') : ''
@@ -121,6 +131,8 @@ export async function importRecipeFromUrl(url, hint = 'Try a screenshot with Fro
       difficulty: (aiOk && ai.difficulty) || '',
       ingredients,
       instructions,
-    }
+    },
+    // For the "might be missing some steps" check on Review & Save (not saved)
+    check: { sourceSteps, sourceIncomplete: !!(aiOk && ai.incomplete) },
   }
 }

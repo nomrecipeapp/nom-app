@@ -1,6 +1,6 @@
 import { RECIPE_FORMAT_RULES, RECIPE_FIELDS } from './_recipeFormat.js'
 import { handleCors, requireUser, claimImport, recordImportCost } from './_auth.js'
-import { extractJsonLdRecipe, pageTitle } from './_jsonLd.js'
+import { extractJsonLdRecipe, pageTitle, countSourceSteps, recipeCardStart } from './_jsonLd.js'
 
 export default async function handler(req, res) {
   if (handleCors(req, res)) return
@@ -12,6 +12,7 @@ export default async function handler(req, res) {
 
   try {
     let text = ''
+    let sourceSteps = 0
 
     // Substack: use their API to get full post content without needing JS rendering
     const substackMatch = url.match(/https?:\/\/([^/]+)\/p\/([^/?]+)/)
@@ -52,14 +53,24 @@ export default async function handler(req, res) {
         return res.status(200).json({ error: true, blocked: true, message: 'site blocked' })
       }
       if (recipeData) {
+        sourceSteps = countSourceSteps(recipeData.recipeInstructions)
         text = `Structured recipe data from the page (times may be written like PT1H30M, meaning 1 hr 30 min):\n${JSON.stringify(recipeData)}`.slice(0, 60000)
-      } else text = html
-        .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
-        .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
-        .replace(/<[^>]+>/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim()
-        .slice(0, 60000)
+      } else {
+        // No recipe data: read the page text. On long pages, start from the
+        // recipe card if there is one, so stories and comments don't push the
+        // steps past the cap
+        const toText = h => h
+          .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+          .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+          .replace(/<svg[^>]*>[\s\S]*?<\/svg>/gi, '')
+          .replace(/<[^>]+>/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim()
+        text = toText(html)
+        const cardAt = recipeCardStart(html)
+        if (text.length > 60000 && cardAt > 0) text = toText(html.slice(cardAt))
+        text = text.slice(0, 60000)
+      }
     }
 
     const claim = await claimImport(req, res, 'url')
@@ -74,7 +85,7 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
-        max_tokens: 2000,
+        max_tokens: 8000,
         messages: [{
           role: 'user',
           content: `Extract the recipe from this webpage content. Return JSON only, no markdown, no explanation. Use these exact fields: ${RECIPE_FIELDS}. If a field is not found, use empty string. If there is no recipe on this page, return {"error": "no recipe found"}.
@@ -89,6 +100,7 @@ ${text}`
 
     const data = await response.json()
     await recordImportCost(req, claim, data)
+    if (data.stop_reason === 'max_tokens') console.warn('extract-recipe-url hit max_tokens', url)
     const raw = data.content?.[0]?.text || ''
     const clean = raw.replace(/```json|```/g, '').trim()
     const parsed = JSON.parse(clean)
@@ -97,7 +109,8 @@ ${text}`
       return res.status(200).json({ error: true, message: parsed.error })
     }
 
-    res.status(200).json(parsed)
+    // source_steps lets the app spot imports that came back with fewer steps than the page has
+    res.status(200).json({ ...parsed, source_steps: sourceSteps })
   } catch (e) {
     console.error('extract-recipe-url failed', url, e.message)
     res.status(500).json({ error: true, message: e.message })
