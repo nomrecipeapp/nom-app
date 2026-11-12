@@ -2,10 +2,10 @@ import { useState, useEffect, useRef } from 'react'
 import { COOK_STATS_FIELDS, recipeStats, compareFavorites } from './cookStats'
 import { supabase } from './supabase'
 import CircleFriendsModal from './CircleFriendsModal'
-import { IconX, IconBook, IconBookmark, IconPot, IconPlus, IconCheck } from './icons'
+import { IconX, IconBook, IconBookmark, IconPot, IconPlus, IconCheck, IconSliders, IconChevronDown } from './icons'
 import EmptyState from './EmptyState'
-import { canonicalSpellings, recipeTags, sortTags, tagKey, hasTag, tagChoices, addTag } from './tags'
-import { AlphabetRail, TagSheet } from './CookbookTools'
+import { canonicalSpellings, recipeTags, sortTags, tagKey, hasTag, tagChoices, addTag, PRESET_TAGS } from './tags'
+import { AlphabetRail, TagSheet, FilterSheet } from './CookbookTools'
 import BottomBar, { BAR_SHADOW } from './BottomBar'
 import { letterOf } from './letters'
 import { confirmSheet, toast, LoadError } from './ui'
@@ -25,6 +25,8 @@ const verdictStyle = {
 }
 
 const SORT_OPTIONS = ['Newest', 'Oldest', 'A to Z', 'Favorites', 'Friends Have It']
+const SORT_LABELS = { 'Friends Have It': 'Friends have it' }
+const STATUS_LABELS = { 'Want to Make': 'Want to make', 'Never Again': 'Never again' }
 
 export default function Cookbook({ session, onAddRecipe, onSelectRecipe, defaultFilter, onSelectUser, savedScrollY, onScrollChange, visible }) {
   const [recipes, setRecipes] = useState([])
@@ -41,7 +43,7 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
   const [headerHeight, setHeaderHeight] = useState(0)
   // Select mode: tick recipes, then add a tag, remove a tag, or delete them
   const [selecting, setSelecting] = useState(false)
-  const [searchFocused, setSearchFocused] = useState(false)
+  const [filterSheet, setFilterSheet] = useState(false)
   const pressTimer = useRef(null)
   const pressStart = useRef(null)
   const longPressed = useRef(false)
@@ -169,20 +171,17 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
   }
 
   // One spelling per tag (so "dinner" and "Dinner" are one chip), with how many
-  // recipes use it. Only tags actually in this cookbook are shown.
+  // recipes use it. The preset tags always show (no count until used), so new
+  // members can see what tags are for.
   const tagSpellings = canonicalSpellings(recipes.flatMap(r => r.tags || []))
   const tagCounts = {}
   for (const r of recipes) {
     for (const t of recipeTags(r.tags, tagSpellings)) tagCounts[t] = (tagCounts[t] || 0) + 1
   }
-  const allTags = sortTags(Object.keys(tagCounts))
-
-  const statusCounts = {
-    All: recipes.length,
-    'Want to Make': recipes.filter(r => r.status === 'want_to_make').length,
-    Cooked: recipes.filter(r => r.status === 'cooked').length,
-    'Never Again': recipes.filter(r => r.status === 'never_again').length,
-  }
+  const usedKeys = new Set(Object.keys(tagCounts).map(tagKey))
+  const allTags = sortTags([...Object.keys(tagCounts), ...PRESET_TAGS.filter(p => !usedKeys.has(tagKey(p)))])
+  // The swipe row: tags you've turned on come first
+  const rowTags = [...tagFilters, ...allTags.filter(t => !tagFilters.includes(t))]
 
   const toggleTag = (tag) => {
     setTagFilters(prev =>
@@ -352,8 +351,6 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
     stopSelecting()
   }
 
-  const hasActiveFilters = tagFilters.length > 0
-
   const emptyMessage = () => {
     if (search) return { title: `No results for "${search}"`, body: 'Try a different search.' }
     if (tagFilters.length > 0) return { title: 'No recipes match those tags', body: 'Try removing a tag filter.' }
@@ -389,23 +386,16 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
     display: 'inline-flex', alignItems: 'center', gap: '5px'
   })
 
-  const badgeStyle = (active) => ({
-    background: active ? 'rgba(255,255,255,0.25)' : '#E8DFD0',
-    color: active ? 'rgba(255,255,255,0.9)' : 'var(--muted)',
-    borderRadius: '100px', padding: '1px 6px',
-    fontSize: '10px', fontWeight: '700'
-  })
-
   return (
     <div style={{ minHeight: '100vh', background: 'var(--cream)', paddingTop: 'var(--top-bar-h)' }}>
       <div style={{ maxWidth: '480px', margin: '0 auto' }}>
 
-        {/* Sticky search only */}
+        {/* Sticky search */}
         <div ref={headerRef} style={{
           position: 'sticky', top: 'var(--top-bar-h)', zIndex: 100,
           background: 'var(--cream)', paddingTop: '12px',
           borderBottom: '1px solid var(--parchment)',
-          paddingBottom: '12px', paddingLeft: '24px', paddingRight: '24px'
+          paddingBottom: '12px', paddingLeft: '20px', paddingRight: '20px'
         }}>
           <div style={{ display: 'flex', alignItems: 'center' }}>
           <div style={{
@@ -420,8 +410,8 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
             </svg>
             <input
               type="text" value={search} onChange={e => setSearch(e.target.value)}
-              onFocus={() => setSearchFocused(true)} onBlur={() => setSearchFocused(false)}
-              placeholder="Search recipes or ingredients..."
+              aria-label="Search your Cookbook"
+              placeholder="Search recipes or ingredients"
               style={{ flex: 1, border: 'none', background: 'none', fontFamily: 'var(--font-body)', fontSize: '14px', color: 'var(--ink)', outline: 'none' }}
             />
             {search && (
@@ -429,32 +419,15 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
             )}
           </div>
 
-          {/* Select stays pinned here. It slides away while you search so search gets the full width. */}
-          {(() => {
-            const showSelect = !selecting && !searchFocused && !search && recipes.length > 0
-            return (
-              <div style={{
-                overflow: 'hidden', flexShrink: 0,
-                maxWidth: showSelect ? '90px' : '0px', opacity: showSelect ? 1 : 0,
-                transition: 'max-width 0.2s ease, opacity 0.15s ease',
-              }}>
-                <button onClick={startSelecting} tabIndex={showSelect ? 0 : -1} aria-hidden={!showSelect} style={{
-                  marginLeft: '8px', background: 'var(--parchment)', color: 'var(--charcoal)', border: 'none',
-                  borderRadius: 'var(--radius-pill)', padding: '9px 14px', cursor: 'pointer',
-                  fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600', whiteSpace: 'nowrap',
-                }}>Select</button>
-              </div>
-            )
-          })()}
           </div>
 
           {/* What's filtered, once the chips have scrolled out of sight */}
           {filtersHidden && (filter !== 'All' || tagFilters.length > 0) && (
             // Hangs just under the search bar (absolute) so the list doesn't jump when it appears
-            <div className="nom-hscroll" style={{ position: 'absolute', top: '100%', left: 0, right: 0, display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 24px', background: 'var(--cream)', borderBottom: '1px solid var(--parchment)', overflowX: 'auto', scrollbarWidth: 'none' }}>
+            <div className="nom-hscroll" style={{ position: 'absolute', top: '100%', left: 0, right: 0, display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 20px', background: 'var(--cream)', borderBottom: '1px solid var(--parchment)', overflowX: 'auto', scrollbarWidth: 'none' }}>
               <span style={{ fontSize: '12px', color: 'var(--muted)', flexShrink: 0 }}>Showing</span>
               {filter !== 'All' && (
-                <button onClick={() => setFilter('All')} aria-label={`Remove ${filter} filter`} style={{ ...chipStyle(true), padding: '5px 10px' }}>{filter}<IconX size={11} strokeWidth={2.4} /></button>
+                <button onClick={() => setFilter('All')} aria-label={`Remove ${STATUS_LABELS[filter] || filter} filter`} style={{ ...chipStyle(true), padding: '5px 10px' }}>{STATUS_LABELS[filter] || filter}<IconX size={11} strokeWidth={2.4} /></button>
               )}
               {tagFilters.map(tag => (
                 <button key={tag} onClick={() => toggleTag(tag)} aria-label={`Remove ${tag} filter`} style={{ ...chipStyle(true), padding: '5px 10px' }}>{tag}<IconX size={11} strokeWidth={2.4} /></button>
@@ -463,69 +436,53 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
           )}
         </div>
 
-        {/* Scrollable filters + list */}
-        <div style={{ padding: '16px 24px 0' }}>
+        {/* Status switch + one swipe row of tags */}
+        <div style={{ padding: '12px 20px 0' }}>
 
-          {/* Status label */}
-          <div style={{ fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '8px' }}>Status</div>
-
-          {/* Status chips */}
-          <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px', marginBottom: '12px' }}>
-            {FILTERS.map(f => (
-              <button key={f} onClick={() => setFilter(f)} style={chipStyle(filter === f)}>
-                {f}
-                <span style={badgeStyle(filter === f)}>{statusCounts[f]}</span>
-              </button>
-            ))}
+          {/* Status: one connected switch */}
+          <div role="group" aria-label="Status" style={{ display: 'flex', gap: '2px', background: 'var(--parchment)', borderRadius: 'var(--radius-pill)', padding: '3px', marginBottom: '12px' }}>
+            {FILTERS.map(f => {
+              const on = filter === f
+              return (
+                <button key={f} onClick={() => setFilter(f)} aria-pressed={on} style={{
+                  flex: 1, minWidth: 0, minHeight: '36px', padding: '0 4px', border: 'none', borderRadius: 'var(--radius-pill)',
+                  background: on ? 'var(--warm-white)' : 'transparent', color: on ? 'var(--ink)' : 'var(--charcoal)',
+                  boxShadow: on ? '0 1px 3px rgba(28,26,23,0.12)' : 'none',
+                  fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600', whiteSpace: 'nowrap', cursor: 'pointer',
+                  transition: 'background 0.15s, box-shadow 0.15s',
+                }}>{STATUS_LABELS[f] || f}</button>
+              )
+            })}
           </div>
 
-          <div style={{ height: '1px', background: 'var(--parchment)', marginBottom: '12px' }} />
-
-          {/* Tags + Sort row */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <div style={{ fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--muted)' }}>Tags</div>
-              {hasActiveFilters && (
-                <button onClick={() => setTagFilters([])} style={{
-                  background: 'none', border: 'none', cursor: 'pointer', padding: 0,
-                  color: 'var(--clay)', fontFamily: 'var(--font-body)', fontSize: '11px', fontWeight: '600'
-                }}>Clear {tagFilters.length}</button>
-              )}
-            </div>
-            <select
-              value={SORT_OPTIONS[sortIndex]}
-              onChange={e => setSortIndex(SORT_OPTIONS.indexOf(e.target.value))}
-              style={{
-                padding: '5px 10px', borderRadius: 'var(--radius-md)',
-                border: '1.5px solid var(--tan)', background: 'var(--warm-white)',
-                color: 'var(--muted)', fontFamily: 'var(--font-body)',
-                fontSize: '11px', fontWeight: '600', cursor: 'pointer',
-                outline: 'none', flexShrink: 0
-              }}>
-              {SORT_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
-            </select>
-          </div>
-
-          {/* Tag chips: one row you can swipe sideways */}
-          {allTags.length > 0 ? (
-            <div className="nom-hscroll" style={{
-              display: 'flex', gap: '6px', overflowX: 'auto', marginBottom: '8px',
-              margin: '0 -24px 8px', padding: '0 24px 2px',
-              WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none'
+          {/* Filters first (every tag lives in its sheet), then the tags themselves */}
+          <div className="nom-hscroll" style={{
+            display: 'flex', alignItems: 'center', gap: '6px', overflowX: 'auto',
+            margin: '0 -20px', padding: '0 20px 2px',
+            WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none'
+          }}>
+            <button onClick={() => setFilterSheet(true)} aria-label={tagFilters.length ? `Filters, ${tagFilters.length} on` : 'Filters'} style={{
+              flexShrink: 0, minHeight: '32px', display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '0 12px',
+              borderRadius: 'var(--radius-pill)', border: '1.5px solid var(--charcoal)', background: 'var(--warm-white)', color: 'var(--ink)',
+              fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600', whiteSpace: 'nowrap', cursor: 'pointer'
             }}>
-              {allTags.map(tag => {
-                const active = tagFilters.includes(tag)
-                return (
-                  <button key={tag} onClick={() => toggleTag(tag)} aria-pressed={active} style={tagChipStyle(active)}>
-                    {tag}
-                    <span style={{ fontSize: '11px', fontWeight: '500', color: active ? 'var(--cream)' : 'var(--muted)', opacity: active ? 0.85 : 1 }}>{tagCounts[tag]}</span>
-                  </button>
-                )
-              })}
-            </div>
-          ) : (
-            <div style={{ fontSize: '12px', color: 'var(--muted)', marginBottom: '8px' }}>Add tags to a recipe to filter by them here.</div>
-          )}
+              <IconSliders size={14} strokeWidth={2} />
+              Filters
+              {tagFilters.length > 0 && (
+                <span aria-hidden="true" style={{ minWidth: '16px', height: '16px', borderRadius: '8px', background: 'var(--clay)', color: 'var(--cream)', fontSize: '10px', fontWeight: '700', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px' }}>{tagFilters.length}</span>
+              )}
+            </button>
+            <div aria-hidden="true" style={{ flexShrink: 0, width: '1px', height: '20px', background: 'var(--tan)' }} />
+            {rowTags.map(tag => {
+              const active = tagFilters.includes(tag)
+              return (
+                <button key={tag} onClick={() => toggleTag(tag)} aria-pressed={active} style={{ ...tagChipStyle(active), minHeight: '32px' }}>
+                  {tag}
+                  {tagCounts[tag] > 0 && <span style={{ fontSize: '11px', fontWeight: '500', color: active ? 'var(--cream)' : 'var(--muted)', opacity: active ? 0.85 : 1 }}>{tagCounts[tag]}</span>}
+                </button>
+              )
+            })}
+          </div>
           {/* Marks the bottom of the filters, for the "Showing" strip in the sticky header */}
           <div ref={filtersRef} />
 
@@ -533,18 +490,42 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
 
         {/* Scrollable list */}
         <div ref={listRef} style={{
-          padding: '16px 24px',
-          paddingRight: showRail ? '34px' : '24px',
+          padding: '16px 20px',
+          paddingRight: showRail ? '34px' : '20px',
           paddingBottom: 'var(--nav-clearance)',
         }}>
 
-          {/* Recipe count */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', minHeight: '22px' }}>
+          {/* Recipe count, then Select and Sort: the things that act on the list sit right above it */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '12px', minHeight: '36px' }}>
             <div style={{ fontSize: '12px', color: selecting ? 'var(--ink)' : 'var(--muted)', fontWeight: selecting ? '600' : '400' }}>
               {selecting
                 ? 'Tap recipes to select'
                 : `${filtered.length} ${filtered.length === 1 ? 'recipe' : 'recipes'}`}
             </div>
+            {!selecting && recipes.length > 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <button onClick={startSelecting} style={{
+                  minHeight: '32px', padding: '0 14px', background: 'var(--parchment)', color: 'var(--charcoal)', border: 'none',
+                  borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap'
+                }}>Select</button>
+                {/* Looks like a pill; the real (invisible) select on top opens the iPhone picker */}
+                <div className="nom-hit" style={{
+                  position: 'relative', minHeight: '32px', display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '0 12px',
+                  background: 'var(--warm-white)', border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-pill)',
+                  fontSize: '12px', fontWeight: '600', color: 'var(--charcoal)', whiteSpace: 'nowrap'
+                }}>
+                  {SORT_LABELS[SORT_OPTIONS[sortIndex]] || SORT_OPTIONS[sortIndex]}
+                  <IconChevronDown size={12} strokeWidth={2.4} />
+                  <select
+                    aria-label="Sort recipes"
+                    value={SORT_OPTIONS[sortIndex]}
+                    onChange={e => setSortIndex(SORT_OPTIONS.indexOf(e.target.value))}
+                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer', fontSize: '16px' }}>
+                    {SORT_OPTIONS.map(o => <option key={o} value={o}>{SORT_LABELS[o] || o}</option>)}
+                  </select>
+                </div>
+              </div>
+            )}
           </div>
 
           {circleModal && (
@@ -708,6 +689,18 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
           </div>
         </div>
       </BottomBar>
+
+      {filterSheet && (
+        <FilterSheet
+          tags={allTags}
+          counts={tagCounts}
+          active={tagFilters}
+          onToggle={toggleTag}
+          onClear={() => setTagFilters([])}
+          resultCount={filtered.length}
+          onClose={() => setFilterSheet(false)}
+        />
+      )}
 
       {tagSheet && (
         <TagSheet

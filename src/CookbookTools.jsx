@@ -180,3 +180,73 @@ export function TagSheet({ mode, options, count, onPick, onClose }) {
     </div>
   )
 }
+
+// Filters: every tag in one sheet (the Cookbook row only fits a few).
+// Tags toggle right away; "Show N recipes" just closes.
+export function FilterSheet({ tags, counts, active, onToggle, onClear, resultCount, onClose }) {
+  const [open, setOpen] = useState(false)
+
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => setOpen(true))
+    return () => cancelAnimationFrame(raf)
+  }, [])
+
+  function close() {
+    setOpen(false)
+    setTimeout(onClose, 200)
+  }
+
+  const chip = (on) => ({
+    minHeight: '36px', padding: '0 14px', borderRadius: 'var(--radius-pill)',
+    border: `1.5px solid ${on ? 'var(--clay)' : 'var(--tan)'}`,
+    background: on ? 'var(--clay)' : 'var(--warm-white)', color: on ? 'var(--cream)' : 'var(--charcoal)',
+    fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
+    display: 'inline-flex', alignItems: 'center', gap: '6px',
+  })
+
+  return (
+    <div onClick={close} style={{
+      position: 'fixed', inset: 0, zIndex: 1800,
+      background: open ? 'rgba(28,26,23,0.4)' : 'rgba(28,26,23,0)',
+      transition: 'background 0.2s ease',
+      display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+    }}>
+      <div onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Filter by tag" style={{
+        width: '100%', maxWidth: '480px', background: 'var(--cream)',
+        borderRadius: '20px 20px 0 0', maxHeight: '75dvh', overflowY: 'auto',
+        padding: '24px 24px calc(20px + var(--safe-bottom))',
+        transform: open ? 'translateY(0)' : 'translateY(100%)',
+        transition: 'transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1)',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px' }}>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: '700', color: 'var(--ink)' }}>Filter by tag</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {active.length > 0 && (
+              <button onClick={onClear} style={{ minHeight: '44px', padding: '0 6px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--rust)', fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '600' }}>Clear all</button>
+            )}
+            <button className="nom-hit" onClick={close} aria-label="Close" style={{ background: 'var(--parchment)', border: 'none', borderRadius: '50%', width: '30px', height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--charcoal)' }}>
+              <IconX size={13} strokeWidth={2.2} />
+            </button>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '22px' }}>
+          {tags.map(tag => {
+            const on = active.includes(tag)
+            return (
+              <button key={tag} onClick={() => onToggle(tag)} aria-pressed={on} style={chip(on)}>
+                {tag}
+                {counts[tag] > 0 && <span style={{ fontSize: '12px', fontWeight: '500', color: on ? 'var(--cream)' : 'var(--muted)', opacity: on ? 0.85 : 1 }}>{counts[tag]}</span>}
+              </button>
+            )
+          })}
+        </div>
+
+        <button onClick={close} style={{
+          width: '100%', minHeight: '48px', background: 'var(--clay)', color: 'var(--cream)', border: 'none',
+          borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)', fontSize: '15px', fontWeight: '600', cursor: 'pointer',
+        }}>{resultCount === 1 ? 'Show 1 recipe' : `Show ${resultCount} recipes`}</button>
+      </div>
+    </div>
+  )
+}
