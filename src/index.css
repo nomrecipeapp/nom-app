@@ -94,3 +94,8 @@ img { -webkit-user-drag: none; }
 /* While offline, the strip sits under the status bar and everything below it
    moves down by the strip's height, so it never covers the top bar. */
 html.nom-offline { --safe-top: calc(env(safe-area-inset-top, 0px) + var(--offline-h)); }
+
+/* Loading placeholder: a soft pulse (holds still with Reduce Motion) */
+@keyframes nom-skel-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+.nom-skel { animation: nom-skel-pulse 1.4s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .nom-skel { animation: none; } }

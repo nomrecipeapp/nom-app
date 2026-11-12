@@ -64,6 +64,7 @@ export default function Profile({ session, onBack, onSelectRecipe, onSelectCook,
   const [error, setError] = useState(null)
   const [stats, setStats] = useState(null)
   const [loadError, setLoadError] = useState(false)
+  const [profileLoaded, setProfileLoaded] = useState(false)
   const [following, setFollowing] = useState(null)
   const [followers, setFollowers] = useState(null)
   const [recentCooks, setRecentCooks] = useState([])
@@ -104,7 +105,9 @@ export default function Profile({ session, onBack, onSelectRecipe, onSelectCook,
     const { data, error } = await supabase
       .from('profiles').select('*').eq('id', session.user.id).single()
     if (data) setProfile(data)
-    return !(error && error.code !== 'PGRST116')
+    const ok = !(error && error.code !== 'PGRST116')
+    if (ok) setProfileLoaded(true)
+    return ok
   }
 
   async function fetchStats() {
@@ -377,10 +380,20 @@ export default function Profile({ session, onBack, onSelectRecipe, onSelectCook,
 
         {/* Avatar + name */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '8px 20px 20px' }}>
-          {avatarCircle('72px', '28px')}
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: '700', color: 'var(--ink)', marginBottom: '2px', marginTop: '12px' }}>
-            {profile.full_name || profile.username || 'Your Name'}
-          </div>
+          {profileLoaded ? avatarCircle('72px', '28px') : (
+            // Still loading: soft placeholders instead of a default "Your Name"
+            <div className="nom-skel" aria-hidden="true" style={{ width: '72px', height: '72px', borderRadius: '50%', background: 'var(--parchment)', boxShadow: '0 0 0 3px var(--cream), 0 0 0 5px var(--tan)' }} />
+          )}
+          {profileLoaded ? (
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: '700', color: 'var(--ink)', marginBottom: '2px', marginTop: '12px' }}>
+              {profile.full_name || profile.username || 'Your name'}
+            </div>
+          ) : (
+            <div role="status" aria-label="Loading your profile" style={{ marginTop: '16px', marginBottom: '16px' }}>
+              <div className="nom-skel" style={{ width: '140px', height: '18px', borderRadius: '9px', background: 'var(--parchment)', marginBottom: '8px' }} />
+              <div className="nom-skel" style={{ width: '90px', height: '11px', borderRadius: '6px', background: 'var(--parchment)', margin: '0 auto' }} />
+            </div>
+          )}
           {(profile.username || profile.is_private !== undefined) && (
             <div style={{ fontSize: '12px', color: 'var(--muted)', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '6px' }}>
               {profile.username && <span>@{profile.username}</span>}
