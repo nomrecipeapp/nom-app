@@ -11,8 +11,9 @@ export const WHATS_NEW_VERSION = '1.0.3'
 
 const HIGHLIGHTS = [
   { title: 'Notifications on your phone', body: 'Know right away when friends like, comment or want to follow you.' },
+  { title: 'Verdicts first', body: 'See how many times friends have made something, your Go-tos on your profile, and a Favorites sort.' },
+  { title: 'A tidier Cookbook', body: 'Slide between statuses, filter by tags, and sort right above your recipes.' },
   { title: 'Share to Feed, or not', body: 'Log a quiet cook that only shows on your profile.' },
-  { title: 'Smoother everywhere', body: 'You stay signed in, photos load faster, and taps have a little feel to them.' },
 ]
 
 let whatsNewOpen = false
