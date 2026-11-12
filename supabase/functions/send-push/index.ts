@@ -48,7 +48,7 @@ function messageFor(type: string, actor: string, recipe: string | null): string 
     case 'like': return `${actor} liked your cook${recipe ? ` of ${recipe}` : ''}`
     case 'comment': return `${actor} commented on your cook${recipe ? ` of ${recipe}` : ''}`
     case 'mention': return `${actor} mentioned you in a comment${recipe ? ` on ${recipe}` : ''}`
-    case 'save': return `${actor} saved ${recipe ? `"${recipe}"` : 'a recipe'} from your cookbook`
+    case 'save': return `${actor} saved ${recipe ? `"${recipe}"` : 'a recipe'} from your Cookbook`
     default: return null
   }
 }

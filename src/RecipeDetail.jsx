@@ -39,7 +39,7 @@ const SLIDERS = [
   { key: 'flavor', label: 'Flavor', short: 'Flavor' },
   { key: 'effort', label: 'Effort vs. Reward', short: 'Effort' },
   { key: 'would_share', label: 'Would Share', short: 'Share' },
-  { key: 'true_to_recipe', label: 'True to Recipe', short: 'True to recipe' },
+  { key: 'true_to_recipe', label: 'True to Recipe', short: 'True to Recipe' },
 ]
 const sectionLabelStyle = { fontSize: '11px', fontWeight: '600', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--muted)' }
 function shortDate(d) { return d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '' }
@@ -677,7 +677,7 @@ async function saveEditCook() {
         <div style={{ maxWidth: '480px', margin: '0 auto' }}>
           <div style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--parchment)', marginTop: 'var(--top-bar-h)' }}>
             <button onClick={() => { setEditingCookId(null); setEditCookForm(null) }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '600', color: 'var(--muted)', padding: 0 }}>Cancel</button>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: '17px', fontWeight: '700', color: 'var(--ink)' }}>Edit cook</div>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: '17px', fontWeight: '700', color: 'var(--ink)' }}>Edit Cook</div>
             <div style={{ width: '48px' }} />
           </div>
 

@@ -676,7 +676,7 @@ export default function AddRecipe({ session, onSave, onCancel, startLogging = fa
         <div style={{ background: 'var(--parchment)', borderRadius: 'var(--radius-md)', padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
             <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--ink)', marginBottom: '2px' }}>Already made this?</div>
-            <div style={{ fontSize: '12px', color: 'var(--muted)' }}>Log a cook right away</div>
+            <div style={{ fontSize: '12px', color: 'var(--muted)' }}>Log a Cook right away</div>
           </div>
           <button onClick={() => { setRecipe({ ...recipe, logCookNow: !recipe?.logCookNow }); setVerdict(null); setScores({ flavor: 0, effort: 0, would_share: 0, true_to_recipe: 0 }); setCookNotes(''); setCookPhotoFiles([]); setCookPhotoPreviews([]) }} style={{
             width: '44px', height: '26px', borderRadius: '13px', border: 'none',
@@ -949,7 +949,7 @@ export default function AddRecipe({ session, onSave, onCancel, startLogging = fa
             <div style={{ marginTop: '14px', background: 'var(--parchment)', borderRadius: 'var(--radius-md)', padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div>
                 <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--ink)', marginBottom: '2px' }}>Already made this?</div>
-                <div style={{ fontSize: '12px', color: 'var(--muted)' }}>Log a cook right away</div>
+                <div style={{ fontSize: '12px', color: 'var(--muted)' }}>Log a Cook right away</div>
               </div>
               <button onClick={() => { setManualLogCook(v => !v); setVerdict(null); setScores({ flavor: 0, effort: 0, would_share: 0, true_to_recipe: 0 }); setCookNotes(''); setCookPhotoFiles([]); setCookPhotoPreviews([]) }} style={{
                 width: '44px', height: '26px', borderRadius: '13px', border: 'none',

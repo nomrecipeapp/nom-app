@@ -3,7 +3,7 @@
 //
 //   <EmptyState icon={IconBook} title="Your Cookbook starts here"
 //     body="Save from any website..." primary={{ label: 'Add a recipe', icon: IconPlus, onClick }}
-//     secondary={{ label: 'Log a cook', onClick }} />
+//     secondary={{ label: 'Log a Cook', onClick }} />
 
 export default function EmptyState({ icon: Icon, title, body, primary, secondary, card = true }) {
   return (

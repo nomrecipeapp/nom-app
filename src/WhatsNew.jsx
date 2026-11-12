@@ -11,7 +11,7 @@ export const WHATS_NEW_VERSION = '1.0.3'
 
 const HIGHLIGHTS = [
   { title: 'Notifications on your phone', body: 'Know right away when friends like, comment or want to follow you.' },
-  { title: 'Share to feed, or not', body: 'Log a quiet cook that only shows on your profile.' },
+  { title: 'Share to Feed, or not', body: 'Log a quiet cook that only shows on your profile.' },
   { title: 'Smoother everywhere', body: 'You stay signed in, photos load faster, and taps have a little feel to them.' },
 ]
 

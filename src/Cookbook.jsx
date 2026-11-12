@@ -27,7 +27,6 @@ const verdictStyle = {
 
 const SORT_OPTIONS = ['Newest', 'Oldest', 'A to Z', 'Favorites', 'Friends Have It']
 const SORT_LABELS = { 'Friends Have It': 'Friends have it' }
-const STATUS_LABELS = { 'Want to Make': 'Want to make', 'Never Again': 'Never again' }
 
 export default function Cookbook({ session, onAddRecipe, onSelectRecipe, defaultFilter, onSelectUser, savedScrollY, onScrollChange, visible }) {
   const [recipes, setRecipes] = useState([])
@@ -428,7 +427,7 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
             <div className="nom-hscroll" style={{ position: 'absolute', top: '100%', left: 0, right: 0, display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 20px', background: 'var(--cream)', borderBottom: '1px solid var(--parchment)', overflowX: 'auto', scrollbarWidth: 'none' }}>
               <span style={{ fontSize: '12px', color: 'var(--muted)', flexShrink: 0 }}>Showing</span>
               {filter !== 'All' && (
-                <button onClick={() => setFilter('All')} aria-label={`Remove ${STATUS_LABELS[filter] || filter} filter`} style={{ ...chipStyle(true), padding: '5px 10px' }}>{STATUS_LABELS[filter] || filter}<IconX size={11} strokeWidth={2.4} /></button>
+                <button onClick={() => setFilter('All')} aria-label={`Remove ${filter} filter`} style={{ ...chipStyle(true), padding: '5px 10px' }}>{filter}<IconX size={11} strokeWidth={2.4} /></button>
               )}
               {tagFilters.map(tag => (
                 <button key={tag} onClick={() => toggleTag(tag)} aria-label={`Remove ${tag} filter`} style={{ ...chipStyle(true), padding: '5px 10px' }}>{tag}<IconX size={11} strokeWidth={2.4} /></button>
@@ -472,7 +471,7 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
                       border: 'none', background: 'transparent', color: on ? 'var(--cream)' : 'var(--charcoal)',
                       fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600', whiteSpace: 'nowrap', cursor: 'pointer',
                       transition: reduce ? 'none' : 'color 0.2s ease',
-                    }}>{STATUS_LABELS[f] || f}</button>
+                    }}>{f}</button>
                   )
                 })}
               </div>

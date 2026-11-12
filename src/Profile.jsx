@@ -297,7 +297,7 @@ export default function Profile({ session, onBack, onSelectRecipe, onSelectCook,
         title: 'Your cooking record starts here',
         body: 'Add a recipe you love, or log something you just made.',
         primary: { label: 'Add a recipe', icon: IconPlus, onClick: () => onAddRecipe && onAddRecipe() },
-        secondary: { label: 'Log a cook', onClick: () => onLogNewCook && onLogNewCook() },
+        secondary: { label: 'Log a Cook', onClick: () => onLogNewCook && onLogNewCook() },
       }
     }
     const n = stats?.saved || 0
@@ -305,9 +305,9 @@ export default function Profile({ session, onBack, onSelectRecipe, onSelectCook,
       icon: IconPot,
       title: 'Your cooking record starts here',
       body: n === 1
-        ? 'Made the recipe you saved? Log a cook to start your record. Your verdicts and top rated recipes show up here.'
-        : `Made any of your ${n} recipes? Log a cook to start your record. Your verdicts and top rated recipes show up here.`,
-      primary: { label: 'Log a cook', icon: IconPot, onClick: () => onViewCookbook && onViewCookbook('All') },
+        ? 'Made the recipe you saved? Log a Cook to start your record. Your verdicts and top rated recipes show up here.'
+        : `Made any of your ${n} recipes? Log a Cook to start your record. Your verdicts and top rated recipes show up here.`,
+      primary: { label: 'Log a Cook', icon: IconPot, onClick: () => onViewCookbook && onViewCookbook('All') },
       secondary: { label: 'Add a recipe', onClick: () => onAddRecipe && onAddRecipe() },
     }
   }

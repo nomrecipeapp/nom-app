@@ -41,7 +41,7 @@ export default function App() {
   // Sign-in and sign-up happen in the iOS app for now; the homepage only points to the App Store.
   const [showLanding, setShowLanding] = useState(() => !Capacitor.isNativePlatform())
   const [screen, setScreen] = useState('feed')
-  // Add Recipe can open with "Log a cook right away" already switched on (from Profile's empty state)
+  // Add Recipe can open with "Log a Cook right away" already switched on (from Profile's empty state)
   const [addStartLogging, setAddStartLogging] = useState(false)
   const [selectedRecipe, setSelectedRecipe] = useState(null)
   const [selectedCook, setSelectedCook] = useState(null)

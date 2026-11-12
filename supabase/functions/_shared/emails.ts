@@ -120,16 +120,16 @@ export function welcomeEmail(opts: { name?: string }): Email {
   const name = firstName(opts.name)
   const hi = name ? `Hi ${esc(name)}!` : 'Hi there!'
   const html = layout({
-    preheader: 'Three things to try first in your new cookbook.',
+    preheader: 'Three things to try first in your new Cookbook.',
     footerNote: "You're getting this because you just made a Nom account.",
     body: `
-      ${heading(`Welcome to Nom. <span style="font-style:italic;color:${C.clay};">Your cookbook is ready.</span>`)}
+      ${heading(`Welcome to Nom. <span style="font-style:italic;color:${C.clay};">Your Cookbook is ready.</span>`)}
       ${p(hi)}
       ${p("I'm so glad you're here. Nom is a home for the recipes you actually cook, and an honest record of how they turned out. You'll see what your friends are making too, and whether they'd make it again.")}
       ${p('Here are three things to try first:', 'font-weight:700;color:' + C.ink + ';margin-bottom:18px;')}
       ${steps([
         ['Bring in a recipe', 'Tap the + and paste a link from any recipe site, TikTok or Instagram. You can also snap a photo of a cookbook page.'],
-        ['Log a cook', 'Made something? Log it with a photo and your verdict: Would Make Again, It Was Fine, or Never Again.'],
+        ['Log a Cook', 'Made something? Log it with a photo and your verdict: Would Make Again, It Was Fine, or Never Again.'],
         ['Invite your people', 'Nom is better with friends. You have 3 invite codes in Settings. Tap Share to send one.'],
       ])}
       ${p("If anything feels confusing or broken, reply to this email. It comes straight to me, and I read every one. Ideas are always welcome too.")}
@@ -137,13 +137,13 @@ export function welcomeEmail(opts: { name?: string }): Email {
   })
   const text = `${name ? `Hi ${name}!` : 'Hi there!'}
 
-Welcome to Nom. Your cookbook is ready.
+Welcome to Nom. Your Cookbook is ready.
 
 I'm so glad you're here. Nom is a home for the recipes you actually cook, and an honest record of how they turned out. You'll see what your friends are making too, and whether they'd make it again.
 
 Three things to try first:
 1. Bring in a recipe: tap the + and paste a link from any recipe site, TikTok or Instagram. You can also snap a photo of a cookbook page.
-2. Log a cook: log it with a photo and your verdict (Would Make Again, It Was Fine, or Never Again).
+2. Log a Cook: log it with a photo and your verdict (Would Make Again, It Was Fine, or Never Again).
 3. Invite your people: you have 3 invite codes in Settings. Tap Share to send one.
 
 If anything feels confusing or broken, reply to this email. It comes straight to me, and I read every one.
@@ -296,7 +296,7 @@ export function announcementEmail(opts: { name?: string }): Email {
   const name = firstName(opts.name)
   const hi = name ? `Hi ${esc(name)}!` : 'Hi there!'
   const html = layout({
-    preheader: 'Download it on your iPhone and sign in. Your cookbook is waiting.',
+    preheader: 'Download it on your iPhone and sign in. Your Cookbook is waiting.',
     footerNote: "You're getting this because you have a Nom account.",
     body: `
       ${heading(`Order up! Nom is on the App Store. <span style="font-style:italic;color:${C.clay};">For real.</span>`)}

@@ -536,7 +536,7 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
             border: 'none', borderRadius: 'var(--radius-pill)',
             fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: '600',
             cursor: 'pointer', transition: 'background 0.2s', marginBottom: '0'
-          }}>{saving ? 'Saving...' : <><IconPlus size={16} strokeWidth={2.4} style={{ marginRight: '6px', marginTop: '-2px' }} />Save to my Cookbook</>}</button>
+          }}>{saving ? 'Saving...' : <><IconPlus size={16} strokeWidth={2.4} style={{ marginRight: '6px', marginTop: '-2px' }} />Save to My Cookbook</>}</button>
         )}
         {!isOwner && !duplicate && saved && (
           <div style={{ marginBottom: '0' }}>

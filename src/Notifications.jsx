@@ -23,7 +23,7 @@ const typeConfig = {
   },
   save: {
     icon: <IconBookmark size={18} />,
-    label: (actor, recipeName) => `${actor} saved ${recipeName ? `"${recipeName}"` : 'a recipe'} from your cookbook`,
+    label: (actor, recipeName) => `${actor} saved ${recipeName ? `"${recipeName}"` : 'a recipe'} from your Cookbook`,
   },
   mention: {
     icon: <IconAt size={18} />,

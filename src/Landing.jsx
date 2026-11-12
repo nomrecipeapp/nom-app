@@ -84,7 +84,7 @@ function FaceIcon({ mood, stroke, fill, size = 40 }) {
 
 const shots = [
   { src: '/landing/shot-save.webp', alt: 'Nom app: save recipes from a link, a photo, or by hand' },
-  { src: '/landing/shot-verdict.webp', alt: 'Nom app: log a cook as Would Make Again, It Was Fine, or Never Again' },
+  { src: '/landing/shot-verdict.webp', alt: 'Nom app: Log a Cook as Would Make Again, It Was Fine, or Never Again' },
   { src: '/landing/shot-cookbook.webp', alt: 'Nom app: your Cookbook, organized with your own tags' },
 ]
 

@@ -539,9 +539,9 @@ export default function Settings({ session, onBack }) {
               <SectionHeader label="How Nom works" />
               <div style={{ padding: '4px 20px 16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {[
-                  { q: 'Who can see my cookbook?', a: 'Only people you approve to follow you. Your recipes, cooks, and notes are always private unless you choose to follow someone back.' },
-                  { q: 'What does following someone mean?', a: 'When you follow someone and they approve, you can see their cookbook and cook logs in your Feed. They can see yours too if they follow you back.' },
-                  { q: 'Are my cook logs public?', a: 'Cook logs are visible to your approved followers in their Feed. There\'s no way to hide individual cooks yet, so if you want something private, don\'t log it.' },
+                  { q: 'Who can see my Cookbook?', a: 'Only people you approve to follow you. Your recipes, cooks, and notes are always private unless you choose to follow someone back.' },
+                  { q: 'What does following someone mean?', a: 'When you follow someone and they approve, you can see their Cookbook and cook logs in your Feed. They can see yours too if they follow you back.' },
+                  { q: 'Are my cook logs public?', a: 'Cook logs are visible to your approved followers in their Feed. To keep a cook to yourself, turn off Share to Feed when you log it. It will still show on your profile.' },
                   { q: 'What is "Want to Make"?', a: 'Recipes you\'ve saved but haven\'t cooked yet. These are visible to your approved followers in your cookbook.' },
                   { q: 'Can I block or report someone?', a: 'Yes. Tap the three dots next to the Follow button on their profile to report or block them. You can also report a post or comment from its three-dot menu. Blocking removes them as a follower and stops them from finding you. We review every report within 24 hours. Manage blocked accounts in Privacy above.' },
                 ].map((item, i, arr) => (

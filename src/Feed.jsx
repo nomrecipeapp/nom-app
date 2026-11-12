@@ -455,7 +455,7 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
       )}
 
       {loadError && !loading ? (
-        <LoadError title="Couldn't load your feed" onRetry={fetchFeed} />
+        <LoadError title="Couldn't load your Feed" onRetry={fetchFeed} />
       ) : loading ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <SkeletonCard />
