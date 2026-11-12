@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { COOK_STATS_FIELDS, recipeStats, compareFavorites, fetchGoTos } from './cookStats'
 import { linkProps } from './openLink'
 import ModerationSheet, { MoreMenuSheet } from './ModerationSheet'
 import { getHiddenContent, hasBlocked, unblockUser } from './moderation'
@@ -376,20 +377,10 @@ export default function FriendProfile({ userId, session, onBack, onSelectCook, o
     const recipeIds = recipeList.map(r => r.id)
     if (recipeIds.length === 0) return
     const { data: cooks } = await supabase
-      .from('cooks').select('recipe_id, flavor, effort, would_share, true_to_recipe')
+      .from('cooks').select(COOK_STATS_FIELDS)
       .in('recipe_id', recipeIds).eq('user_id', userId)
     if (!cooks || cooks.length === 0) return
-    const map = {}
-    for (const cook of cooks) {
-      const scores = [cook.flavor, cook.effort, cook.would_share, cook.true_to_recipe].filter(Boolean)
-      if (scores.length === 0) continue
-      if (!map[cook.recipe_id]) map[cook.recipe_id] = []
-      map[cook.recipe_id].push(...scores)
-    }
-    const avgMap = {}
-    for (const [recipeId, scores] of Object.entries(map)) {
-      avgMap[recipeId] = scores.reduce((a, b) => a + b, 0) / scores.length
-    }
+    const avgMap = recipeStats(cooks)
     setFriendCookScoresMap(avgMap)
   }
 
@@ -434,25 +425,8 @@ export default function FriendProfile({ userId, session, onBack, onSelectCook, o
     }).slice(0, 5)
     setRecentCooks(recent)
 
-    const recipeMap = {}
-    data.forEach(cook => {
-      if (!cook.recipes) return
-      const id = cook.recipe_id
-      if (!recipeMap[id]) recipeMap[id] = { cook, scores: [], recipe: cook.recipes }
-      const scores = [cook.flavor, cook.effort, cook.would_share, cook.true_to_recipe].filter(Boolean)
-      if (scores.length > 0) recipeMap[id].scores.push(...scores)
-    })
-
-    const ranked = Object.values(recipeMap)
-      .map(entry => ({
-        ...entry.cook, recipes: entry.recipe,
-        avgScore: entry.scores.length > 0 ? entry.scores.reduce((a, b) => a + b, 0) / entry.scores.length : 0
-      }))
-      .filter(e => e.avgScore > 0)
-      .sort((a, b) => b.avgScore - a.avgScore)
-      .slice(0, 5)
-
-    setTopRated(ranked)
+    // Go-tos: Would Make Again recipes, most-cooked first (counts all cooks, not just the last 100)
+    fetchGoTos(supabase, userId).then(setTopRated)
   }
 
   async function fetchWantToMake() {
@@ -596,7 +570,7 @@ export default function FriendProfile({ userId, session, onBack, onSelectCook, o
     .sort((a, b) => {
       if (cookbookSort === 'alpha') return a.title.localeCompare(b.title)
       if (cookbookSort === 'oldest') return new Date(a.created_at) - new Date(b.created_at)
-      if (cookbookSort === 'score') return (friendCookScoresMap[b.id] || 0) - (friendCookScoresMap[a.id] || 0)
+      if (cookbookSort === 'score') return compareFavorites(friendCookScoresMap[a.id], friendCookScoresMap[b.id]) || (new Date(b.created_at) - new Date(a.created_at))
       if (cookbookSort === 'friends') return (friendCircleMap[b.id] || 0) - (friendCircleMap[a.id] || 0)
       return new Date(b.created_at) - new Date(a.created_at)
     })
@@ -825,10 +799,10 @@ export default function FriendProfile({ userId, session, onBack, onSelectCook, o
 
             {recentCooks.length > 0 && <div style={{ height: '1px', background: 'var(--parchment)', margin: '0 20px 20px' }} />}
 
-            {/* Top Rated */}
+            {/* Go-tos */}
             {topRated.length > 0 && (
               <div style={{ padding: '0 20px', marginBottom: '24px' }}>
-                <div style={sectionLabel}>Top rated</div>
+                <div style={sectionLabel}>Go-tos</div>
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
                   {topRated.map(cook => {
                     const recipe = cook.recipes
@@ -840,7 +814,7 @@ export default function FriendProfile({ userId, session, onBack, onSelectCook, o
                           <div style={{ fontSize: '13px', color: 'var(--ink)', fontWeight: '500', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{recipe.title}</div>
                           {recipe.source_name && <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '1px' }}>{recipe.source_name}</div>}
                         </div>
-                        <div style={{ background: 'var(--ink)', borderRadius: '100px', padding: '3px 8px', fontSize: '10px', fontWeight: '700', color: 'var(--cream)', flexShrink: 0 }}>{cook.avgScore.toFixed(1)}</div>
+                        <div style={{ background: '#EEF4E5', border: '1px solid #7A8C6E', borderRadius: '100px', padding: '3px 9px', fontSize: '11px', fontWeight: '700', color: '#4A5E42', flexShrink: 0, whiteSpace: 'nowrap' }}>Made {cook.times}x</div>
                       </div>
                     )
                   })}
@@ -945,7 +919,7 @@ export default function FriendProfile({ userId, session, onBack, onSelectCook, o
                 <option value="newest">Newest</option>
                 <option value="oldest">Oldest</option>
                 <option value="alpha">A to Z</option>
-                <option value="score">Cook Score</option>
+                <option value="score">Favorites</option>
                 <option value="friends">Friends have it</option>
               </select>
             </div>

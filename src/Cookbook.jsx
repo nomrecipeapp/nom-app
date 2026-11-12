@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { COOK_STATS_FIELDS, recipeStats, compareFavorites } from './cookStats'
 import { supabase } from './supabase'
 import CircleFriendsModal from './CircleFriendsModal'
 import { IconX, IconBook, IconBookmark, IconPot, IconPlus, IconCheck } from './icons'
@@ -23,7 +24,7 @@ const verdictStyle = {
   never_again: { background: '#F4E8E8', color: '#9B4040', border: '1px solid #C47070' }
 }
 
-const SORT_OPTIONS = ['Newest', 'Oldest', 'A to Z', 'Cook Score', 'Friends Have It']
+const SORT_OPTIONS = ['Newest', 'Oldest', 'A to Z', 'Favorites', 'Friends Have It']
 
 export default function Cookbook({ session, onAddRecipe, onSelectRecipe, defaultFilter, onSelectUser, savedScrollY, onScrollChange, visible }) {
   const [recipes, setRecipes] = useState([])
@@ -133,20 +134,10 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
     if (recipeIds.length === 0) return
     const { data: cooks } = await supabase
       .from('cooks')
-      .select('recipe_id, flavor, effort, would_share, true_to_recipe')
+      .select(COOK_STATS_FIELDS)
       .in('recipe_id', recipeIds)
     if (!cooks || cooks.length === 0) return
-    const map = {}
-    for (const cook of cooks) {
-      const scores = [cook.flavor, cook.effort, cook.would_share, cook.true_to_recipe].filter(Boolean)
-      if (scores.length === 0) continue
-      if (!map[cook.recipe_id]) map[cook.recipe_id] = []
-      map[cook.recipe_id].push(...scores)
-    }
-    const avgMap = {}
-    for (const [recipeId, scores] of Object.entries(map)) {
-      avgMap[recipeId] = scores.reduce((a, b) => a + b, 0) / scores.length
-    }
+    const avgMap = recipeStats(cooks)
     setCookScoresMap(avgMap)
   }
 
@@ -222,7 +213,7 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
     .sort((a, b) => {
       if (SORT_OPTIONS[sortIndex] === 'A to Z') return a.title.localeCompare(b.title)
       if (SORT_OPTIONS[sortIndex] === 'Oldest') return new Date(a.created_at) - new Date(b.created_at)
-      if (SORT_OPTIONS[sortIndex] === 'Cook Score') return (cookScoresMap[b.id] || 0) - (cookScoresMap[a.id] || 0)
+      if (SORT_OPTIONS[sortIndex] === 'Favorites') return compareFavorites(cookScoresMap[a.id], cookScoresMap[b.id]) || (new Date(b.created_at) - new Date(a.created_at))
       if (SORT_OPTIONS[sortIndex] === 'Friends Have It') return (circleFriendsMap[b.id]?.count || 0) - (circleFriendsMap[a.id]?.count || 0)
       return new Date(b.created_at) - new Date(a.created_at)
     })

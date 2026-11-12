@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { fetchGoTos } from './cookStats'
 import { supabase } from './supabase'
 import EmptyState from './EmptyState'
 import { IconBook, IconPot, IconPlus, IconLock, IconLockOpen } from './icons'
@@ -133,19 +134,8 @@ export default function Profile({ session, onBack, onSelectRecipe, onSelectCook,
       })
       setRecentCooks(deduped.slice(0, 5))
 
-      // Top rated — derived from same cooksData
-      const recipeMap = {}
-      cooksData.forEach(cook => {
-        if (!cook.recipes) return
-        const id = cook.recipe_id
-        if (!recipeMap[id]) recipeMap[id] = { cook, scores: [], recipe: cook.recipes }
-        const scores = [cook.flavor, cook.effort, cook.would_share, cook.true_to_recipe].filter(Boolean)
-        if (scores.length > 0) recipeMap[id].scores.push(...scores)
-      })
-      const ranked = Object.values(recipeMap)
-        .map(entry => ({ ...entry.cook, recipes: entry.recipe, avgScore: entry.scores.length > 0 ? entry.scores.reduce((a, b) => a + b, 0) / entry.scores.length : 0 }))
-        .filter(e => e.avgScore > 0).sort((a, b) => b.avgScore - a.avgScore).slice(0, 5)
-      setTopRated(ranked)
+      // Go-tos: Would Make Again recipes, most-cooked first (counts all cooks, not just these 20)
+      fetchGoTos(supabase, session.user.id).then(setTopRated)
     }
 
     if (wantData) setWantToMake(wantData)
@@ -493,10 +483,10 @@ export default function Profile({ session, onBack, onSelectRecipe, onSelectCook,
 
           <div style={{ height: '1px', background: 'var(--parchment)', margin: '0 20px 20px' }} />
 
-          {/* Top Rated */}
+          {/* Go-tos */}
           {topRated.length > 0 && (
             <div style={{ padding: '0 20px', marginBottom: '20px' }}>
-              <div style={sectionLabel}>Top rated</div>
+              <div style={sectionLabel}>Go-tos</div>
               <div style={{ display: 'flex', flexDirection: 'column' }}>
                 {topRated.map(cook => {
                   const recipe = cook.recipes
@@ -508,7 +498,7 @@ export default function Profile({ session, onBack, onSelectRecipe, onSelectCook,
                         <div style={{ fontSize: '13px', color: 'var(--ink)', fontWeight: '500', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{recipe.title}</div>
                         {recipe.source_name && <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '1px' }}>{recipe.source_name}</div>}
                       </div>
-                      <div style={{ background: 'var(--ink)', borderRadius: '100px', padding: '3px 8px', fontSize: '10px', fontWeight: '700', color: 'var(--cream)', flexShrink: 0 }}>{cook.avgScore.toFixed(1)}</div>
+                      <div style={{ background: '#EEF4E5', border: '1px solid #7A8C6E', borderRadius: '100px', padding: '3px 9px', fontSize: '11px', fontWeight: '700', color: '#4A5E42', flexShrink: 0, whiteSpace: 'nowrap' }}>Made {cook.times}x</div>
                     </div>
                   )
                 })}

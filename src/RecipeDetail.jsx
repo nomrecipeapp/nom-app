@@ -1,7 +1,8 @@
 import SectionTextarea from './SectionTextarea'
 import { linkProps } from './openLink'
 import { maybeAskForRating } from './rating'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, forwardRef } from 'react'
+import { ordinal } from './cookStats'
 import { supabase } from './supabase'
 import CircleFriendsModal from './CircleFriendsModal'
 import { IconChevronRight, IconX, IconPot } from './icons'
@@ -33,6 +34,115 @@ const verdictStyles = {
 }
 
 
+
+const SHORT_VERDICT = { would_make_again: 'Make again', it_was_fine: 'Fine', never_again: 'Never again' }
+const SLIDERS = [
+  { key: 'flavor', label: 'Flavor', short: 'Flavor' },
+  { key: 'effort', label: 'Effort vs. Reward', short: 'Effort' },
+  { key: 'would_share', label: 'Would Share', short: 'Share' },
+  { key: 'true_to_recipe', label: 'True to Recipe', short: 'True to recipe' },
+]
+const sectionLabelStyle = { fontSize: '11px', fontWeight: '600', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--muted)' }
+function shortDate(d) { return d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '' }
+function scrollToRef(ref) { ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }
+
+// Two small chips under the title. Hidden when nobody has cooked it yet.
+function TakeChips({ cooks, circleCooks, onYourTake, onCircle }) {
+  const latest = cooks[0]
+  const n = circleCooks.length
+  const again = circleCooks.filter(c => c.verdict === 'would_make_again').length
+  if (!latest && n === 0) return null
+  const chip = { display: 'inline-flex', alignItems: 'center', minHeight: '36px', padding: '0 12px', borderRadius: 'var(--radius-pill)', border: 'none', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }
+  const v = latest && verdictOptions.find(o => o.value === latest.verdict)
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '12px' }}>
+      {latest && (
+        <button onClick={onYourTake} style={{ ...chip, background: v?.bg || 'var(--parchment)', color: v?.color || 'var(--charcoal)' }}>
+          Your take: {SHORT_VERDICT[latest.verdict] || 'Cooked'} · {cooks.length}x
+        </button>
+      )}
+      {n > 0 && (
+        <button onClick={onCircle} style={{ ...chip, background: 'var(--parchment)', color: 'var(--charcoal)' }}>
+          {n} {n === 1 ? 'friend' : 'friends'}{again > 0 ? ` · ${again} make again` : ' cooked this'}
+        </button>
+      )}
+    </div>
+  )
+}
+
+// Your latest cook, labeled with its date.
+const YourTake = forwardRef(function YourTake({ cook, times, onSeeAll }, ref) {
+  const v = verdictOptions.find(o => o.value === cook.verdict)
+  const filled = SLIDERS.filter(s => cook[s.key])
+  return (
+    <div ref={ref} style={{ scrollMarginTop: 'calc(var(--top-bar-h) + 12px)', background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--parchment)', padding: '20px', marginBottom: '16px' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '10px', marginBottom: filled.length || cook.notes ? '16px' : '12px' }}>
+        <div>
+          <div style={sectionLabelStyle}>Your take</div>
+          <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '4px' }}>From your latest cook, {shortDate(cook.cooked_at)}</div>
+        </div>
+        {v && <div style={{ background: v.bg, border: '1px solid ' + v.border, borderRadius: '100px', padding: '4px 10px', fontSize: '11px', fontWeight: '700', color: v.color, whiteSpace: 'nowrap' }}>{v.label}</div>}
+      </div>
+      {filled.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: cook.notes ? '14px' : '4px' }}>
+          {filled.map(s => (
+            <div key={s.key} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <span style={{ fontSize: '13px', fontWeight: '500', color: 'var(--charcoal)', width: '120px', flexShrink: 0 }}>{s.label}</span>
+              <div aria-hidden="true" style={{ flex: 1, height: '6px', borderRadius: '100px', background: 'var(--parchment)', overflow: 'hidden' }}>
+                <div style={{ width: `${cook[s.key] * 20}%`, height: '100%', background: 'var(--clay)', borderRadius: '100px' }} />
+              </div>
+              <span style={{ fontFamily: 'var(--font-display)', fontSize: '15px', fontWeight: '700', color: 'var(--clay)', width: '28px', textAlign: 'right', flexShrink: 0 }}>{cook[s.key]}/5</span>
+            </div>
+          ))}
+        </div>
+      )}
+      {cook.notes && <div style={{ fontSize: '13px', color: 'var(--charcoal)', fontStyle: 'italic', lineHeight: '1.5' }}>"{cook.notes}"</div>}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '14px', paddingTop: '4px', borderTop: '1px solid var(--parchment)' }}>
+        <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--charcoal)' }}>You've made this {times === 1 ? 'once' : `${times} times`}</span>
+        {times > 1 && (
+          <button className="nom-hit" onClick={onSeeAll} style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600', color: 'var(--clay)', padding: '12px 0' }}>See all cooks<IconChevronRight size={12} strokeWidth={2.4} style={{ marginLeft: '3px', marginTop: '-1px' }} /></button>
+        )}
+      </div>
+    </div>
+  )
+})
+
+// "4 friends cooked this. 3 would make it again, 1 thought it was fine."
+function CircleTally({ circleCooks }) {
+  const n = circleCooks.length
+  const count = k => circleCooks.filter(c => c.verdict === k).length
+  const again = count('would_make_again'), fine = count('it_was_fine'), never = count('never_again')
+  const parts = [
+    again && `${again} would make it again`,
+    fine && `${fine} thought it was fine`,
+    never && `${never} would never make it again`,
+  ].filter(Boolean)
+  const seg = (k, color) => count(k) > 0 && <div style={{ flex: count(k), background: color }} />
+  return (
+    <div style={{ background: 'var(--parchment)', borderRadius: 'var(--radius-md)', padding: '12px 14px', marginBottom: '16px' }}>
+      <div style={{ fontSize: '13px', color: 'var(--charcoal)', lineHeight: '1.45', marginBottom: '8px' }}>
+        <strong style={{ color: 'var(--ink)' }}>{n} {n === 1 ? 'friend' : 'friends'} cooked this.</strong> {parts.length ? parts.join(', ') + '.' : ''}
+      </div>
+      <div role="img" aria-label={parts.join(', ')} style={{ display: 'flex', gap: '3px', height: '8px', borderRadius: '100px', overflow: 'hidden' }}>
+        {seg('would_make_again', '#7A8C6E')}{seg('it_was_fine', '#E8A87C')}{seg('never_again', '#C47070')}
+      </div>
+    </div>
+  )
+}
+
+// A friend's sliders as small chips: "Flavor 5 · Effort 4 ..."
+function SliderChips({ cook, style }) {
+  const filled = SLIDERS.filter(s => cook[s.key])
+  if (filled.length === 0) return null
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', ...style }}>
+      {filled.map(s => (
+        <span key={s.key} style={{ padding: '3px 8px', borderRadius: '100px', background: 'var(--parchment)', fontSize: '11px', color: 'var(--charcoal)' }}>{s.short} <strong style={{ color: 'var(--clay)' }}>{cook[s.key]}</strong></span>
+      ))}
+    </div>
+  )
+}
+
 export default function RecipeDetail({ recipe: initialRecipe, session, onBack, onUpdate, onSelectUser }) {
   const [recipe, setRecipe] = useState(initialRecipe)
   const [logging, setLogging] = useState(false)
@@ -49,6 +159,9 @@ export default function RecipeDetail({ recipe: initialRecipe, session, onBack, o
   const [cooks, setCooks] = useState([])
   const [loadingCooks, setLoadingCooks] = useState(true)
   const [circleCooks, setCircleCooks] = useState([])
+  const yourTakeRef = useRef(null)
+  const circleRef = useRef(null)
+  const historyRef = useRef(null)
   const [circleFriendsCount, setCircleFriendsCount] = useState(0)
   const [circleFriendAvatars, setCircleFriendAvatars] = useState([])
   const [showCircleModal, setShowCircleModal] = useState(false)
@@ -171,8 +284,10 @@ export default function RecipeDetail({ recipe: initialRecipe, session, onBack, o
     const userIds = [...new Set(cooksData.map(c => c.user_id))]
     const { data: profiles } = await supabase
       .from('profiles').select('id, full_name, username, avatar_url').in('id', userIds)
+    const timesByUser = {}
+    for (const c of cooksData) timesByUser[c.user_id] = (timesByUser[c.user_id] || 0) + 1
     const cooksWithProfiles = cooksData.map(c => ({
-      ...c, profiles: profiles?.find(p => p.id === c.user_id) || null
+      ...c, profiles: profiles?.find(p => p.id === c.user_id) || null, _times: timesByUser[c.user_id]
     }))
     const seen = new Set()
     const deduped = cooksWithProfiles.filter(c => {
@@ -875,6 +990,8 @@ async function saveEditCook() {
               ))}
             </div>
           )}
+          <TakeChips cooks={cooks} circleCooks={circleCooks}
+            onYourTake={() => scrollToRef(yourTakeRef)} onCircle={() => scrollToRef(circleRef)} />
         </div>
 
         {showCircleModal && (
@@ -1005,12 +1122,17 @@ async function saveEditCook() {
           </div>
         )}
 
+        {cooks.length > 0 && (
+          <YourTake ref={yourTakeRef} cook={cooks[0]} times={cooks.length} onSeeAll={() => scrollToRef(historyRef)} />
+        )}
+
         {circleCooks.length > 0 && (
-          <div style={{ background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--parchment)', padding: '20px', marginBottom: '16px' }}>
+          <div ref={circleRef} style={{ scrollMarginTop: 'calc(var(--top-bar-h) + 12px)', background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--parchment)', padding: '20px', marginBottom: '16px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
               <div style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--muted)' }}>From your circle</div>
               {circleCooks.length > 3 && <button className="nom-hit" onClick={() => setShowCircleModal(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: '600', color: 'var(--clay)', padding: 0 }}>See all {circleCooks.length}<IconChevronRight size={12} strokeWidth={2.4} style={{ marginLeft: '3px', marginTop: '-1px' }} /></button>}
             </div>
+            <CircleTally circleCooks={circleCooks} />
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               {circleCooks.slice(0, 3).map((c, i) => {
                 const v = verdictStyles[c.verdict]
@@ -1020,12 +1142,15 @@ async function saveEditCook() {
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--clay), var(--ember))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: '700', color: 'var(--cream)', flexShrink: 0 }}>{name[0].toUpperCase()}</div>
-                        <span onClick={() => onSelectUser && onSelectUser(c.user_id)} style={{ fontSize: '13px', fontWeight: '600', color: 'var(--ink)', cursor: 'pointer', textDecoration: 'underline', textDecorationColor: 'var(--tan)' }}>{name}</span>
+                        <div style={{ minWidth: 0 }}>
+                          <span onClick={() => onSelectUser && onSelectUser(c.user_id)} style={{ fontSize: '13px', fontWeight: '600', color: 'var(--ink)', cursor: 'pointer', textDecoration: 'underline', textDecorationColor: 'var(--tan)' }}>{name}</span>
+                          <div style={{ fontSize: '11px', color: 'var(--muted)' }}>{shortDate(c.cooked_at)}{c._times >= 2 ? ` · ${ordinal(c._times)} time` : ''}</div>
+                        </div>
                       </div>
                       {v && <div style={{ background: v.bg, border: '1px solid ' + v.border, borderRadius: '100px', padding: '2px 8px', fontSize: '10px', fontWeight: '700', color: v.color }}>{v.label}</div>}
                     </div>
                     {c.notes && <div style={{ fontSize: '13px', color: 'var(--charcoal)', fontStyle: 'italic', lineHeight: '1.5', paddingLeft: '36px' }}>"{c.notes}"</div>}
-                    {c.flavor && <div style={{ fontSize: '11px', color: 'var(--muted)', paddingLeft: '36px', marginTop: '4px' }}>Flavor <strong style={{ color: 'var(--clay)' }}>{c.flavor}/5</strong></div>}
+                    <SliderChips cook={c} style={{ paddingLeft: '36px', marginTop: '6px' }} />
                   </div>
                 )
               })}
@@ -1043,7 +1168,7 @@ async function saveEditCook() {
 
         {/* Cook history */}
         {cooks.length > 0 && (
-          <div style={{ background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--parchment)', padding: '20px', marginBottom: '16px' }}>
+          <div ref={historyRef} style={{ scrollMarginTop: 'calc(var(--top-bar-h) + 12px)', background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--parchment)', padding: '20px', marginBottom: '16px' }}>
             <div style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '16px' }}>Cook history</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {cooks.map((cook, i) => {

@@ -1,4 +1,5 @@
 import PeopleYouMightKnow from './PeopleYouMightKnow'
+import { cookNumber, ordinal } from './cookStats'
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from './supabase'
 import { LoadError, toast } from './ui'
@@ -6,6 +7,8 @@ import { getHiddenContent, isHidden } from './moderation'
 import LikesModal from './LikesModal'
 import CircleFriendsModal from './CircleFriendsModal'
 import { tap } from './haptics'
+
+const firstName = p => ((p?.full_name || '').trim().split(/\s+/)[0] || p?.username || 'Their')
 
 const verdictStyles = {
   would_make_again: { bg: '#EEF4E5', border: '#7A8C6E', color: '#4A5E42', label: 'Would Make Again' },
@@ -41,6 +44,7 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
   const [feedLikes, setFeedLikes] = useState({})
+  const [cookNumbers, setCookNumbers] = useState({})
   const [feedLikeCounts, setFeedLikeCounts] = useState({})
   const [feedCommentCounts, setFeedCommentCounts] = useState({})
   const [likesModal, setLikesModal] = useState(null)
@@ -191,6 +195,20 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
     setLastUpdated(Date.now())
     fetchFeedEngagement(merged)
     fetchCircleFriendsForFeed(merged)
+    fetchCookNumbers(merged)
+  }
+
+  // "Josh's 3rd time making it": count each poster's cooks of that recipe up to that cook
+  async function fetchCookNumbers(items) {
+    const cookItems = items.filter(i => i._type === 'cook')
+    const recipeIds = [...new Set(cookItems.map(c => c.recipe_id))]
+    if (recipeIds.length === 0) return
+    const { data } = await supabase
+      .from('cooks').select('id, user_id, recipe_id, cooked_at').in('recipe_id', recipeIds)
+    if (!data) return
+    const map = {}
+    for (const c of cookItems) map[c.id] = cookNumber(c, data)
+    setCookNumbers(map)
   }
 
   async function fetchCircleFriendsForFeed(items) {
@@ -640,6 +658,12 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
                       borderRadius: 'var(--radius-pill)', padding: '5px 12px',
                       fontSize: '12px', fontWeight: '600', color: v.color, marginBottom: '8px'
                     }}>{v.label}</div>
+                  )}
+                  {cookNumbers[item.id] >= 2 && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: '600', color: 'var(--clay)', marginBottom: '4px' }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 12a8 8 0 0 1 14-5.3L20 9" /><path d="M20 4v5h-5" /><path d="M20 12a8 8 0 0 1-14 5.3L4 15" /><path d="M4 20v-5h5" /></svg>
+                      {item.user_id === session.user.id ? 'Your' : `${firstName(profile)}'s`} {ordinal(cookNumbers[item.id])} time making it
+                    </div>
                   )}
                   <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: '500', color: 'var(--ink)', marginBottom: '4px' }}>{recipe.title}</div>
                   {recipe.source_name && <div style={{ fontSize: '11px', color: 'var(--muted)', marginBottom: '6px' }}>{recipe.source_name}</div>}
