@@ -9,6 +9,7 @@ import { AlphabetRail, TagSheet, FilterSheet } from './CookbookTools'
 import BottomBar, { BAR_SHADOW } from './BottomBar'
 import { letterOf } from './letters'
 import { confirmSheet, toast, LoadError } from './ui'
+import { tap } from './haptics'
 
 const FILTERS = ['All', 'Want to Make', 'Cooked', 'Never Again']
 
@@ -439,21 +440,44 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
         {/* Status switch + one swipe row of tags */}
         <div style={{ padding: '12px 20px 0' }}>
 
-          {/* Status: one connected switch */}
-          <div role="group" aria-label="Status" style={{ display: 'flex', gap: '2px', background: 'var(--parchment)', borderRadius: 'var(--radius-pill)', padding: '3px', marginBottom: '12px' }}>
-            {FILTERS.map(f => {
-              const on = filter === f
-              return (
-                <button key={f} onClick={() => setFilter(f)} aria-pressed={on} style={{
-                  flex: 1, minWidth: 0, minHeight: '36px', padding: '0 4px', border: 'none', borderRadius: 'var(--radius-pill)',
-                  background: on ? 'var(--warm-white)' : 'transparent', color: on ? 'var(--ink)' : 'var(--charcoal)',
-                  boxShadow: on ? '0 1px 3px rgba(28,26,23,0.12)' : 'none',
-                  fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600', whiteSpace: 'nowrap', cursor: 'pointer',
-                  transition: 'background 0.15s, box-shadow 0.15s',
-                }}>{STATUS_LABELS[f] || f}</button>
-              )
-            })}
-          </div>
+          {/* Status: a sliding switch. The orange thumb glides to the picked status,
+              and you can drag your finger across to slide it, like iPhone switches. */}
+          {(() => {
+            const idx = Math.max(0, FILTERS.indexOf(filter))
+            const reduce = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+            const pickAt = (e) => {
+              const box = e.currentTarget.getBoundingClientRect()
+              const x = e.touches[0].clientX - box.left
+              const i = Math.min(FILTERS.length - 1, Math.max(0, Math.floor((x / box.width) * FILTERS.length)))
+              if (FILTERS[i] !== filter) { tap(); setFilter(FILTERS[i]) }
+            }
+            return (
+              <div role="group" aria-label="Status" onTouchMove={pickAt} style={{
+                position: 'relative', display: 'flex', background: 'var(--warm-white)', border: '1.5px solid var(--tan)',
+                borderRadius: 'var(--radius-pill)', padding: '3px', marginBottom: '12px', touchAction: 'pan-y',
+              }}>
+                <div aria-hidden="true" style={{
+                  position: 'absolute', top: '3px', bottom: '3px',
+                  left: `calc(3px + ${idx} * (100% - 6px) / ${FILTERS.length})`,
+                  width: `calc((100% - 6px) / ${FILTERS.length})`,
+                  background: 'var(--clay)', borderRadius: 'var(--radius-pill)',
+                  boxShadow: '0 1px 3px rgba(28,26,23,0.15)',
+                  transition: reduce ? 'none' : 'left 0.28s cubic-bezier(0.3, 0.9, 0.3, 1)',
+                }} />
+                {FILTERS.map(f => {
+                  const on = filter === f
+                  return (
+                    <button key={f} onClick={() => { if (!on) tap(); setFilter(f) }} aria-pressed={on} style={{
+                      position: 'relative', zIndex: 1, flex: 1, minWidth: 0, minHeight: '36px', padding: '0 4px',
+                      border: 'none', background: 'transparent', color: on ? 'var(--cream)' : 'var(--charcoal)',
+                      fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600', whiteSpace: 'nowrap', cursor: 'pointer',
+                      transition: reduce ? 'none' : 'color 0.2s ease',
+                    }}>{STATUS_LABELS[f] || f}</button>
+                  )
+                })}
+              </div>
+            )
+          })()}
 
           {/* Filters first (every tag lives in its sheet), then the tags themselves */}
           <div className="nom-hscroll" style={{
