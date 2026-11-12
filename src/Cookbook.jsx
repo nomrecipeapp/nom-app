@@ -509,7 +509,7 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
                   borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap'
                 }}>Select</button>
                 {/* Looks like a pill; the real (invisible) select on top opens the iPhone picker */}
-                <div className="nom-hit" style={{
+                <div style={{
                   position: 'relative', minHeight: '32px', display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '0 12px',
                   background: 'var(--warm-white)', border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-pill)',
                   fontSize: '12px', fontWeight: '600', color: 'var(--charcoal)', whiteSpace: 'nowrap'
@@ -520,7 +520,12 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
                     aria-label="Sort recipes"
                     value={SORT_OPTIONS[sortIndex]}
                     onChange={e => setSortIndex(SORT_OPTIONS.indexOf(e.target.value))}
-                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer', fontSize: '16px' }}>
+                    style={{
+                      // On top of the pill and a little taller than it, so the tap area is 44px
+                      position: 'absolute', left: 0, right: 0, top: '-6px', bottom: '-6px', zIndex: 1,
+                      width: '100%', opacity: 0, cursor: 'pointer', fontSize: '16px',
+                      WebkitAppearance: 'none', appearance: 'none', border: 'none', background: 'transparent',
+                    }}>
                     {SORT_OPTIONS.map(o => <option key={o} value={o}>{SORT_LABELS[o] || o}</option>)}
                   </select>
                 </div>
