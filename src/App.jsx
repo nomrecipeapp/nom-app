@@ -411,12 +411,12 @@ export default function App() {
     tap()
     // Tapping the tab you're already on scrolls it back to the top (the iPhone standard)
     if (tab === screen) {
-      if (tab === 'feed') {
-        document.getElementById('feed-scroll-container')?.scrollTo({ top: 0, behavior: 'smooth' })
-        setFeedScrollY(0)
-      } else {
-        window.scrollTo({ top: 0, behavior: 'smooth' })
-      }
+      // Feed and Cookbook scroll inside their own panels; the other tabs scroll the page
+      const panel = document.getElementById(`${tab}-scroll-container`)
+      if (panel) panel.scrollTo({ top: 0, behavior: 'smooth' })
+      else window.scrollTo({ top: 0, behavior: 'smooth' })
+      if (tab === 'feed') setFeedScrollY(0)
+      if (tab === 'cookbook') setCookbookScrollY(0)
       return
     }
     animateNext('tab')
