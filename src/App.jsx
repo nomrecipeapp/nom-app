@@ -409,7 +409,17 @@ export default function App() {
   // Bottom tabs start a fresh history
   function goTab(tab) {
     tap()
-    if (tab !== screen) animateNext('tab')
+    // Tapping the tab you're already on scrolls it back to the top (the iPhone standard)
+    if (tab === screen) {
+      if (tab === 'feed') {
+        document.getElementById('feed-scroll-container')?.scrollTo({ top: 0, behavior: 'smooth' })
+        setFeedScrollY(0)
+      } else {
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+      }
+      return
+    }
+    animateNext('tab')
     resetNav()
     setScrollToComments(false)
     setSelectedSaveScrollToComments(false)
