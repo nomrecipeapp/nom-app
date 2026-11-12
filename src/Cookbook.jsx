@@ -613,6 +613,7 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                         {recipe.source_name && <span style={{ fontSize: '11px', color: 'var(--muted)' }}>{recipe.source_name}</span>}
                         {recipe.cook_time && <span style={{ fontSize: '11px', color: 'var(--muted)' }}>· {recipe.cook_time}</span>}
+                        {cookScoresMap[recipe.id]?.times > 0 && <span style={{ fontSize: '11px', fontWeight: '600', color: 'var(--charcoal)' }}>· Made {cookScoresMap[recipe.id].times}x</span>}
                       </div>
                       {foundInside && (
                         <div style={{ fontSize: '11px', color: 'var(--clay)', fontWeight: '600', marginTop: '3px' }}>Uses {search.trim()}</div>

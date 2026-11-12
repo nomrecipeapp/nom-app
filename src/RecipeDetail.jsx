@@ -50,7 +50,6 @@ function scrollToRef(ref) { ref.current?.scrollIntoView({ behavior: 'smooth', bl
 function TakeChips({ cooks, circleCooks, onYourTake, onCircle }) {
   const latest = cooks[0]
   const n = circleCooks.length
-  const again = circleCooks.filter(c => c.verdict === 'would_make_again').length
   if (!latest && n === 0) return null
   const chip = { display: 'inline-flex', alignItems: 'center', minHeight: '36px', padding: '0 12px', borderRadius: 'var(--radius-pill)', border: 'none', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }
   const v = latest && verdictOptions.find(o => o.value === latest.verdict)
@@ -63,7 +62,7 @@ function TakeChips({ cooks, circleCooks, onYourTake, onCircle }) {
       )}
       {n > 0 && (
         <button onClick={onCircle} style={{ ...chip, background: 'var(--parchment)', color: 'var(--charcoal)' }}>
-          {n} {n === 1 ? 'friend' : 'friends'}{again > 0 ? ` · ${again} make again` : ' cooked this'}
+          {friendsChipText(circleCooks)}
         </button>
       )}
     </div>
@@ -107,21 +106,43 @@ const YourTake = forwardRef(function YourTake({ cook, times, onSeeAll }, ref) {
   )
 })
 
-// "4 friends cooked this. 3 would make it again, 1 thought it was fine."
+const VERDICT_PHRASE = { would_make_again: 'would make it again', it_was_fine: 'thought it was fine', never_again: 'would never make it again' }
+
+// Chip: "1 friend made this · would make again", "3 friends made this · all would make again",
+// "4 friends made this · 3 would make again", "2 friends made this"
+function friendsChipText(circleCooks) {
+  const n = circleCooks.length
+  const again = circleCooks.filter(c => c.verdict === 'would_make_again').length
+  if (n === 1) {
+    const short = { would_make_again: 'would make again', it_was_fine: 'thought it was fine', never_again: 'would never make again' }[circleCooks[0].verdict]
+    return short ? `1 friend made this · ${short}` : '1 friend made this'
+  }
+  if (again === n) return `${n} friends made this · all would make again`
+  if (again > 0) return `${n} friends made this · ${again} would make again`
+  return `${n} friends made this`
+}
+
+// "1 friend made this and would make it again."
+// "4 friends made this. 3 would make it again, 1 thought it was fine."
+// "3 friends made this. All 3 would make it again."
 function CircleTally({ circleCooks }) {
   const n = circleCooks.length
   const count = k => circleCooks.filter(c => c.verdict === k).length
   const again = count('would_make_again'), fine = count('it_was_fine'), never = count('never_again')
   const parts = [
-    again && `${again} would make it again`,
-    fine && `${fine} thought it was fine`,
-    never && `${never} would never make it again`,
+    again && `${again} ${VERDICT_PHRASE.would_make_again}`,
+    fine && `${fine} ${VERDICT_PHRASE.it_was_fine}`,
+    never && `${never} ${VERDICT_PHRASE.never_again}`,
   ].filter(Boolean)
+  const only = [again, fine, never].filter(Boolean).length === 1
+  const sentence = n === 1
+    ? <><strong style={{ color: 'var(--ink)' }}>1 friend made this</strong>{VERDICT_PHRASE[circleCooks[0].verdict] ? ` and ${VERDICT_PHRASE[circleCooks[0].verdict]}.` : '.'}</>
+    : <><strong style={{ color: 'var(--ink)' }}>{n} friends made this.</strong> {only && parts.length ? `All ${n} ${VERDICT_PHRASE[[['would_make_again', again], ['it_was_fine', fine], ['never_again', never]].find(([, c]) => c)[0]]}.` : parts.length ? parts.join(', ') + '.' : ''}</>
   const seg = (k, color) => count(k) > 0 && <div style={{ flex: count(k), background: color }} />
   return (
     <div style={{ background: 'var(--parchment)', borderRadius: 'var(--radius-md)', padding: '12px 14px', marginBottom: '16px' }}>
       <div style={{ fontSize: '13px', color: 'var(--charcoal)', lineHeight: '1.45', marginBottom: '8px' }}>
-        <strong style={{ color: 'var(--ink)' }}>{n} {n === 1 ? 'friend' : 'friends'} cooked this.</strong> {parts.length ? parts.join(', ') + '.' : ''}
+        {sentence}
       </div>
       <div role="img" aria-label={parts.join(', ')} style={{ display: 'flex', gap: '3px', height: '8px', borderRadius: '100px', overflow: 'hidden' }}>
         {seg('would_make_again', '#7A8C6E')}{seg('it_was_fine', '#E8A87C')}{seg('never_again', '#C47070')}
