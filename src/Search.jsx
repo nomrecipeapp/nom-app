@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from './supabase'
 import { getHiddenContent } from './moderation'
 import { IconX } from './icons'
+import { LoadError } from './ui'
 
 const RECENT_SEARCHES_KEY = 'nom_recent_searches'
 
@@ -34,6 +35,7 @@ export default function Search({ session, onSelectUser, onSelectSave, onSelectCo
   const [recentSearches, setRecentSearches] = useState(getRecentSearches())
   const [recentlyViewed, setRecentlyViewed] = useState([])
   const [loadingViewed, setLoadingViewed] = useState(true)
+  const [viewedError, setViewedError] = useState(false)
   const searchRef = useRef(null)
   const debounceRef = useRef(null)
 
@@ -56,13 +58,15 @@ export default function Search({ session, onSelectUser, onSelectSave, onSelectCo
 
 async function fetchRecentlyViewed() {
     setLoadingViewed(true)
-    const { data } = await supabase
+    setViewedError(false)
+    const { data, error } = await supabase
       .from('recipe_views')
       .select('recipe_id, viewed_at, recipes(id, title, image_url, source_name, user_id)')
       .eq('user_id', session.user.id)
       .order('viewed_at', { ascending: false })
       .limit(50)
 
+    if (error) { setViewedError(true); setLoadingViewed(false); return }
     if (data) {
       const seen = new Set()
       const deduped = data
@@ -411,6 +415,8 @@ async function fetchRecentlyViewed() {
             <div style={{ fontSize: '11px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '16px' }}>Recently viewed</div>
             {loadingViewed ? (
               <div style={{ textAlign: 'center', padding: '40px 0', fontSize: '13px', color: 'var(--muted)' }}>Loading...</div>
+            ) : viewedError ? (
+              <LoadError compact title="Couldn't load recently viewed" onRetry={fetchRecentlyViewed} />
             ) : recentlyViewed.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '40px 20px' }}>
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: '16px', fontWeight: '500', color: 'var(--ink)', marginBottom: '6px' }}>Nothing here yet</div>

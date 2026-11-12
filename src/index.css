@@ -1,6 +1,8 @@
 :root {
   /* iPhone edges: notch/status bar area and home bar area (both 0 on web) */
   --safe-top: env(safe-area-inset-top, 0px);
+  /* Height of the "You're offline" strip (ui.jsx OfflineBanner) */
+  --offline-h: 30px;
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   /* App bars. Screens leave room with these tokens, never hand-typed numbers. */
   --top-bar-h: calc(54px + var(--safe-top));
@@ -88,3 +90,7 @@ img { -webkit-user-drag: none; }
 @keyframes nom-screen-push { from { left: 32px; opacity: 0; } to { left: 0; opacity: 1; } }
 @keyframes nom-screen-pop  { from { left: -24px; opacity: 0; } to { left: 0; opacity: 1; } }
 @keyframes nom-screen-fade { from { opacity: 0; } to { opacity: 1; } }
+
+/* While offline, the strip sits under the status bar and everything below it
+   moves down by the strip's height, so it never covers the top bar. */
+html.nom-offline { --safe-top: calc(env(safe-area-inset-top, 0px) + var(--offline-h)); }

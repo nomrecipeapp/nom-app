@@ -32,9 +32,30 @@ const nativeStorage = {
   },
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, Capacitor.isNativePlatform()
-  ? { auth: { storage: nativeStorage, persistSession: true, autoRefreshToken: true, detectSessionInUrl: false } }
-  : undefined)
+// Offline: fail right away instead of waiting for the network to give up, so
+// "Couldn't load" cards show instantly. Reads (GET/HEAD) also give up after 15s
+// on a very weak connection. Uploads and saves never time out here.
+function offlineAwareFetch(input, init = {}) {
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+    return Promise.reject(new TypeError('Network request failed: offline'))
+  }
+  const method = (init.method || 'GET').toUpperCase()
+  if (method !== 'GET' && method !== 'HEAD') return fetch(input, init)
+  const ctrl = new AbortController()
+  const timer = setTimeout(() => ctrl.abort(), 15000)
+  if (init.signal) {
+    if (init.signal.aborted) ctrl.abort()
+    else init.signal.addEventListener('abort', () => ctrl.abort(), { once: true })
+  }
+  return fetch(input, { ...init, signal: ctrl.signal }).finally(() => clearTimeout(timer))
+}
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  global: { fetch: offlineAwareFetch },
+  ...(Capacitor.isNativePlatform()
+    ? { auth: { storage: nativeStorage, persistSession: true, autoRefreshToken: true, detectSessionInUrl: false } }
+    : {}),
+})
 
 // Relative '/api/...' calls only resolve inside a browser tab served from
 // the app's own origin. The native (Capacitor) build loads from a local

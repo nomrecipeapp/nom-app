@@ -166,14 +166,18 @@ export function OfflineBanner() {
     window.addEventListener('offline', off)
     return () => { window.removeEventListener('online', on); window.removeEventListener('offline', off) }
   }, [])
+  // Tell the CSS to push the app down by the strip's height (index.css html.nom-offline)
+  useEffect(() => {
+    document.documentElement.classList.toggle('nom-offline', offline)
+  }, [offline])
   if (!offline) return null
   return (
     <div role="status" style={{
       position: 'fixed', top: 0, left: 0, right: 0, zIndex: 2100,
-      paddingTop: 'var(--safe-top)', background: 'var(--parchment)', color: 'var(--charcoal)', borderBottom: '1px solid var(--tan)',
+      paddingTop: 'env(safe-area-inset-top, 0px)', background: 'var(--parchment)', color: 'var(--charcoal)', borderBottom: '1px solid var(--tan)',
       fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600', textAlign: 'center',
     }}>
-      <div style={{ padding: '6px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+      <div style={{ height: 'calc(var(--offline-h) - 1px)', padding: '0 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
         <IconWifiOff size={14} strokeWidth={2} />You're offline. Some things won't load.
       </div>
     </div>

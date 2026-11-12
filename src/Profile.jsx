@@ -5,6 +5,7 @@ import EmptyState from './EmptyState'
 import { IconBook, IconPot, IconPlus, IconLock, IconLockOpen } from './icons'
 import { shrinkImage } from './shrinkImage'
 import { unregisterPush } from './push'
+import { LoadError } from './ui'
 
 const verdictStyles = {
   would_make_again: { bg: '#EEF4E5', border: '#7A8C6E', color: '#4A5E42', label: 'Again' },
@@ -62,6 +63,7 @@ export default function Profile({ session, onBack, onSelectRecipe, onSelectCook,
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
   const [stats, setStats] = useState(null)
+  const [loadError, setLoadError] = useState(false)
   const [following, setFollowing] = useState(null)
   const [followers, setFollowers] = useState(null)
   const [recentCooks, setRecentCooks] = useState([])
@@ -77,10 +79,16 @@ export default function Profile({ session, onBack, onSelectRecipe, onSelectCook,
   const avatarInputRef = useRef(null)
   const [avatarUploading, setAvatarUploading] = useState(false)
 
-  useEffect(() => {
-    Promise.all([fetchProfile(), fetchStats(), fetchFollowCounts()])
-      .then(() => fetchProfileLists())
-  }, [])
+  useEffect(() => { loadAll() }, [])
+
+  // If the basics can't load (usually no connection), show "Couldn't load" instead
+  // of a blank "Your Name" profile with zeros and a "starts here" empty state.
+  async function loadAll() {
+    setLoadError(false)
+    const results = await Promise.all([fetchProfile(), fetchStats(), fetchFollowCounts()])
+    if (results.some(ok => ok === false)) { setLoadError(true); return }
+    fetchProfileLists()
+  }
 
   useEffect(() => {
     if (externalEditing) setEditing(true)
@@ -93,26 +101,31 @@ export default function Profile({ session, onBack, onSelectRecipe, onSelectCook,
   }
 
   async function fetchProfile() {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('profiles').select('*').eq('id', session.user.id).single()
     if (data) setProfile(data)
+    return !(error && error.code !== 'PGRST116')
   }
 
   async function fetchStats() {
-    const [{ count: saved }, { count: cooked }] = await Promise.all([
+    const [{ count: saved, error: e1 }, { count: cooked, error: e2 }] = await Promise.all([
       supabase.from('recipes').select('*', { count: 'exact', head: true }).eq('user_id', session.user.id),
       supabase.from('recipes').select('*', { count: 'exact', head: true }).eq('user_id', session.user.id).eq('status', 'cooked')
     ])
+    if (e1 || e2) return false
     setStats({ saved: saved || 0, cooked: cooked || 0 })
+    return true
   }
 
   async function fetchFollowCounts() {
-    const [{ count: followingCount }, { count: followersCount }] = await Promise.all([
+    const [{ count: followingCount, error: e1 }, { count: followersCount, error: e2 }] = await Promise.all([
       supabase.from('follows').select('*', { count: 'exact', head: true }).eq('follower_id', session.user.id).eq('status', 'approved'),
       supabase.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', session.user.id).eq('status', 'approved')
     ])
+    if (e1 || e2) return false
     setFollowing(followingCount || 0)
     setFollowers(followersCount || 0)
+    return true
   }
 
   async function fetchProfileLists() {
@@ -295,6 +308,12 @@ export default function Profile({ session, onBack, onSelectRecipe, onSelectCook,
       secondary: { label: 'Add a recipe', onClick: () => onAddRecipe && onAddRecipe() },
     }
   }
+
+  if (loadError) return (
+    <div style={{ minHeight: '100vh', background: 'var(--cream)', paddingTop: 'var(--top-bar-h)' }}>
+      <LoadError title="Couldn't load your profile" onRetry={loadAll} />
+    </div>
+  )
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--cream)', paddingBottom: 'var(--nav-clearance)' }}>
