@@ -630,6 +630,8 @@ export default function App() {
       )}
 
       {/* Everything below the top bar; this is what slides when you swipe back */}
+      {/* Clips sideways only, so swipe back never makes the page scroll sideways (see index.css) */}
+      <div style={{ overflowX: 'clip' }}>
       <div ref={swipeRef} style={{ background: 'var(--cream)', minHeight: '100vh' }}>
       {screen === 'notifications' && (
         <Notifications
@@ -787,6 +789,7 @@ export default function App() {
       {screen === 'resetPassword' && (
         <ResetPassword onComplete={() => goTab('feed')} />
       )}
+      </div>
       </div>
 
       {!hideNav && (
