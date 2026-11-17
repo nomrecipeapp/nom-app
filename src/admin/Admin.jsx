@@ -75,12 +75,38 @@ function Switch({ on, onChange, disabled, label: aria }) {
   )
 }
 
-function Stat({ value, title, sub, accent }) {
-  return (
-    <div style={{ ...card, padding: '16px 18px' }}>
-      <div style={label}>{title}</div>
+// Pass onClick to make a tile tappable (it opens details). selected = its details are showing.
+function Stat({ value, title, sub, accent, onClick, selected, action = 'Details' }) {
+  const body = (
+    <>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
+        <div style={label}>{title}</div>
+        {onClick && <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--clay)' }}>{selected ? 'Close' : action}</div>}
+      </div>
       <div style={{ fontFamily: 'var(--font-display)', fontSize: '30px', fontWeight: 700, color: accent ? 'var(--clay)' : 'var(--ink)', lineHeight: 1.15, marginTop: '6px' }}>{value}</div>
       {sub && <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '4px' }}>{sub}</div>}
+    </>
+  )
+  if (!onClick) return <div style={{ ...card, padding: '16px 18px' }}>{body}</div>
+  return (
+    <button onClick={onClick} aria-expanded={selected} style={{
+      ...card, padding: '16px 18px', textAlign: 'left', fontFamily: 'var(--font-body)', cursor: 'pointer', width: '100%',
+      border: `1.5px solid ${selected ? 'var(--clay)' : 'var(--parchment)'}`,
+    }}>{body}</button>
+  )
+}
+
+// Pill row used for filters inside the detail cards
+function Pills({ options, value, onChange }) {
+  return (
+    <div className="nom-hscroll" style={{ display: 'flex', gap: '8px', overflowX: 'auto', marginBottom: '12px' }}>
+      {options.map(([key, text]) => (
+        <button key={key} onClick={() => onChange(key)} aria-pressed={value === key} style={{
+          border: 'none', borderRadius: 'var(--radius-pill)', padding: '7px 13px', fontFamily: 'var(--font-body)',
+          fontSize: '12px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap',
+          background: value === key ? 'var(--clay)' : 'var(--parchment)', color: value === key ? 'var(--cream)' : 'var(--charcoal)',
+        }}>{text}</button>
+      ))}
     </div>
   )
 }
@@ -177,7 +203,174 @@ function SignIn({ onDone }) {
 }
 
 // ── Overview ──
-function Overview({ data, onSaveSettings }) {
+// ── Overview tile details ──
+const personName = (u) => u.full_name || u.username || u.email || 'No name yet'
+const DAY = 86400000
+const within = (d, days) => d && Date.now() - new Date(d).getTime() < days * DAY
+const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`
+const host = (url) => { try { return new URL(url).hostname.replace(/^www\./, '') } catch { return '' } }
+const VERDICTS = [
+  ['would_make_again', 'Would Make Again', 'good'],
+  ['it_was_fine', 'It Was Fine', 'neutral'],
+  ['never_again', 'Never Again', 'warn'],
+  ['none', 'No verdict', 'neutral'],
+]
+
+function DetailCard({ title, summary, children }) {
+  return (
+    <div style={{ ...card, marginTop: '10px' }}>
+      <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 500, color: 'var(--ink)' }}>{title}</div>
+      {summary && <div style={{ fontSize: '13px', color: 'var(--charcoal)', margin: '4px 0 14px', lineHeight: 1.5 }}>{summary}</div>}
+      {children}
+    </div>
+  )
+}
+
+// A tidy list that shows 15 rows, then a Show all button
+function RowList({ rows, empty }) {
+  const [all, setAll] = useState(false)
+  if (rows.length === 0) return <div style={{ fontSize: '13px', color: 'var(--muted)', padding: '10px 0' }}>{empty}</div>
+  const shown = all ? rows : rows.slice(0, 15)
+  return (
+    <>
+      <div>
+        {shown.map((r, i) => (
+          <div key={r.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', padding: '10px 0', borderTop: i ? '1px solid var(--parchment)' : 'none' }}>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.main}</div>
+              {r.sub && <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.sub}</div>}
+            </div>
+            {r.right && <div style={{ fontSize: '12px', color: 'var(--charcoal)', flexShrink: 0, textAlign: 'right' }}>{r.right}</div>}
+          </div>
+        ))}
+      </div>
+      {rows.length > 15 && (
+        <div style={{ marginTop: '10px' }}>
+          <Button kind="quiet" small onClick={() => setAll(a => !a)}>{all ? 'Show fewer' : `Show all ${rows.length}`}</Button>
+        </div>
+      )}
+    </>
+  )
+}
+
+function UsersDetail({ users }) {
+  const [filter, setFilter] = useState('all')
+  const isNew = u => within(u.joined_at, 7)
+  const newCount = users.filter(isNew).length
+  const unfinished = users.filter(u => !u.onboarded).length
+  const list = users
+    .filter(u => filter === 'new' ? isNew(u) : filter === 'setup' ? !u.onboarded : true)
+    .sort((a, b) => new Date(b.joined_at) - new Date(a.joined_at))
+  return (
+    <DetailCard title="Members" summary={`${users.length - unfinished} of ${users.length} finished setup. ${newCount} joined this week.`}>
+      <Pills value={filter} onChange={setFilter} options={[['all', `All (${users.length})`], ['new', `New this week (${newCount})`], ['setup', `Didn't finish setup (${unfinished})`]]} />
+      <RowList empty="Nobody here." rows={list.map(u => ({
+        key: u.id,
+        main: personName(u),
+        sub: `${u.username ? `@${u.username} · ` : ''}${u.email || ''}`,
+        right: <>Joined {shortDate(u.joined_at)}{!u.onboarded && <div style={{ marginTop: '4px' }}><Chip tone="warn">No setup</Chip></div>}</>,
+      }))} />
+    </DetailCard>
+  )
+}
+
+function ActiveDetail({ users, metrics, metricsError }) {
+  const [filter, setFilter] = useState('30')
+  const byId = useMemo(() => new Map((metrics?.activity || []).map(a => [a.id, a])), [metrics])
+  const days = filter === '7' ? 7 : 30
+  const active = users.filter(u => within(u.last_active, days)).sort((a, b) => new Date(b.last_active) - new Date(a.last_active))
+  const active30 = users.filter(u => within(u.last_active, 30)).length
+  const active7 = users.filter(u => within(u.last_active, 7)).length
+  const quiet = users.filter(u => !within(u.last_active, 30)).sort((a, b) => new Date(b.joined_at) - new Date(a.joined_at))
+  const pct = n => users.length ? Math.round((n / users.length) * 100) : 0
+
+  function did(u) {
+    const a = byId.get(u.id)
+    if (!a) return metricsError ? '' : 'Loading...'
+    const k = days === 7 ? '7d' : '30d'
+    const parts = [[a[`recipes_${k}`], 'save'], [a[`cooks_${k}`], 'cook'], [a[`imports_${k}`], 'import']].filter(([n]) => n > 0).map(([n, w]) => plural(n, w))
+    return parts.join(' · ')
+  }
+
+  return (
+    <DetailCard title="Activity" summary={`${active7} of ${users.length} members (${pct(active7)}%) were active this week, ${active30} (${pct(active30)}%) in the last 30 days. ${quiet.length} haven't done anything in 30 days.`}>
+      <Pills value={filter} onChange={setFilter} options={[['7', `This week (${active7})`], ['30', `30 days (${active30})`], ['quiet', `Quiet (${quiet.length})`]]} />
+      {metricsError && <ErrorNote>Couldn't load the breakdown: {metricsError}</ErrorNote>}
+      {filter === 'quiet' ? (
+        <RowList empty="Everyone's been active. Nice!" rows={quiet.map(u => ({
+          key: u.id,
+          main: personName(u),
+          sub: `Joined ${shortDate(u.joined_at)} · ${u.recipes} recipes, ${u.cooks} cooks all time`,
+          right: `Last active ${ago(u.last_active)}`,
+        }))} />
+      ) : (
+        <RowList empty="Nobody yet." rows={active.map(u => ({
+          key: u.id,
+          main: personName(u),
+          sub: did(u),
+          right: ago(u.last_active),
+        }))} />
+      )}
+    </DetailCard>
+  )
+}
+
+function RecipesDetail({ metrics, metricsError }) {
+  const [filter, setFilter] = useState('saves')
+  if (metricsError) return <DetailCard title="Recipes and cooks"><ErrorNote>Couldn't load: {metricsError}</ErrorNote></DetailCard>
+  if (!metrics) return <DetailCard title="Recipes and cooks"><div style={{ fontSize: '13px', color: 'var(--muted)' }}>Loading...</div></DetailCard>
+
+  const v = metrics.verdicts || {}
+  const total = Object.values(v).reduce((a, b) => a + Number(b), 0)
+  const split = VERDICTS.filter(([key]) => v[key]).map(([key, text, tone]) => (
+    <Chip key={key} tone={tone}>{text} {v[key]} ({Math.round((v[key] / total) * 100)}%)</Chip>
+  ))
+
+  return (
+    <DetailCard title="Recipes and cooks">
+      <div style={{ ...label, margin: '12px 0 8px' }}>Verdicts on {plural(total, 'cook')}</div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '18px' }}>
+        {split.length ? split : <span style={{ fontSize: '13px', color: 'var(--muted)' }}>No cooks logged yet.</span>}
+      </div>
+      <Pills value={filter} onChange={setFilter} options={[['saves', 'Latest saves'], ['cooks', 'Latest cooks'], ['top', 'Most saved']]} />
+      {filter === 'saves' && (
+        <RowList empty="No recipes yet." rows={metrics.recent_recipes.map(r => ({
+          key: r.id,
+          main: r.title || 'Untitled',
+          sub: `${r.who || 'Someone'} · ${ago(r.created_at)}`,
+          right: host(r.source_url) || 'No link',
+        }))} />
+      )}
+      {filter === 'cooks' && (
+        <RowList empty="No cooks yet." rows={metrics.recent_cooks.map(c => {
+          const verdict = VERDICTS.find(([key]) => key === (c.verdict || 'none'))
+          return {
+            key: c.id,
+            main: c.title || 'Untitled',
+            sub: `${c.who || 'Someone'} · ${ago(c.cooked_at)}`,
+            right: <Chip tone={verdict[2]}>{verdict[1]}</Chip>,
+          }
+        })} />
+      )}
+      {filter === 'top' && (
+        <RowList empty="No recipe has been saved by more than one person yet." rows={metrics.top_recipes.map((r, i) => ({
+          key: `${i}-${r.title}`,
+          main: `${i + 1}. ${r.title || 'Untitled'}`,
+          sub: `${plural(r.savers, 'person')} saved it`.replace('persons', 'people'),
+          right: plural(r.cooks, 'cook'),
+        }))} />
+      )}
+    </DetailCard>
+  )
+}
+
+function Overview({ data, users, metrics, metricsError, onNeedMetrics, onGoTo, onSaveSettings }) {
+  const [open, setOpen] = useState(null) // 'users' | 'active' | 'recipes'
+  function toggle(key) {
+    const next = open === key ? null : key
+    setOpen(next)
+    if (next && next !== 'users') onNeedMetrics()
+  }
   const s = data.settings
   const spent = Number(data.month_spend)
   const budget = Number(s.monthly_budget)
@@ -264,12 +457,15 @@ function Overview({ data, onSaveSettings }) {
 
       <SectionTitle>Users and activity</SectionTitle>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px' }}>
-        <Stat title="Users" value={data.users} sub={`${data.new_users_7d} new this week`} />
-        <Stat title="Active" value={data.active_30d} sub={`last 30 days (${data.active_7d} this week)`} />
-        <Stat title="Waiting" value={data.waiting} sub="on the waitlist, not invited" accent />
-        <Stat title="Recipes" value={data.recipes} sub={`${data.cooks} cooks logged`} />
+        <Stat title="Users" value={data.users} sub={`${data.new_users_7d} new this week`} onClick={() => toggle('users')} selected={open === 'users'} />
+        <Stat title="Active" value={data.active_30d} sub={`last 30 days (${data.active_7d} this week)`} onClick={() => toggle('active')} selected={open === 'active'} />
+        <Stat title="Waiting" value={data.waiting} sub="on the waitlist, not invited" accent onClick={() => onGoTo('waitlist')} action="Open" />
+        <Stat title="Recipes" value={data.recipes} sub={`${data.cooks} cooks logged`} onClick={() => toggle('recipes')} selected={open === 'recipes'} />
       </div>
-      <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '8px' }}>Active means they saved a recipe, logged a cook or imported something.</div>
+      {open === 'users' && <UsersDetail users={users} />}
+      {open === 'active' && <ActiveDetail users={users} metrics={metrics} metricsError={metricsError} />}
+      {open === 'recipes' && <RecipesDetail metrics={metrics} metricsError={metricsError} />}
+      <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '8px' }}>Active means they saved a recipe, logged a cook or imported something. Tap a tile for details.</div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '10px', marginTop: '16px' }}>
         <DailyBars title="Sign-ups per day" days={data.daily || []} field="signups" format={n => `${n}`} />
@@ -574,6 +770,22 @@ export default function Admin() {
   const [loading, setLoading] = useState(false)
   const [loadError, setLoadError] = useState(null)
   const [loadedAt, setLoadedAt] = useState(null)
+  const [metrics, setMetrics] = useState(null) // tile details, loaded the first time a tile opens
+  const [metricsError, setMetricsError] = useState(null)
+  const [metricsWanted, setMetricsWanted] = useState(false)
+
+  const loadMetrics = useCallback(async () => {
+    setMetricsError(null)
+    const { data, error } = await supabase.rpc('admin_metrics')
+    if (error) { setMetricsError(error.message); return }
+    setMetrics(data)
+  }, [])
+
+  function needMetrics() {
+    if (metricsWanted) return
+    setMetricsWanted(true)
+    loadMetrics()
+  }
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session))
@@ -594,6 +806,12 @@ export default function Admin() {
     setOverview(o.data); setWaitlist(w.data || []); setUsers(u.data || [])
     setLoadedAt(new Date())
   }, [])
+
+  // Refresh also refreshes tile details, if they've been opened
+  function refresh() {
+    load()
+    if (metricsWanted) loadMetrics()
+  }
 
   const userId = session?.user?.id
   useEffect(() => {
@@ -625,6 +843,7 @@ export default function Admin() {
   async function signOut() {
     await supabase.auth.signOut()
     setOverview(null); setWaitlist([]); setUsers([]); setAdminCheck(null)
+    setMetrics(null); setMetricsWanted(false); setMetricsError(null)
   }
 
   if (session === undefined) return null
@@ -651,7 +870,7 @@ export default function Admin() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
             <div style={{ fontFamily: 'var(--font-display)', fontSize: '26px', fontWeight: 700, color: 'var(--ink)' }}>nom <span style={{ color: 'var(--clay)', fontWeight: 300, fontStyle: 'italic' }}>admin</span></div>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-              <Button kind="quiet" small disabled={loading} onClick={load}>{loading ? 'Loading...' : 'Refresh'}</Button>
+              <Button kind="quiet" small disabled={loading} onClick={refresh}>{loading ? 'Loading...' : 'Refresh'}</Button>
               <Button kind="secondary" small onClick={signOut}>Sign out</Button>
             </div>
           </div>
@@ -680,7 +899,7 @@ export default function Admin() {
                 <Button kind="secondary" small onClick={() => setTab('invites')}>Manage</Button>
               </div>
             )}
-            {tab === 'overview' && <Overview data={overview} onSaveSettings={saveSettings} />}
+            {tab === 'overview' && <Overview data={overview} users={users} metrics={metrics} metricsError={metricsError} onNeedMetrics={needMetrics} onGoTo={setTab} onSaveSettings={saveSettings} />}
             {tab === 'waitlist' && <Waitlist rows={waitlist} onInvited={markInvited} />}
             {tab === 'users' && <Users rows={users} onCodesGiven={(id, left) => setUsers(list => list.map(x => x.id === id ? { ...x, codes_left: left } : x))} />}
             {tab === 'invites' && <Invites settings={overview.settings} users={users} onSaveSettings={saveSettings} />}
