@@ -564,7 +564,7 @@ export default function FriendProfile({ userId, session, onSelectCook, onSelectS
         </>}
 
         {circleModal && (
-          <CircleFriendsModal canonicalId={circleModal.canonical_id} sourceUrl={circleModal.source_url} session={session}
+          <CircleFriendsModal canonicalId={circleModal.canonical_id} sourceUrl={circleModal.source_url} excludeUserId={userId} session={session}
             onClose={() => setCircleModal(null)} onSelectUser={id => { setCircleModal(null); onSelectUser && onSelectUser(id) }} />
         )}
 

@@ -8,12 +8,15 @@ const verdictStyles = {
   never_again: { bg: '#F4E8E8', border: '#C47070', color: '#9B4040', label: 'Never Again' },
 }
 
-export default function CircleFriendsModal({ sourceUrl, canonicalId, session, onClose, onSelectUser }) {  const [friends, setFriends] = useState([])
+// Friends (people you follow) who have this recipe: one row per person, never you, and never
+// excludeUserId (the friend whose recipe or cook you're looking at), so it matches the counts on the page.
+export default function CircleFriendsModal({ sourceUrl, canonicalId, excludeUserId, session, onClose, onSelectUser }) {
+  const [friends, setFriends] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     fetchFriends()
-  }, [sourceUrl, canonicalId])
+  }, [sourceUrl, canonicalId, excludeUserId])
 
   async function fetchFriends() {
     setLoading(true)
@@ -24,13 +27,13 @@ export default function CircleFriendsModal({ sourceUrl, canonicalId, session, on
 
     if (!following || following.length === 0) { setFriends([]); setLoading(false); return }
 
-    const followingIds = following.map(f => f.following_id)
-    const searchIds = [...followingIds, session.user.id]
+    const followingIds = following.map(f => f.following_id).filter(id => id !== session.user.id && id !== excludeUserId)
+    if (followingIds.length === 0) { setFriends([]); setLoading(false); return }
 
     const { data: matchingRecipes } = await supabase
-      .from('recipes').select('id, user_id, status')
+      .from('recipes').select('id, user_id, status, created_at')
       .eq(canonicalId ? 'canonical_id' : 'source_url', canonicalId || sourceUrl)
-      .in('user_id', searchIds)
+      .in('user_id', followingIds)
 
     if (!matchingRecipes || matchingRecipes.length === 0) { setFriends([]); setLoading(false); return }
 
@@ -45,13 +48,16 @@ export default function CircleFriendsModal({ sourceUrl, canonicalId, session, on
       .in('recipe_id', recipeIds)
       .order('cooked_at', { ascending: false })
 
-    const results = matchingRecipes.map(r => {
-      const profile = profiles?.find(p => p.id === r.user_id)
-      const cook = cooksData?.find(c => c.recipe_id === r.id)
+    // One row per person: their latest cook across all their copies, else their newest copy's status
+    const results = userIds.map(userId => {
+      const theirs = matchingRecipes.filter(r => r.user_id === userId)
+      const theirIds = new Set(theirs.map(r => r.id))
+      const cook = cooksData?.find(c => theirIds.has(c.recipe_id))
+      const newest = [...theirs].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0]
       return {
-        userId: r.user_id,
-        profile,
-        status: r.status,
+        userId,
+        profile: profiles?.find(p => p.id === userId),
+        status: cook ? (cook.verdict === 'never_again' ? 'never_again' : 'cooked') : newest.status,
         verdict: cook?.verdict || null,
         notes: cook?.notes || null,
       }

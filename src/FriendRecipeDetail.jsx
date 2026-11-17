@@ -133,9 +133,8 @@ useEffect(() => {
       .from('recipes').select('id, user_id')
       .eq('canonical_id', recipe.canonical_id).in('user_id', followingIds)
     if (!matchingRecipes || matchingRecipes.length === 0) return
-    const userIds = [...new Set(matchingRecipes.map(r => r.user_id))]
-    const otherIds = userIds.filter(id => id !== recipe.user_id)
-    if (otherIds.length === 0) return
+    const userIds = [...new Set(matchingRecipes.map(r => r.user_id))].filter(id => id !== recipe.user_id && id !== session.user.id)
+    if (userIds.length === 0) return
     const { data: profiles } = await supabase
       .from('profiles').select('id, full_name, username, avatar_url').in('id', userIds.slice(0, 3))
     setCircleFriendsCount(userIds.length)
@@ -250,7 +249,8 @@ async function fetchCircleCookPhotos() {
     const { data: following } = await supabase.from('follows').select('following_id')
       .eq('follower_id', session.user.id).eq('status', 'approved')
     if (!following || following.length === 0) return
-    const followingIds = following.map(f => f.following_id)
+    const followingIds = following.map(f => f.following_id).filter(id => id !== recipe.user_id && id !== session.user.id)
+    if (followingIds.length === 0) return
     const { data: matchingRecipes } = await supabase.from('recipes').select('id, user_id')
       .eq('canonical_id', recipe.canonical_id).in('user_id', followingIds)
     if (!matchingRecipes || matchingRecipes.length === 0) return
@@ -579,6 +579,7 @@ async function fetchCircleCookPhotos() {
           <CircleFriendsModal
             canonicalId={recipe.canonical_id}
             sourceUrl={recipe.source_url}
+            excludeUserId={recipe.user_id}
             session={session}
             onClose={() => setShowCircleModal(false)}
             onSelectUser={onSelectUser}
