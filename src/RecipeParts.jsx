@@ -16,10 +16,10 @@ const YOUR_VERDICT = {
 const VERDICT_PHRASE = { would_make_again: 'would make it again', it_was_fine: 'thought it was fine', never_again: 'would never make it again' }
 
 // "2 friends made it. Both would make it again." / "1 friend made it. Thought it was fine."
-function friendsHeadline(circleCooks) {
+function friendsHeadline(circleCooks, others) {
   const n = circleCooks.length
   const verdicts = new Set(circleCooks.map(c => c.verdict))
-  const lead = `${n} ${n === 1 ? 'friend' : 'friends'} made it.`
+  const lead = others ? `${n} other ${n === 1 ? 'friend' : 'friends'} made it too.` : `${n} ${n === 1 ? 'friend' : 'friends'} made it.`
   if (verdicts.size === 1) {
     const phrase = VERDICT_PHRASE[circleCooks[0].verdict]
     if (!phrase) return [lead, '']
@@ -46,7 +46,8 @@ export function Avatars({ people }) {
 }
 
 // One card under the title: your verdict and what friends thought. Hidden when there's nothing to say.
-export function TakeSummary({ cooks, circleCooks, friendsWithIt, avatars, onYourTake, onCircle }) {
+// others: on a friend's cook or saved recipe, circleCooks leaves that friend out, so say "other friends"
+export function TakeSummary({ cooks, circleCooks, friendsWithIt, avatars, onYourTake, onCircle, others = false }) {
   const latest = cooks[0]
   const n = circleCooks.length
   if (!latest && n === 0 && !friendsWithIt) return null
@@ -56,7 +57,7 @@ export function TakeSummary({ cooks, circleCooks, friendsWithIt, avatars, onYour
   const sub = { fontSize: '12px', color: 'var(--muted)', marginTop: '1px' }
   const chevron = <IconChevronRight size={16} strokeWidth={2.4} style={{ color: 'var(--clay)', flexShrink: 0 }} />
   const savedOnly = Math.max(0, (friendsWithIt || 0) - n)
-  const [lead, rest] = n > 0 ? friendsHeadline(circleCooks) : ['', '']
+  const [lead, rest] = n > 0 ? friendsHeadline(circleCooks, others) : ['', '']
   return (
     <div style={{ background: 'var(--warm-white)', border: '1px solid var(--parchment)', borderRadius: 'var(--radius-lg)', overflow: 'hidden', marginBottom: '16px' }}>
       {latest && (
@@ -125,8 +126,9 @@ export const TakeCard = forwardRef(function TakeCard({ label, sub, cook, footer 
 // "1 friend made this and would make it again."
 // "4 friends made this. 3 would make it again, 1 thought it was fine."
 // "3 friends made this. All 3 would make it again."
-export function CircleTally({ circleCooks }) {
+export function CircleTally({ circleCooks, others = false }) {
   const n = circleCooks.length
+  const who = others ? `${n} other ${n === 1 ? 'friend' : 'friends'} made it too` : `${n} ${n === 1 ? 'friend' : 'friends'} made this`
   const count = k => circleCooks.filter(c => c.verdict === k).length
   const again = count('would_make_again'), fine = count('it_was_fine'), never = count('never_again')
   const parts = [
@@ -136,8 +138,8 @@ export function CircleTally({ circleCooks }) {
   ].filter(Boolean)
   const only = [again, fine, never].filter(Boolean).length === 1
   const sentence = n === 1
-    ? <><strong style={{ color: 'var(--ink)' }}>1 friend made this</strong>{VERDICT_PHRASE[circleCooks[0].verdict] ? ` and ${VERDICT_PHRASE[circleCooks[0].verdict]}.` : '.'}</>
-    : <><strong style={{ color: 'var(--ink)' }}>{n} friends made this.</strong> {only && parts.length ? `All ${n} ${VERDICT_PHRASE[[['would_make_again', again], ['it_was_fine', fine], ['never_again', never]].find(([, c]) => c)[0]]}.` : parts.length ? parts.join(', ') + '.' : ''}</>
+    ? <><strong style={{ color: 'var(--ink)' }}>{who}</strong>{VERDICT_PHRASE[circleCooks[0].verdict] ? ` and ${VERDICT_PHRASE[circleCooks[0].verdict]}.` : '.'}</>
+    : <><strong style={{ color: 'var(--ink)' }}>{who}.</strong> {only && parts.length ? `${n === 2 ? 'Both' : `All ${n}`} ${VERDICT_PHRASE[[['would_make_again', again], ['it_was_fine', fine], ['never_again', never]].find(([, c]) => c)[0]]}.` : parts.length ? parts.join(', ') + '.' : ''}</>
   const seg = (k, color) => count(k) > 0 && <div style={{ flex: count(k), background: color }} />
   return (
     <div style={{ background: 'var(--parchment)', borderRadius: 'var(--radius-md)', padding: '12px 14px', marginBottom: '16px' }}>
@@ -165,7 +167,7 @@ export function SliderChips({ cook, style }) {
 }
 
 // "From your circle": up to 3 friends' latest cooks, with a tally on top.
-export const CircleCooksCard = forwardRef(function CircleCooksCard({ circleCooks, friendsCount = 0, onSeeAll, onSelectUser }, ref) {
+export const CircleCooksCard = forwardRef(function CircleCooksCard({ circleCooks, friendsCount = 0, onSeeAll, onSelectUser, others = false }, ref) {
   if (circleCooks.length === 0) return null
   const shown = circleCooks.slice(0, 3)
   const total = Math.max(friendsCount, circleCooks.length)
@@ -175,7 +177,7 @@ export const CircleCooksCard = forwardRef(function CircleCooksCard({ circleCooks
         <div style={sectionLabelStyle}>From your circle</div>
         {(circleCooks.length > 3 || friendsCount > circleCooks.length) && <button className="nom-hit" onClick={onSeeAll} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: '600', color: 'var(--clay)', padding: 0 }}>See all {total}<IconChevronRight size={12} strokeWidth={2.4} style={{ marginLeft: '3px', marginTop: '-1px' }} /></button>}
       </div>
-      <CircleTally circleCooks={circleCooks} />
+      <CircleTally circleCooks={circleCooks} others={others} />
       <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
         {shown.map((c, i) => {
           const v = verdictStyles[c.verdict]

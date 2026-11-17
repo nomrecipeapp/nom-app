@@ -53,6 +53,7 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
   const [showLikesModal, setShowLikesModal] = useState(false)
   const [showCircleModal, setShowCircleModal] = useState(false)
   const [circleFriendsCount, setCircleFriendsCount] = useState(0)
+  const [ownerCounted, setOwnerCounted] = useState(false)
   const [circleFriendAvatars, setCircleFriendAvatars] = useState([])
   const [openMenuId, setOpenMenuId] = useState(null)
   const [moderation, setModeration] = useState(null) // { mode, target }
@@ -141,6 +142,7 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
     const { data: profiles } = await supabase
       .from('profiles').select('id, full_name, username, avatar_url').in('id', userIds.slice(0, 3))
     setCircleFriendsCount(userIds.length)
+    setOwnerCounted(userIds.includes(cook.user_id))
     setCircleFriendAvatars(profiles || [])
   }
 
@@ -338,7 +340,7 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
     const cooksWithProfiles = cooksData.map(c => ({ ...c, profiles: profiles?.find(p => p.id === c.user_id) || null, _times: timesByUser[c.user_id] }))
     const seen = new Set()
     const deduped = cooksWithProfiles.filter(c => {
-      if (c.user_id === session.user.id) return false
+      if (c.user_id === session.user.id || c.user_id === cook.user_id) return false
       if (seen.has(c.user_id)) return false
       seen.add(c.user_id); return true
     })
@@ -509,7 +511,7 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
         )}
 
         {!isOwner && (
-          <TakeSummary cooks={myCooks} circleCooks={circleCooks} friendsWithIt={circleFriendsCount} avatars={circleFriendAvatars}
+          <TakeSummary others cooks={myCooks} circleCooks={circleCooks} friendsWithIt={Math.max(0, circleFriendsCount - (ownerCounted ? 1 : 0))} avatars={circleFriendAvatars}
             onYourTake={() => onViewInCookbook && myRecipeId && onViewInCookbook(myRecipeId)}
             onCircle={() => circleCooks.length > 0 ? scrollToRef(circleRef) : setShowCircleModal(true)} />
         )}
@@ -550,7 +552,7 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
 
         <RecipeBody recipe={recipe} />
 
-        <CircleCooksCard ref={circleRef} circleCooks={circleCooks} friendsCount={circleFriendsCount} onSeeAll={() => setShowCircleModal(true)} onSelectUser={onSelectUser} />
+        <CircleCooksCard ref={circleRef} others circleCooks={circleCooks} friendsCount={circleFriendsCount} onSeeAll={() => setShowCircleModal(true)} onSelectUser={onSelectUser} />
 
         {showLikesModal && (
           <LikesModal
