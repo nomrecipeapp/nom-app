@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from 'react'
-import { linkProps } from './openLink'
 import { supabase } from './supabase'
 import LikesModal from './LikesModal'
 import CircleFriendsModal from './CircleFriendsModal'
@@ -8,8 +7,12 @@ import { getHiddenContent, isHidden } from './moderation'
 import { IconCheck, IconChevronRight, IconX, IconPlus } from './icons'
 import FloatingAction from './FloatingAction'
 import { toast, LoadError } from './ui'
-import { IngredientList, InstructionList, CopyIngredientsButton, RecipeTimes } from './RecipeContent'
+import { RecipeHeader, RecipeBody, RecipeHero, ShareButton, MoreButton, PersonRow, TakeSummary, CircleCooksCard } from './RecipeParts'
+import { scrollToRef } from './recipeStyle'
 import { tap, success } from './haptics'
+
+const primaryActionBtn = { width: '100%', padding: '17px', background: 'var(--clay)', color: 'var(--cream)', border: 'none', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)', fontSize: '16px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', boxShadow: '0 6px 18px rgba(196,113,58,0.28)' }
+const quietActionBtn = { width: '100%', padding: '15px', background: 'var(--parchment)', color: 'var(--charcoal)', border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: '600', cursor: 'pointer' }
 
 function renderCommentBody(body, onSelectUser, profiles) {
   const parts = body.split(/(@\w+)/g)
@@ -44,8 +47,9 @@ export default function FriendRecipeDetail({ recipe, session, onBack, scrollToCo
   const [submitting, setSubmitting] = useState(false)
   const [loadingComments, setLoadingComments] = useState(true)
   const [commentsError, setCommentsError] = useState(false)
-  const [ingredientsOpen, setIngredientsOpen] = useState(true)
-  const [directionsOpen, setDirectionsOpen] = useState(true)
+  const [myCooks, setMyCooks] = useState([])
+  const [circleCooks, setCircleCooks] = useState([])
+  const circleRef = useRef(null)
   const [showLikesModal, setShowLikesModal] = useState(false)
   const [showCircleModal, setShowCircleModal] = useState(false)
   const [circleFriendsCount, setCircleFriendsCount] = useState(0)
@@ -99,6 +103,7 @@ useEffect(() => {
   upsertView()
   fetchSavedByProfile()
   fetchCircleCookPhotos()
+  fetchCircleCooks()
 }, [recipe.id])
 
   useEffect(() => {
@@ -231,7 +236,35 @@ async function fetchCircleCookPhotos() {
     if (!recipe?.canonical_id) return
     const { data } = await supabase.from('recipes').select('id')
       .eq('user_id', session.user.id).eq('canonical_id', recipe.canonical_id).maybeSingle()
-    if (data) setMyRecipeId(data.id)
+    if (!data) return
+    setMyRecipeId(data.id)
+    // Your own cooks of it, for the "You'd make it again" line
+    const { data: mine } = await supabase.from('cooks').select('id, verdict, cooked_at')
+      .eq('recipe_id', data.id).order('cooked_at', { ascending: false })
+    setMyCooks(mine || [])
+  }
+
+  // Friends' latest cooks of this recipe, same as "From your circle" on your own recipe
+  async function fetchCircleCooks() {
+    if (!recipe?.canonical_id) return
+    const { data: following } = await supabase.from('follows').select('following_id')
+      .eq('follower_id', session.user.id).eq('status', 'approved')
+    if (!following || following.length === 0) return
+    const followingIds = following.map(f => f.following_id)
+    const { data: matchingRecipes } = await supabase.from('recipes').select('id, user_id')
+      .eq('canonical_id', recipe.canonical_id).in('user_id', followingIds)
+    if (!matchingRecipes || matchingRecipes.length === 0) return
+    const { data: cooksData } = await supabase.from('cooks').select('*')
+      .in('recipe_id', matchingRecipes.map(r => r.id)).order('cooked_at', { ascending: false })
+    if (!cooksData || cooksData.length === 0) return
+    const userIds = [...new Set(cooksData.map(c => c.user_id))]
+    const { data: profiles } = await supabase.from('profiles').select('id, full_name, username, avatar_url').in('id', userIds)
+    const timesByUser = {}
+    for (const c of cooksData) timesByUser[c.user_id] = (timesByUser[c.user_id] || 0) + 1
+    const seen = new Set()
+    setCircleCooks(cooksData
+      .filter(c => { if (seen.has(c.user_id)) return false; seen.add(c.user_id); return true })
+      .map(c => ({ ...c, profiles: profiles?.find(p => p.id === c.user_id) || null, _times: timesByUser[c.user_id] })))
   }
 
   async function fetchLikes() {
@@ -409,7 +442,6 @@ async function fetchCircleCookPhotos() {
     setSaving(false)
     setSaved(true)
     success()
-    console.log('saved set to true, duplicate:', duplicate, 'myRecipeId:', myRecipeId)
     const { data: newRecipe } = await supabase
       .from('recipes').select('id')
       .eq('user_id', session.user.id).eq('canonical_id', recipe.canonical_id).maybeSingle()
@@ -483,8 +515,8 @@ async function fetchCircleCookPhotos() {
         </div>
       )}
 
-      <div style={{ marginTop: 'var(--top-bar-h)' }} />
       {showStrip ? (
+        <div style={{ marginTop: 'var(--top-bar-h)' }}>
         <div style={{ overflowX: 'auto', display: 'flex', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch', paddingLeft: '16px', paddingBottom: '4px' }}>
           {stripPhotos.map((photo, i) => (
             <div key={i} onClick={() => openOverlay(i)} style={{ position: 'relative', flexShrink: 0, width: '85vw', maxWidth: '400px', height: '240px', borderRadius: 'var(--radius-lg)', overflow: 'hidden', marginRight: '10px', cursor: 'pointer', background: 'var(--parchment)' }}>
@@ -510,110 +542,38 @@ async function fetchCircleCookPhotos() {
           ))}
           <div style={{ flexShrink: 0, width: '6px' }} />
         </div>
-      ) : recipe?.image_url ? (
-        <img loading="lazy" decoding="async" src={recipe.image_url} alt="" style={{ width: '100%', height: '260px', objectFit: 'cover', display: 'block' }} onError={e => e.target.style.display = 'none'} />
-      ) : null}
-
-      <div style={{ padding: '20px 20px 0' }}>
-        <div style={{ marginBottom: '14px' }}>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: '24px', fontWeight: '700', color: 'var(--ink)', lineHeight: '1.2', marginBottom: '10px' }}>{recipe.title}</div>
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-              {recipe.source_name && <div style={{ background: 'var(--parchment)', borderRadius: 'var(--radius-pill)', padding: '3px 10px', fontSize: '11px', fontWeight: '500', color: 'var(--charcoal)' }}>{recipe.source_name}</div>}
-              <RecipeTimes prep={recipe.prep_time} total={recipe.cook_time} />
-              {recipe.difficulty && <div style={{ fontSize: '11px', color: 'var(--muted)' }}>· {recipe.difficulty}</div>}
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
-            <button aria-label="Share" onClick={() => {
-              const fullUrl = `https://www.nomrecipeapp.com/?recipe=${recipe.id}`
-              if (navigator.share) {
-                navigator.share({ title: recipe.title, url: fullUrl }).catch(() => {})
-              } else {
-                navigator.clipboard.writeText(fullUrl).then(() => toast('Link copied'))
-              }
-            }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13" stroke="var(--muted)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </button>
-            {canModeratePost && (
-              <button onClick={() => setPostMenuOpen(true)} aria-label="More options" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0 2px 4px', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="var(--muted)"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>
-              </button>
-            )}
-            </div>
-          </div>
-
-          {postMenuOpen && (
-            <MoreMenuSheet onClose={() => setPostMenuOpen(false)} actions={[
-              { label: 'Report post', onTap: () => { setPostMenuOpen(false); setModeration({ mode: 'report', target: { type: 'save', id: recipe.id, userId: recipe.user_id, name: postOwnerName } }) } },
-              { label: `Block ${postOwnerName}`, danger: true, onTap: () => { setPostMenuOpen(false); setModeration({ mode: 'block', target: { type: 'profile', id: recipe.user_id, userId: recipe.user_id, name: postOwnerName } }) } },
-            ]} />
-          )}
-
-          {moderation && (
-            <ModerationSheet mode={moderation.mode} target={moderation.target} session={session} onClose={handleModerationClose} />
-          )}
-          {savedByProfile && recipe.user_id !== session.user.id && (
-            <div onClick={() => onSelectUser && onSelectUser(savedByProfile.id)} style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
-              {savedByProfile.avatar_url
-                ? <img loading="lazy" decoding="async" src={savedByProfile.avatar_url} alt="" style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
-                : <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--clay), var(--ember))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: '700', color: 'var(--cream)', flexShrink: 0 }}>{(savedByProfile.full_name || savedByProfile.username || '?')[0].toUpperCase()}</div>
-              }
-              <div>
-                <div style={{ fontSize: '10px', color: 'var(--muted)', marginBottom: '1px' }}>Saved by</div>
-                <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--ink)' }}>{savedByProfile.full_name || savedByProfile.username}<IconChevronRight size={12} strokeWidth={2.4} style={{ marginLeft: '3px', marginTop: '-1px' }} /></div>
-              </div>
-            </div>
-          )}
         </div>
+      ) : (
+        <RecipeHero url={recipe.image_url} />
+      )}
 
-        {/* Main action: right under the title, and floats once you scroll past it */}
-        <div ref={saveAnchorRef} style={{ marginBottom: '20px', scrollMarginTop: 'calc(var(--top-bar-h) + 12px)' }}>
-        {isOwner && (
-            <button onClick={() => { onViewInCookbook && onViewInCookbook(myRecipeId || recipe.id) }} style={{
-            width: '100%', padding: '15px', background: 'var(--parchment)', color: 'var(--charcoal)',
-            border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-pill)',
-            fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: '600', cursor: 'pointer', marginBottom: '0'
-          }}>View in Cookbook<IconChevronRight size={12} strokeWidth={2.4} style={{ marginLeft: '3px', marginTop: '-1px' }} /></button>
-        )}
+      <div style={{ padding: '24px 24px 0' }}>
+        <RecipeHeader recipe={recipe}>
+          <ShareButton onClick={() => {
+            const fullUrl = `https://www.nomrecipeapp.com/?recipe=${recipe.id}`
+            if (navigator.share) {
+              navigator.share({ title: recipe.title, url: fullUrl }).catch(() => {})
+            } else {
+              navigator.clipboard.writeText(fullUrl).then(() => toast('Link copied'))
+            }
+          }} />
+          {canModeratePost && <MoreButton onClick={() => setPostMenuOpen(true)} />}
+        </RecipeHeader>
 
-        {!isOwner && !duplicate && !myRecipeId && !saved && (
-          <button onClick={saveRecipe} disabled={saving} style={{
-            width: '100%', padding: '15px',
-            background: 'var(--clay)', color: 'var(--cream)',
-            border: 'none', borderRadius: 'var(--radius-pill)',
-            fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: '600',
-            cursor: 'pointer', transition: 'background 0.2s', marginBottom: '0'
-          }}>{saving ? 'Saving...' : <><IconPlus size={16} strokeWidth={2.4} style={{ marginRight: '6px', marginTop: '-2px' }} />Save to My Cookbook</>}</button>
-        )}
-        {!isOwner && !duplicate && saved && (
-          <div style={{ marginBottom: '0' }}>
-            <div style={{ fontSize: '13px', color: 'var(--sage)', fontWeight: '600', textAlign: 'center', marginBottom: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}><IconCheck size={14} strokeWidth={2.5} />Saved to Cookbook</div>
-            <button onClick={() => onViewInCookbook && onViewInCookbook(myRecipeId || recipe.id)} style={{
-              width: '100%', padding: '12px',
-              background: 'var(--parchment)', color: 'var(--charcoal)',
-              border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-pill)',
-              fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: '600', cursor: 'pointer'
-            }}>View in Cookbook<IconChevronRight size={12} strokeWidth={2.4} style={{ marginLeft: '3px', marginTop: '-1px' }} /></button>
-          </div>
+        {postMenuOpen && (
+          <MoreMenuSheet onClose={() => setPostMenuOpen(false)} actions={[
+            { label: 'Report post', onTap: () => { setPostMenuOpen(false); setModeration({ mode: 'report', target: { type: 'save', id: recipe.id, userId: recipe.user_id, name: postOwnerName } }) } },
+            { label: `Block ${postOwnerName}`, danger: true, onTap: () => { setPostMenuOpen(false); setModeration({ mode: 'block', target: { type: 'profile', id: recipe.user_id, userId: recipe.user_id, name: postOwnerName } }) } },
+          ]} />
         )}
 
-        {!isOwner && myRecipeId && !saved && (
-          <button onClick={() => onViewInCookbook && onViewInCookbook(myRecipeId)} style={{
-            width: '100%', padding: '15px', background: 'var(--parchment)', color: 'var(--charcoal)',
-            border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-pill)',
-            fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: '600', cursor: 'pointer', marginBottom: '0'
-          }}>You have this · View in Cookbook<IconChevronRight size={12} strokeWidth={2.4} style={{ marginLeft: '3px', marginTop: '-1px' }} /></button>
+        {moderation && (
+          <ModerationSheet mode={moderation.mode} target={moderation.target} session={session} onClose={handleModerationClose} />
         )}
 
-        {!isOwner && duplicate && (
-          <div style={{ background: '#FEF3E2', border: '1px solid #F5C47A', borderRadius: 'var(--radius-md)', padding: '12px 16px', marginBottom: '0' }}>
-            <div style={{ fontSize: '13px', fontWeight: '600', color: '#9A6B1A', marginBottom: '8px' }}>Already in your Cookbook: "{duplicate.title}"</div>
-            <button onClick={addAnyway} style={{ width: '100%', padding: '8px', background: 'transparent', border: '1px solid #F5C47A', borderRadius: 'var(--radius-pill)', fontSize: '12px', fontWeight: '600', color: '#9A6B1A', cursor: 'pointer' }}>Add anyway</button>
-          </div>
+        {recipe.user_id !== session.user.id && (
+          <PersonRow label={recipe.status === 'cooked' ? 'Cooked by' : 'Saved by'} profile={savedByProfile} onClick={() => savedByProfile && onSelectUser && onSelectUser(savedByProfile.id)} />
         )}
-        </div>
 
         {showCircleModal && (
           <CircleFriendsModal
@@ -625,83 +585,43 @@ async function fetchCircleCookPhotos() {
           />
         )}
 
-        {circleFriendsCount > 0 && (
-          <div onClick={() => setShowCircleModal(true)} style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            background: 'var(--parchment)', borderRadius: 'var(--radius-md)',
-            padding: '10px 14px', marginBottom: '12px', cursor: 'pointer'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <div style={{ display: 'flex' }}>
-                {circleFriendAvatars.map((p, i) => (
-                  <div key={p.id} style={{
-                    width: '24px', height: '24px', borderRadius: '50%',
-                    background: 'linear-gradient(135deg, var(--clay), var(--ember))',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontFamily: 'var(--font-display)', fontSize: '9px', fontWeight: '700', color: 'var(--cream)',
-                    marginLeft: i === 0 ? '0' : '-6px', border: '2px solid var(--parchment)', flexShrink: 0
-                  }}>{(p.full_name || p.username || '?')[0].toUpperCase()}</div>
-                ))}
-              </div>
-              <span style={{ fontSize: '12px', color: 'var(--charcoal)' }}>
-                <span style={{ fontWeight: '600', color: 'var(--clay)' }}>{circleFriendsCount} {circleFriendsCount === 1 ? 'friend' : 'friends'}</span> also {circleFriendsCount === 1 ? 'has' : 'have'} this
-              </span>
-            </div>
-            <span style={{ fontSize: '12px', color: 'var(--clay)', fontWeight: '600' }}>See all<IconChevronRight size={12} strokeWidth={2.4} style={{ marginLeft: '3px', marginTop: '-1px' }} /></span>
+        {!isOwner && (
+          <TakeSummary cooks={myCooks} circleCooks={circleCooks} friendsWithIt={circleFriendsCount} avatars={circleFriendAvatars}
+            onYourTake={() => onViewInCookbook && myRecipeId && onViewInCookbook(myRecipeId)}
+            onCircle={() => circleCooks.length > 0 ? scrollToRef(circleRef) : setShowCircleModal(true)} />
+        )}
+
+        {/* Main action: right under the title, and floats once you scroll past it */}
+        <div ref={saveAnchorRef} style={{ marginBottom: '24px', scrollMarginTop: 'calc(var(--top-bar-h) + 12px)' }}>
+        {isOwner && (
+          <button onClick={() => { onViewInCookbook && onViewInCookbook(myRecipeId || recipe.id) }} style={quietActionBtn}>View in Cookbook<IconChevronRight size={12} strokeWidth={2.4} style={{ marginLeft: '3px', marginTop: '-1px' }} /></button>
+        )}
+
+        {!isOwner && !duplicate && !myRecipeId && !saved && (
+          <button onClick={saveRecipe} disabled={saving} style={primaryActionBtn}>{saving ? 'Saving...' : <><IconPlus size={18} strokeWidth={2.4} />Save to My Cookbook</>}</button>
+        )}
+        {!isOwner && !duplicate && saved && (
+          <div>
+            <div style={{ fontSize: '13px', color: 'var(--sage)', fontWeight: '600', textAlign: 'center', marginBottom: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}><IconCheck size={14} strokeWidth={2.5} />Saved to Cookbook</div>
+            <button onClick={() => onViewInCookbook && onViewInCookbook(myRecipeId || recipe.id)} style={quietActionBtn}>View in Cookbook<IconChevronRight size={12} strokeWidth={2.4} style={{ marginLeft: '3px', marginTop: '-1px' }} /></button>
           </div>
         )}
 
-        {recipe.source_url && (
-          <a {...linkProps(recipe.source_url)} style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            background: 'var(--parchment)', borderRadius: 'var(--radius-md)',
-            padding: '10px 14px', marginBottom: '16px', textDecoration: 'none'
-          }}>
-            <div style={{ fontSize: '12px', fontWeight: '600', color: 'var(--clay)' }}>View original recipe<IconChevronRight size={12} strokeWidth={2.4} style={{ marginLeft: '3px', marginTop: '-1px' }} /></div>
-            {recipe.source_name && <div style={{ fontSize: '10px', color: 'var(--muted)' }}>{recipe.source_name}</div>}
-          </a>
+        {!isOwner && myRecipeId && !saved && (
+          <button onClick={() => onViewInCookbook && onViewInCookbook(myRecipeId)} style={quietActionBtn}>You have this · View in Cookbook<IconChevronRight size={12} strokeWidth={2.4} style={{ marginLeft: '3px', marginTop: '-1px' }} /></button>
         )}
 
-        {recipe.ingredients && (
-          <div style={{ background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--parchment)', marginBottom: '16px', overflow: 'hidden' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingRight: '20px' }}>
-              <button onClick={() => setIngredientsOpen(o => !o)} style={{
-                flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                padding: '14px 0 14px 20px', background: 'none', border: 'none', cursor: 'pointer'
-              }}>
-                <div style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--muted)' }}>Ingredients</div>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ transform: ingredientsOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>
-                  <path d="M6 9l6 6 6-6" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </button>
-              {ingredientsOpen && <CopyIngredientsButton text={recipe.ingredients} />}
-            </div>
-            {ingredientsOpen && (
-              <div style={{ padding: '0 20px 20px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <IngredientList text={recipe.ingredients} />
-              </div>
-            )}
+        {!isOwner && duplicate && (
+          <div style={{ background: '#FEF3E2', border: '1px solid #F5C47A', borderRadius: 'var(--radius-md)', padding: '12px 16px' }}>
+            <div style={{ fontSize: '13px', fontWeight: '600', color: '#9A6B1A', marginBottom: '8px' }}>Already in your Cookbook: "{duplicate.title}"</div>
+            <button onClick={addAnyway} style={{ width: '100%', padding: '8px', background: 'transparent', border: '1px solid #F5C47A', borderRadius: 'var(--radius-pill)', fontSize: '12px', fontWeight: '600', color: '#9A6B1A', cursor: 'pointer' }}>Add anyway</button>
           </div>
         )}
+        </div>
 
-        {recipe.instructions && (
-          <div style={{ background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--parchment)', marginBottom: '16px', overflow: 'hidden' }}>
-            <button onClick={() => setDirectionsOpen(o => !o)} style={{
-              width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              padding: '14px 20px', background: 'none', border: 'none', cursor: 'pointer'
-            }}>
-              <div style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--muted)' }}>Directions</div>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ transform: directionsOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>
-                <path d="M6 9l6 6 6-6" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </button>
-            {directionsOpen && (
-              <div style={{ padding: '0 20px 20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <InstructionList text={recipe.instructions} />
-              </div>
-            )}
-          </div>
-        )}
+        <RecipeBody recipe={recipe} />
+
+        <CircleCooksCard ref={circleRef} circleCooks={circleCooks} friendsCount={circleFriendsCount} onSeeAll={() => setShowCircleModal(true)} onSelectUser={onSelectUser} />
 
         {showLikesModal && (
           <LikesModal

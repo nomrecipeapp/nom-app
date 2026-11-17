@@ -3,9 +3,15 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from './supabase'
 import { getHiddenContent } from './moderation'
 import { IconX } from './icons'
-import { LoadError } from './ui'
+import { LoadError, confirmSheet, toast } from './ui'
 
 const RECENT_SEARCHES_KEY = 'nom_recent_searches'
+
+const STATUS_PILLS = {
+  cooked: { bg: '#EEF4E5', color: '#4A5E42', label: 'Cooked' },
+  want_to_make: { bg: 'var(--parchment)', color: 'var(--charcoal)', label: 'Want to Make' },
+  never_again: { bg: '#F4E8E8', color: '#9B4040', label: 'Never Again' },
+}
 
 function getRecentSearches() {
   try {
@@ -88,6 +94,7 @@ async function fetchRecentlyViewed() {
     // Recipes match on the name or the ingredients ("feta" finds recipes that use feta).
     // Name matches come first. Characters that would break the filter are swapped for spaces.
     const safe = q.replace(/[,()*%\\]/g, ' ').trim()
+    if (!safe) { setDropdownResults({ people: [], myRecipes: [], recipes: [] }); setShowDropdown(true); setLoading(false); return }
     const nameOrIngredient = `title.ilike.%${safe}%,ingredients.ilike.%${safe}%`
     const nameFirst = (rows) => {
       const lower = safe.toLowerCase()
@@ -101,7 +108,7 @@ async function fetchRecentlyViewed() {
         .eq('user_id', session.user.id).or(nameOrIngredient)
         .order('created_at', { ascending: false }).limit(20),
       supabase.from('profiles').select('*')
-        .or(`username.ilike.%${q}%,full_name.ilike.%${q}%`)
+        .or(`username.ilike.%${safe}%,full_name.ilike.%${safe}%`)
         .neq('id', session.user.id).limit(8),
       getHiddenContent(session.user.id),
       supabase.from('follows').select('following_id')
@@ -135,10 +142,15 @@ async function fetchRecentlyViewed() {
           .from('profiles')
           .select('id, full_name, username, avatar_url')
           .in('id', uids)
-        recipes = nameFirst(recipeRows).slice(0, 5).map(r => ({
-          ...r,
-          profiles: profs?.find(p => p.id === r.user_id) || null
-        }))
+        // One row per recipe: if several friends have it, show it once with "+ N more"
+        const byRecipe = new Map()
+        for (const r of nameFirst(recipeRows)) {
+          const key = r.canonical_id || r.id
+          const row = byRecipe.get(key)
+          if (row) { row._others += 1; continue }
+          byRecipe.set(key, { ...r, profiles: profs?.find(p => p.id === r.user_id) || null, _others: 0 })
+        }
+        recipes = [...byRecipe.values()].slice(0, 5)
       }
     }
 
@@ -159,19 +171,31 @@ async function fetchRecentlyViewed() {
   }
 
   function handleSelectPerson(userId) {
-    saveRecentSearch(query)
-    setRecentSearches(getRecentSearches())
-    setShowDropdown(false)
-    setQuery('')
+    rememberSearch()
     onSelectUser(userId)
   }
 
-  function handleSelectRecipe(recipe) {
+  function rememberSearch() {
     saveRecentSearch(query)
     setRecentSearches(getRecentSearches())
     setShowDropdown(false)
     setQuery('')
+  }
+
+  // A friend's recipe they've cooked opens their latest cook (like on their profile); anything else opens the saved recipe
+  async function handleSelectRecipe(recipe) {
+    rememberSearch()
+    if (recipe.status !== 'want_to_make' && onSelectCook) {
+      const { data: cook } = await supabase.from('cooks').select('*, recipes(*)')
+        .eq('recipe_id', recipe.id).order('cooked_at', { ascending: false }).limit(1).maybeSingle()
+      if (cook?.recipes) { onSelectCook({ ...cook, profiles: recipe.profiles }); return }
+    }
     onSelectSave && onSelectSave(recipe)
+  }
+
+  function handleSelectMyRecipe(recipe) {
+    rememberSearch()
+    onSelectRecipe && onSelectRecipe(recipe)
   }
 
   function handleRecentSearch(term) {
@@ -184,17 +208,23 @@ async function fetchRecentlyViewed() {
     setRecentSearches(getRecentSearches())
   }
 
-  async function sendFollowRequest(userId) {
-    await supabase.from('follows').insert({
-      follower_id: session.user.id, following_id: userId, status: 'pending'
+  // Same as their profile: public accounts are followed right away, private ones get a request
+  async function sendFollowRequest(profile) {
+    const status = profile.is_private === false ? 'approved' : 'pending'
+    const { error } = await supabase.from('follows').insert({
+      follower_id: session.user.id, following_id: profile.id, status
     })
-    await supabase.from('notifications').insert({
-      recipient_id: userId, actor_id: session.user.id, type: 'follow_request'
-    })
-    setFollowStates(s => ({ ...s, [userId]: 'pending' }))
+    if (error) { toast("Couldn't follow right now. Try again?", { icon: null }); return }
+    if (status === 'pending') {
+      await supabase.from('notifications').insert({
+        recipient_id: profile.id, actor_id: session.user.id, type: 'follow_request'
+      })
+    }
+    setFollowStates(s => ({ ...s, [profile.id]: status }))
   }
 
   async function unfollow(userId) {
+    if (!(await confirmSheet({ title: 'Unfollow this cook?', message: "You'll stop seeing their cooks in your Feed. You can request to follow again anytime.", confirmLabel: 'Unfollow' }))) return
     await supabase.from('follows').delete()
       .eq('follower_id', session.user.id).eq('following_id', userId)
     setFollowStates(s => ({ ...s, [userId]: null }))
@@ -230,7 +260,8 @@ async function fetchRecentlyViewed() {
             value={query}
             onChange={e => setQuery(e.target.value)}
             onFocus={() => query.length >= 2 && setShowDropdown(true)}
-            placeholder="Search people or recipes..."
+            placeholder="Search people, recipes or ingredients"
+            aria-label="Search people, recipes or ingredients"
             style={{
               flex: 1, border: 'none', background: 'none',
               fontFamily: 'var(--font-body)', fontSize: '14px',
@@ -295,7 +326,7 @@ async function fetchRecentlyViewed() {
                         ) : followStates[profile.id] === 'pending' ? (
                           <button disabled style={{ padding: '5px 10px', background: 'var(--parchment)', color: 'var(--muted)', border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)', fontSize: '11px', fontWeight: '600', cursor: 'not-allowed' }}>Requested</button>
                         ) : (
-                          <button onClick={e => { e.stopPropagation(); sendFollowRequest(profile.id) }} style={{ padding: '5px 10px', background: 'var(--clay)', color: 'var(--cream)', border: 'none', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>Follow</button>
+                          <button onClick={e => { e.stopPropagation(); sendFollowRequest(profile) }} style={{ padding: '5px 10px', background: 'var(--clay)', color: 'var(--cream)', border: 'none', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>{profile.is_private === false ? 'Follow' : 'Request'}</button>
                         )}
                       </div>
                     ))}
@@ -305,14 +336,9 @@ async function fetchRecentlyViewed() {
                   <div>
                     <div style={{ padding: '10px 16px 6px', fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--muted)' }}>In your Cookbook</div>
                     {dropdownResults.myRecipes.map(recipe => {
-                      const statusStyles = {
-                        cooked: { bg: '#EEF4E5', color: '#4A5E42', label: 'Cooked' },
-                        want_to_make: { bg: 'var(--parchment)', color: 'var(--charcoal)', label: 'Want to Make' },
-                        never_again: { bg: '#F4E8E8', color: '#9B4040', label: 'Never Again' },
-                      }
-                      const s = statusStyles[recipe.status] || statusStyles.want_to_make
+                      const s = STATUS_PILLS[recipe.status] || STATUS_PILLS.want_to_make
                       return (
-                        <div key={recipe.id} onClick={() => { setShowDropdown(false); setQuery(''); onSelectRecipe && onSelectRecipe(recipe) }} style={{
+                        <div key={recipe.id} onClick={() => handleSelectMyRecipe(recipe)} style={{
                           display: 'flex', alignItems: 'center', gap: '10px',
                           padding: '10px 16px', cursor: 'pointer',
                           borderBottom: '1px solid var(--parchment)'
@@ -325,8 +351,8 @@ async function fetchRecentlyViewed() {
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                             position: 'relative'
                           }}>
+                            <span style={{ fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: '700', color: 'var(--cream)' }}>{(recipe.title || '?')[0].toUpperCase()}</span>
                             {recipe.image_url && <img loading="lazy" decoding="async" src={recipe.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }} onError={e => e.target.style.display = 'none'} />}
-                            <span style={{ fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: '700', color: 'var(--cream)', position: 'relative' }}>{(recipe.title || '?')[0].toUpperCase()}</span>
                           </div>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{recipe.title}</div>
@@ -340,7 +366,7 @@ async function fetchRecentlyViewed() {
                 )}
                 {dropdownResults.recipes.length > 0 && (
                   <div>
-                    <div style={{ padding: '10px 16px 6px', fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--muted)' }}>Recipes</div>
+                    <div style={{ padding: '10px 16px 6px', fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--muted)' }}>From friends</div>
                     {dropdownResults.recipes.map(recipe => (
                       <div key={recipe.id} onClick={() => handleSelectRecipe(recipe)} style={{
                         display: 'flex', alignItems: 'center', gap: '10px',
@@ -355,18 +381,16 @@ async function fetchRecentlyViewed() {
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                           position: 'relative'
                         }}>
-                          {recipe.image_url
-                            ? <img loading="lazy" decoding="async" src={recipe.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => { e.target.style.display = 'none' }} />
-                            : null
-                          }
-                        <span style={{ fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: '700', color: 'var(--cream)', position: 'absolute' }}>{(recipe.title || '?')[0].toUpperCase()}</span>
+                          <span style={{ fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: '700', color: 'var(--cream)' }}>{(recipe.title || '?')[0].toUpperCase()}</span>
+                          {recipe.image_url && <img loading="lazy" decoding="async" src={recipe.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }} onError={e => e.target.style.display = 'none'} />}
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{recipe.title}</div>
-                          <div style={{ fontSize: '11px', color: 'var(--muted)' }}>
-                            {recipe.profiles?.full_name || recipe.profiles?.username || 'someone'}'s cookbook
+                          <div style={{ fontSize: '11px', color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {recipe.profiles?.full_name || recipe.profiles?.username || 'A friend'}{recipe._others > 0 ? ` + ${recipe._others} more` : ''}
                           </div>
                         </div>
+                        {(() => { const st = STATUS_PILLS[recipe.status] || STATUS_PILLS.want_to_make; return <div style={{ background: st.bg, color: st.color, borderRadius: 'var(--radius-pill)', padding: '3px 8px', fontSize: '10px', fontWeight: '600', flexShrink: 0 }}>{st.label}</div> })()}
                       </div>
                     ))}
                   </div>

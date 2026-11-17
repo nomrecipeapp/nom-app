@@ -2,14 +2,13 @@ import { useState, useEffect, useRef } from 'react'
 import { COOK_STATS_FIELDS, recipeStats, compareFavorites } from './cookStats'
 import { supabase } from './supabase'
 import CircleFriendsModal from './CircleFriendsModal'
-import { IconX, IconBook, IconBookmark, IconPot, IconPlus, IconCheck, IconSliders, IconChevronDown } from './icons'
+import { IconX, IconBook, IconBookmark, IconPot, IconPlus, IconCheck, IconSliders } from './icons'
 import EmptyState from './EmptyState'
 import { canonicalSpellings, recipeTags, sortTags, tagKey, hasTag, tagChoices, addTag, PRESET_TAGS } from './tags'
-import { AlphabetRail, TagSheet, FilterSheet } from './CookbookTools'
+import { AlphabetRail, TagSheet, FilterSheet, StatusSwitch, SortPill } from './CookbookTools'
 import BottomBar, { BAR_SHADOW } from './BottomBar'
 import { letterOf } from './letters'
 import { confirmSheet, toast, LoadError } from './ui'
-import { tap } from './haptics'
 
 const FILTERS = ['All', 'Want to Make', 'Cooked', 'Never Again']
 
@@ -143,25 +142,32 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
     setCookScoresMap(avgMap)
   }
 
+  // How many people you follow also have each recipe. Matches on canonical_id (the same recipe,
+  // even when links differ a little), and on the exact link for old recipes without one.
   async function fetchCircleFriendsForRecipes(recipeList) {
     const { data: following } = await supabase
       .from('follows').select('following_id')
       .eq('follower_id', session.user.id).eq('status', 'approved')
     if (!following || following.length === 0) return
     const followingIds = following.map(f => f.following_id)
-    const sourceUrls = recipeList.filter(r => r.source_url).map(r => r.source_url)
-    if (sourceUrls.length === 0) return
-    const { data: matchingRecipes } = await supabase
-      .from('recipes').select('id, user_id, source_url')
-      .in('source_url', sourceUrls).in('user_id', followingIds)
-    if (!matchingRecipes || matchingRecipes.length === 0) return
+    const canonicalIds = [...new Set(recipeList.filter(r => r.canonical_id).map(r => r.canonical_id))]
+    const sourceUrls = [...new Set(recipeList.filter(r => !r.canonical_id && r.source_url).map(r => r.source_url))]
+    if (canonicalIds.length === 0 && sourceUrls.length === 0) return
+    const none = Promise.resolve({ data: [] })
+    const [{ data: byCanonical }, { data: byUrl }] = await Promise.all([
+      canonicalIds.length ? supabase.from('recipes').select('id, user_id, canonical_id, source_url').in('canonical_id', canonicalIds).in('user_id', followingIds) : none,
+      sourceUrls.length ? supabase.from('recipes').select('id, user_id, canonical_id, source_url').in('source_url', sourceUrls).in('user_id', followingIds) : none,
+    ])
+    const matchingRecipes = [...(byCanonical || []), ...(byUrl || [])]
+    if (matchingRecipes.length === 0) return
     const allUserIds = [...new Set(matchingRecipes.map(r => r.user_id))]
     const { data: profiles } = await supabase
       .from('profiles').select('id, full_name, username, avatar_url').in('id', allUserIds)
     const map = {}
     for (const r of recipeList) {
-      if (!r.source_url) continue
-      const matches = matchingRecipes.filter(m => m.source_url === r.source_url)
+      const matches = r.canonical_id
+        ? matchingRecipes.filter(m => m.canonical_id === r.canonical_id)
+        : r.source_url ? matchingRecipes.filter(m => m.source_url === r.source_url) : []
       if (matches.length === 0) continue
       const userIds = [...new Set(matches.map(m => m.user_id))]
       const avatars = userIds.slice(0, 3).map(id => profiles?.find(p => p.id === id)).filter(Boolean)
@@ -439,44 +445,7 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
         {/* Status switch + one swipe row of tags */}
         <div style={{ padding: '12px 20px 0' }}>
 
-          {/* Status: a sliding switch. The orange thumb glides to the picked status,
-              and you can drag your finger across to slide it, like iPhone switches. */}
-          {(() => {
-            const idx = Math.max(0, FILTERS.indexOf(filter))
-            const reduce = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
-            const pickAt = (e) => {
-              const box = e.currentTarget.getBoundingClientRect()
-              const x = e.touches[0].clientX - box.left
-              const i = Math.min(FILTERS.length - 1, Math.max(0, Math.floor((x / box.width) * FILTERS.length)))
-              if (FILTERS[i] !== filter) { tap(); setFilter(FILTERS[i]) }
-            }
-            return (
-              <div role="group" aria-label="Status" onTouchMove={pickAt} style={{
-                position: 'relative', display: 'flex', background: 'var(--warm-white)', border: '1.5px solid var(--tan)',
-                borderRadius: 'var(--radius-pill)', padding: '3px', marginBottom: '12px', touchAction: 'pan-y',
-              }}>
-                <div aria-hidden="true" style={{
-                  position: 'absolute', top: '3px', bottom: '3px',
-                  left: `calc(3px + ${idx} * (100% - 6px) / ${FILTERS.length})`,
-                  width: `calc((100% - 6px) / ${FILTERS.length})`,
-                  background: 'var(--clay)', borderRadius: 'var(--radius-pill)',
-                  boxShadow: '0 1px 3px rgba(28,26,23,0.15)',
-                  transition: reduce ? 'none' : 'left 0.28s cubic-bezier(0.3, 0.9, 0.3, 1)',
-                }} />
-                {FILTERS.map(f => {
-                  const on = filter === f
-                  return (
-                    <button key={f} onClick={() => { if (!on) tap(); setFilter(f) }} aria-pressed={on} style={{
-                      position: 'relative', zIndex: 1, flex: 1, minWidth: 0, minHeight: '36px', padding: '0 4px',
-                      border: 'none', background: 'transparent', color: on ? 'var(--cream)' : 'var(--charcoal)',
-                      fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600', whiteSpace: 'nowrap', cursor: 'pointer',
-                      transition: reduce ? 'none' : 'color 0.2s ease',
-                    }}>{f}</button>
-                  )
-                })}
-              </div>
-            )
-          })()}
+          <StatusSwitch options={FILTERS} value={filter} onChange={setFilter} />
 
           {/* Filters first (every tag lives in its sheet), then the tags themselves */}
           <div className="nom-hscroll" style={{
@@ -531,33 +500,13 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
                   minHeight: '32px', padding: '0 14px', background: 'var(--parchment)', color: 'var(--charcoal)', border: 'none',
                   borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap'
                 }}>Select</button>
-                {/* Looks like a pill; the real (invisible) select on top opens the iPhone picker */}
-                <div style={{
-                  position: 'relative', minHeight: '32px', display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '0 12px',
-                  background: 'var(--warm-white)', border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-pill)',
-                  fontSize: '12px', fontWeight: '600', color: 'var(--charcoal)', whiteSpace: 'nowrap'
-                }}>
-                  {SORT_LABELS[SORT_OPTIONS[sortIndex]] || SORT_OPTIONS[sortIndex]}
-                  <IconChevronDown size={12} strokeWidth={2.4} />
-                  <select
-                    aria-label="Sort recipes"
-                    value={SORT_OPTIONS[sortIndex]}
-                    onChange={e => setSortIndex(SORT_OPTIONS.indexOf(e.target.value))}
-                    style={{
-                      // On top of the pill and a little taller than it, so the tap area is 44px
-                      position: 'absolute', left: 0, right: 0, top: '-6px', bottom: '-6px', zIndex: 1,
-                      width: '100%', opacity: 0, cursor: 'pointer', fontSize: '16px',
-                      WebkitAppearance: 'none', appearance: 'none', border: 'none', background: 'transparent',
-                    }}>
-                    {SORT_OPTIONS.map(o => <option key={o} value={o}>{SORT_LABELS[o] || o}</option>)}
-                  </select>
-                </div>
+                <SortPill options={SORT_OPTIONS} labels={SORT_LABELS} value={SORT_OPTIONS[sortIndex]} onChange={v => setSortIndex(SORT_OPTIONS.indexOf(v))} />
               </div>
             )}
           </div>
 
           {circleModal && (
-            <CircleFriendsModal sourceUrl={circleModal} session={session}
+            <CircleFriendsModal canonicalId={circleModal.canonical_id} sourceUrl={circleModal.source_url} session={session}
               onClose={() => setCircleModal(null)} onSelectUser={onSelectUser} />
           )}
 
@@ -651,7 +600,7 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
                   </div>
 
                   {circleFriendsMap[recipe.id] && (
-                    <div onClick={e => { if (selecting) return; e.stopPropagation(); setCircleModal(recipe.source_url) }} style={{
+                    <div onClick={e => { if (selecting) return; e.stopPropagation(); setCircleModal(recipe) }} style={{
                       display: 'flex', alignItems: 'center', gap: '6px',
                       marginTop: '10px', paddingTop: '10px', borderTop: '1px solid var(--parchment)'
                     }}>

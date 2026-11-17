@@ -1,24 +1,18 @@
 import SectionTextarea from './SectionTextarea'
-import { linkProps } from './openLink'
 import { maybeAskForRating } from './rating'
 import { useState, useEffect, useRef, forwardRef } from 'react'
-import { ordinal } from './cookStats'
 import { supabase } from './supabase'
 import CircleFriendsModal from './CircleFriendsModal'
 import { IconChevronRight, IconX, IconPot } from './icons'
 import FloatingAction from './FloatingAction'
 import { confirmSheet, toast, ShareToFeedToggle } from './ui'
 import { PRESET_TAGS, tagChoices, addTag, hasTag, tagKey } from './tags'
-import { IngredientList, InstructionList, CopyIngredientsButton, RecipeTimes } from './RecipeContent'
 import { setBackGuard } from './backGuard'
 import { tap, success } from './haptics'
 import { shrinkImage } from './shrinkImage'
 
-const verdictOptions = [
-  { value: 'would_make_again', label: 'Would Make Again', sub: 'A keeper', bg: '#EEF4E5', border: '#7A8C6E', color: '#4A5E42' },
-  { value: 'it_was_fine', label: 'It Was Fine', sub: 'No regrets, no encore', bg: '#FBF0E6', border: '#E8A87C', color: '#C4713A' },
-  { value: 'never_again', label: 'Never Again', sub: 'Duly noted', bg: '#F4E8E8', border: '#C47070', color: '#9B4040' },
-]
+import { TakeSummary, TakeCard, CircleCooksCard, RecipeHeader, RecipeBody, ShareButton } from './RecipeParts'
+import { verdictOptions, scrollToRef, roundIconBtn, shortDate } from './recipeStyle'
 
 const nuanceCategories = [
   { key: 'flavor', label: 'Flavor' },
@@ -27,186 +21,19 @@ const nuanceCategories = [
   { key: 'true_to_recipe', label: 'True to Recipe' },
 ]
 
-const verdictStyles = {
-  would_make_again: { bg: '#EEF4E5', border: '#7A8C6E', color: '#4A5E42', label: 'Again' },
-  it_was_fine: { bg: '#FBF0E6', border: '#E8A87C', color: '#C4713A', label: 'Fine' },
-  never_again: { bg: '#F4E8E8', border: '#C47070', color: '#9B4040', label: 'Never' },
-}
-
-
-
-const SLIDERS = [
-  { key: 'flavor', label: 'Flavor', short: 'Flavor' },
-  { key: 'effort', label: 'Effort vs. Reward', short: 'Effort' },
-  { key: 'would_share', label: 'Would Share', short: 'Share' },
-  { key: 'true_to_recipe', label: 'True to Recipe', short: 'True to Recipe' },
-]
-const sectionLabelStyle = { fontSize: '11px', fontWeight: '600', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--muted)' }
-function shortDate(d) { return d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '' }
-function scrollToRef(ref) { ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }
-
-const YOUR_VERDICT = {
-  would_make_again: { text: "You'd make it again", icon: 'M5 12.5l4.5 4.5L19 7.5' },
-  it_was_fine: { text: 'You thought it was fine', icon: 'M6 12h12' },
-  never_again: { text: "You'd never make it again", icon: 'M7 7l10 10M17 7L7 17' },
-}
-const roundIconBtn = { width: '40px', height: '40px', borderRadius: '50%', border: 'none', background: 'var(--parchment)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }
-
-// "2 friends made it. Both would make it again." / "1 friend made it. Thought it was fine."
-function friendsHeadline(circleCooks) {
-  const n = circleCooks.length
-  const verdicts = new Set(circleCooks.map(c => c.verdict))
-  const lead = `${n} ${n === 1 ? 'friend' : 'friends'} made it.`
-  if (verdicts.size === 1) {
-    const phrase = VERDICT_PHRASE[circleCooks[0].verdict]
-    if (!phrase) return [lead, '']
-    const who = n === 1 ? '' : n === 2 ? 'Both ' : `All ${n} `
-    return [lead, who ? `${who}${phrase}.` : phrase[0].toUpperCase() + phrase.slice(1) + '.']
-  }
-  const again = circleCooks.filter(c => c.verdict === 'would_make_again').length
-  return [lead, again > 0 ? `${again} would make it again.` : '']
-}
-
-function Avatars({ people }) {
-  return (
-    <div style={{ display: 'flex', flexShrink: 0 }}>
-      {people.slice(0, 3).map((p, i) => {
-        const name = p?.full_name || p?.username || '?'
-        return (
-          <div key={p?.id || i} style={{ width: '28px', height: '28px', borderRadius: '50%', border: '2px solid var(--warm-white)', marginLeft: i ? '-10px' : 0, overflow: 'hidden', background: 'linear-gradient(135deg, var(--clay), var(--ember))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: '700', color: 'var(--cream)' }}>
-            {p?.avatar_url ? <img src={p.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : name[0].toUpperCase()}
-          </div>
-        )
-      })}
-    </div>
-  )
-}
-
-// One card under the title: your verdict and what friends thought. Hidden when there's nothing to say.
-function TakeSummary({ cooks, circleCooks, friendsWithIt, avatars, onYourTake, onCircle }) {
-  const latest = cooks[0]
-  const n = circleCooks.length
-  if (!latest && n === 0 && !friendsWithIt) return null
-  const yv = latest && YOUR_VERDICT[latest.verdict]
-  const vs = latest && verdictOptions.find(o => o.value === latest.verdict)
-  const row = { display: 'flex', alignItems: 'center', gap: '12px', width: '100%', padding: '14px 16px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-body)', color: 'inherit' }
-  const sub = { fontSize: '12px', color: 'var(--muted)', marginTop: '1px' }
-  const chevron = <IconChevronRight size={16} strokeWidth={2.4} style={{ color: 'var(--clay)', flexShrink: 0 }} />
-  const savedOnly = Math.max(0, (friendsWithIt || 0) - n)
-  const [lead, rest] = n > 0 ? friendsHeadline(circleCooks) : ['', '']
-  return (
-    <div style={{ background: 'var(--warm-white)', border: '1px solid var(--parchment)', borderRadius: 'var(--radius-lg)', overflow: 'hidden', marginBottom: '16px' }}>
-      {latest && (
-        <button onClick={onYourTake} style={row}>
-          <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: vs?.bg || 'var(--parchment)', border: `1px solid ${vs?.border || 'var(--tan)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={vs?.color || 'var(--charcoal)'} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={yv?.icon || 'M5 12.5l4.5 4.5L19 7.5'} /></svg>
-          </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: '14px', fontWeight: '700', color: vs?.color || 'var(--ink)' }}>{yv?.text || 'You made this'}</div>
-            <div style={sub}>{cooks.length === 1 ? `Made once · ${shortDate(latest.cooked_at)}` : `Made ${cooks.length} times · last ${shortDate(latest.cooked_at)}`}</div>
-          </div>
-          {chevron}
-        </button>
-      )}
-      {latest && (n > 0 || friendsWithIt > 0) && <div style={{ height: '1px', background: 'var(--parchment)', margin: '0 16px' }} />}
-      {(n > 0 || friendsWithIt > 0) && (
-        <button onClick={onCircle} style={row}>
-          <Avatars people={n > 0 ? circleCooks.map(c => c.profiles) : avatars} />
-          <div style={{ flex: 1, minWidth: 0 }}>
-            {n > 0 ? (
-              <div style={{ fontSize: '14px', color: 'var(--ink)' }}><strong style={{ fontWeight: '700' }}>{lead}</strong>{rest ? ` ${rest}` : ''}</div>
-            ) : (
-              <div style={{ fontSize: '14px', color: 'var(--ink)' }}><strong style={{ fontWeight: '700' }}>{friendsWithIt} {friendsWithIt === 1 ? 'friend has' : 'friends have'} this.</strong></div>
-            )}
-            <div style={sub}>{n > 0 ? (savedOnly > 0 ? `${savedOnly} more saved it` : 'See what they thought') : 'Nobody has cooked it yet'}</div>
-          </div>
-          {chevron}
-        </button>
-      )}
-    </div>
-  )
-}
-
 // Your latest cook, labeled with its date.
 const YourTake = forwardRef(function YourTake({ cook, times, onSeeAll }, ref) {
-  const v = verdictOptions.find(o => o.value === cook.verdict)
-  const filled = SLIDERS.filter(s => cook[s.key])
   return (
-    <div ref={ref} style={{ scrollMarginTop: 'calc(var(--top-bar-h) + 12px)', background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--parchment)', padding: '20px', marginBottom: '16px' }}>
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '10px', marginBottom: filled.length || cook.notes ? '16px' : '12px' }}>
-        <div>
-          <div style={sectionLabelStyle}>Your take</div>
-          <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '4px' }}>From your latest cook, {shortDate(cook.cooked_at)}</div>
-        </div>
-        {v && <div style={{ background: v.bg, border: '1px solid ' + v.border, borderRadius: '100px', padding: '4px 10px', fontSize: '11px', fontWeight: '700', color: v.color, whiteSpace: 'nowrap' }}>{v.label}</div>}
-      </div>
-      {filled.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: cook.notes ? '14px' : '4px' }}>
-          {filled.map(s => (
-            <div key={s.key} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <span style={{ fontSize: '13px', fontWeight: '500', color: 'var(--charcoal)', width: '120px', flexShrink: 0 }}>{s.label}</span>
-              <div aria-hidden="true" style={{ flex: 1, height: '6px', borderRadius: '100px', background: 'var(--parchment)', overflow: 'hidden' }}>
-                <div style={{ width: `${cook[s.key] * 20}%`, height: '100%', background: 'var(--clay)', borderRadius: '100px' }} />
-              </div>
-              <span style={{ fontFamily: 'var(--font-display)', fontSize: '15px', fontWeight: '700', color: 'var(--clay)', width: '28px', textAlign: 'right', flexShrink: 0 }}>{cook[s.key]}/5</span>
-            </div>
-          ))}
-        </div>
-      )}
-      {cook.notes && <div style={{ fontSize: '13px', color: 'var(--charcoal)', fontStyle: 'italic', lineHeight: '1.5' }}>"{cook.notes}"</div>}
+    <TakeCard ref={ref} label="Your take" sub={`From your latest cook, ${shortDate(cook.cooked_at)}`} cook={cook} footer={
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '14px', paddingTop: '4px', borderTop: '1px solid var(--parchment)' }}>
         <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--charcoal)' }}>You've made this {times === 1 ? 'once' : `${times} times`}</span>
         {times > 1 && (
           <button className="nom-hit" onClick={onSeeAll} style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600', color: 'var(--clay)', padding: '12px 0' }}>See all cooks<IconChevronRight size={12} strokeWidth={2.4} style={{ marginLeft: '3px', marginTop: '-1px' }} /></button>
         )}
       </div>
-    </div>
+    } />
   )
 })
-
-const VERDICT_PHRASE = { would_make_again: 'would make it again', it_was_fine: 'thought it was fine', never_again: 'would never make it again' }
-
-// "1 friend made this and would make it again."
-// "4 friends made this. 3 would make it again, 1 thought it was fine."
-// "3 friends made this. All 3 would make it again."
-function CircleTally({ circleCooks }) {
-  const n = circleCooks.length
-  const count = k => circleCooks.filter(c => c.verdict === k).length
-  const again = count('would_make_again'), fine = count('it_was_fine'), never = count('never_again')
-  const parts = [
-    again && `${again} ${VERDICT_PHRASE.would_make_again}`,
-    fine && `${fine} ${VERDICT_PHRASE.it_was_fine}`,
-    never && `${never} ${VERDICT_PHRASE.never_again}`,
-  ].filter(Boolean)
-  const only = [again, fine, never].filter(Boolean).length === 1
-  const sentence = n === 1
-    ? <><strong style={{ color: 'var(--ink)' }}>1 friend made this</strong>{VERDICT_PHRASE[circleCooks[0].verdict] ? ` and ${VERDICT_PHRASE[circleCooks[0].verdict]}.` : '.'}</>
-    : <><strong style={{ color: 'var(--ink)' }}>{n} friends made this.</strong> {only && parts.length ? `All ${n} ${VERDICT_PHRASE[[['would_make_again', again], ['it_was_fine', fine], ['never_again', never]].find(([, c]) => c)[0]]}.` : parts.length ? parts.join(', ') + '.' : ''}</>
-  const seg = (k, color) => count(k) > 0 && <div style={{ flex: count(k), background: color }} />
-  return (
-    <div style={{ background: 'var(--parchment)', borderRadius: 'var(--radius-md)', padding: '12px 14px', marginBottom: '16px' }}>
-      <div style={{ fontSize: '13px', color: 'var(--charcoal)', lineHeight: '1.45', marginBottom: '8px' }}>
-        {sentence}
-      </div>
-      <div role="img" aria-label={parts.join(', ')} style={{ display: 'flex', gap: '3px', height: '8px', borderRadius: '100px', overflow: 'hidden' }}>
-        {seg('would_make_again', '#7A8C6E')}{seg('it_was_fine', '#E8A87C')}{seg('never_again', '#C47070')}
-      </div>
-    </div>
-  )
-}
-
-// A friend's sliders as small chips: "Flavor 5 · Effort 4 ..."
-function SliderChips({ cook, style }) {
-  const filled = SLIDERS.filter(s => cook[s.key])
-  if (filled.length === 0) return null
-  return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', ...style }}>
-      {filled.map(s => (
-        <span key={s.key} style={{ padding: '3px 8px', borderRadius: '100px', background: 'var(--parchment)', fontSize: '11px', color: 'var(--charcoal)' }}>{s.short} <strong style={{ color: 'var(--clay)' }}>{cook[s.key]}</strong></span>
-      ))}
-    </div>
-  )
-}
 
 export default function RecipeDetail({ recipe: initialRecipe, session, onBack, onUpdate, onSelectUser }) {
   const [recipe, setRecipe] = useState(initialRecipe)
@@ -1023,39 +850,19 @@ async function saveEditCook() {
 
       <div style={{ maxWidth: '480px', margin: '0 auto', padding: '24px' }}>
 
-        <div style={{ marginBottom: '20px' }}>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: '28px', fontWeight: '700', color: 'var(--ink)', lineHeight: '1.15', letterSpacing: '-0.5px', marginBottom: '12px' }}>{recipe.title}</div>
-          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-            {/* One info line: source (opens the original), times, difficulty, tags */}
-            <div style={{ flex: 1, minWidth: 0, display: 'flex', gap: '4px 6px', flexWrap: 'wrap', alignItems: 'center', fontSize: '13px', color: 'var(--muted)' }}>
-              {recipe.source_url ? (
-                <a {...linkProps(recipe.source_url)} style={{ color: 'var(--clay)', fontWeight: '600', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
-                  {recipe.source_name || 'Original recipe'}
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8" /></svg>
-                </a>
-              ) : recipe.source_name ? <span>{recipe.source_name}</span> : null}
-              <RecipeTimes prep={recipe.prep_time} total={recipe.cook_time} />
-              {recipe.difficulty && <span>· {recipe.difficulty}</span>}
-              {(recipe.tags || []).map(tag => <span key={tag}>· {tag}</span>)}
-            </div>
-            <button aria-label="Edit recipe" onClick={openEdit} style={roundIconBtn}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--charcoal)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z" /></svg>
-            </button>
-            <button aria-label="Share" onClick={() => {
-              const url = `/?recipe=${recipe.id}`
-              const fullUrl = `https://www.nomrecipeapp.com${url}`
-              if (navigator.share) {
-                navigator.share({ title: recipe.title, url: fullUrl }).catch(() => {})
-              } else {
-                navigator.clipboard.writeText(fullUrl).then(() => toast('Link copied'))
-              }
-            }} style={roundIconBtn}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13" stroke="var(--charcoal)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </button>
-          </div>
-        </div>
+        <RecipeHeader recipe={recipe}>
+          <button aria-label="Edit recipe" onClick={openEdit} style={roundIconBtn}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--charcoal)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z" /></svg>
+          </button>
+          <ShareButton onClick={() => {
+            const fullUrl = `https://www.nomrecipeapp.com/?recipe=${recipe.id}`
+            if (navigator.share) {
+              navigator.share({ title: recipe.title, url: fullUrl }).catch(() => {})
+            } else {
+              navigator.clipboard.writeText(fullUrl).then(() => toast('Link copied'))
+            }
+          }} />
+        </RecipeHeader>
 
         {showCircleModal && (
           <CircleFriendsModal canonicalId={recipe.canonical_id} sourceUrl={recipe.source_url} session={session} onClose={() => setShowCircleModal(false)} onSelectUser={onSelectUser} />
@@ -1144,62 +951,13 @@ async function saveEditCook() {
           </div>
         )}
 
-        {recipe.ingredients && (
-          <div style={{ background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--parchment)', padding: '20px', marginBottom: '16px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
-              <div style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--muted)' }}>Ingredients</div>
-              <CopyIngredientsButton text={recipe.ingredients} />
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <IngredientList text={recipe.ingredients} />
-            </div>
-          </div>
-        )}
-
-        {recipe.instructions && (
-          <div style={{ background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--parchment)', padding: '20px', marginBottom: '16px' }}>
-            <div style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '14px' }}>Instructions</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              <InstructionList text={recipe.instructions} />
-            </div>
-          </div>
-        )}
+        <RecipeBody recipe={recipe} />
 
         {cooks.length > 0 && (
           <YourTake ref={yourTakeRef} cook={cooks[0]} times={cooks.length} onSeeAll={() => scrollToRef(historyRef)} />
         )}
 
-        {circleCooks.length > 0 && (
-          <div ref={circleRef} style={{ scrollMarginTop: 'calc(var(--top-bar-h) + 12px)', background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--parchment)', padding: '20px', marginBottom: '16px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
-              <div style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--muted)' }}>From your circle</div>
-              {(circleCooks.length > 3 || circleFriendsCount > circleCooks.length) && <button className="nom-hit" onClick={() => setShowCircleModal(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: '600', color: 'var(--clay)', padding: 0 }}>See all {Math.max(circleFriendsCount, circleCooks.length)}<IconChevronRight size={12} strokeWidth={2.4} style={{ marginLeft: '3px', marginTop: '-1px' }} /></button>}
-            </div>
-            <CircleTally circleCooks={circleCooks} />
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              {circleCooks.slice(0, 3).map((c, i) => {
-                const v = verdictStyles[c.verdict]
-                const name = c.profiles?.full_name || c.profiles?.username || 'Someone'
-                return (
-                  <div key={c.id} style={{ paddingBottom: i < Math.min(circleCooks.length, 3) - 1 ? '14px' : '0', borderBottom: i < Math.min(circleCooks.length, 3) - 1 ? '1px solid var(--parchment)' : 'none' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--clay), var(--ember))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: '700', color: 'var(--cream)', flexShrink: 0 }}>{name[0].toUpperCase()}</div>
-                        <div style={{ minWidth: 0 }}>
-                          <span onClick={() => onSelectUser && onSelectUser(c.user_id)} style={{ fontSize: '13px', fontWeight: '600', color: 'var(--ink)', cursor: 'pointer', textDecoration: 'underline', textDecorationColor: 'var(--tan)' }}>{name}</span>
-                          <div style={{ fontSize: '11px', color: 'var(--muted)' }}>{shortDate(c.cooked_at)}{c._times >= 2 ? ` · ${ordinal(c._times)} time` : ''}</div>
-                        </div>
-                      </div>
-                      {v && <div style={{ background: v.bg, border: '1px solid ' + v.border, borderRadius: '100px', padding: '2px 8px', fontSize: '10px', fontWeight: '700', color: v.color }}>{v.label}</div>}
-                    </div>
-                    {c.notes && <div style={{ fontSize: '13px', color: 'var(--charcoal)', fontStyle: 'italic', lineHeight: '1.5', paddingLeft: '36px' }}>"{c.notes}"</div>}
-                    <SliderChips cook={c} style={{ paddingLeft: '36px', marginTop: '6px' }} />
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        )}
+        <CircleCooksCard ref={circleRef} circleCooks={circleCooks} friendsCount={circleFriendsCount} onSeeAll={() => setShowCircleModal(true)} onSelectUser={onSelectUser} />
 
         {recipe.notes && (
           <div style={{ background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--parchment)', padding: '20px', marginBottom: '16px' }}>

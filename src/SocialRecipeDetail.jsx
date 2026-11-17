@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from 'react'
-import { linkProps } from './openLink'
 import { supabase } from './supabase'
 import LikesModal from './LikesModal'
 import CircleFriendsModal from './CircleFriendsModal'
@@ -8,20 +7,12 @@ import { getHiddenContent, isHidden } from './moderation'
 import { IconCheck, IconChevronRight, IconX, IconPlus } from './icons'
 import FloatingAction from './FloatingAction'
 import { toast, LoadError } from './ui'
-import { IngredientList, InstructionList, CopyIngredientsButton, RecipeTimes } from './RecipeContent'
+import { RecipeHeader, RecipeBody, RecipeHero, ShareButton, MoreButton, PersonRow, TakeSummary, TakeCard, CircleCooksCard } from './RecipeParts'
+import { shortDate, scrollToRef } from './recipeStyle'
 import { tap, success } from './haptics'
 
-const verdictStyles = {
-  would_make_again: { bg: '#EEF4E5', border: '#7A8C6E', color: '#4A5E42', label: 'Would Make Again' },
-  it_was_fine: { bg: '#FBF0E6', border: '#E8A87C', color: '#C4713A', label: 'It Was Fine' },
-  never_again: { bg: '#F4E8E8', border: '#C47070', color: '#9B4040', label: 'Never Again' },
-}
-
-const verdictStylesShort = {
-  would_make_again: { bg: '#EEF4E5', border: '#7A8C6E', color: '#4A5E42', label: 'Again' },
-  it_was_fine: { bg: '#FBF0E6', border: '#E8A87C', color: '#C4713A', label: 'Fine' },
-  never_again: { bg: '#F4E8E8', border: '#C47070', color: '#9B4040', label: 'Never' },
-}
+const primaryActionBtn = { width: '100%', padding: '17px', background: 'var(--clay)', color: 'var(--cream)', border: 'none', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)', fontSize: '16px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', boxShadow: '0 6px 18px rgba(196,113,58,0.28)' }
+const quietActionBtn = { width: '100%', padding: '15px', background: 'var(--parchment)', color: 'var(--charcoal)', border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: '600', cursor: 'pointer' }
 
 function renderCommentBody(body, onSelectUser, profiles) {
   const parts = body.split(/(@\w+)/g)
@@ -57,8 +48,8 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
   const [submitting, setSubmitting] = useState(false)
   const [loadingComments, setLoadingComments] = useState(true)
   const [commentsError, setCommentsError] = useState(false)
-  const [ingredientsOpen, setIngredientsOpen] = useState(true)
-  const [directionsOpen, setDirectionsOpen] = useState(true)
+  const [myCooks, setMyCooks] = useState([])
+  const circleRef = useRef(null)
   const [showLikesModal, setShowLikesModal] = useState(false)
   const [showCircleModal, setShowCircleModal] = useState(false)
   const [circleFriendsCount, setCircleFriendsCount] = useState(0)
@@ -83,7 +74,7 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
 
   const recipe = cook.recipes
   const profile = cook.profiles
-  const v = verdictStyles[cook.verdict]
+  const firstName = (profile?.full_name || '').trim().split(' ')[0] || profile?.username || ''
   const targetType = 'cook'
   const targetId = cook.id
 
@@ -114,6 +105,7 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
   checkIfSaved()
   fetchFollowing()
   fetchCircleFriends()
+  if (recipe?.canonical_id) fetchCircleCooks()
   upsertView()
 }, [cook.id])
 
@@ -170,7 +162,12 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
     if (!recipe?.canonical_id) return
     const { data } = await supabase.from('recipes').select('id')
       .eq('user_id', session.user.id).eq('canonical_id', recipe.canonical_id).maybeSingle()
-    if (data) setMyRecipeId(data.id)
+    if (!data) return
+    setMyRecipeId(data.id)
+    // Your own cooks of it, for the "You'd make it again" line
+    const { data: mine } = await supabase.from('cooks').select('id, verdict, cooked_at')
+      .eq('recipe_id', data.id).order('cooked_at', { ascending: false })
+    setMyCooks(mine || [])
   }
 
   async function fetchLikes() {
@@ -336,10 +333,12 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
     if (!cooksData || cooksData.length === 0) return
     const userIds = [...new Set(cooksData.map(c => c.user_id))]
     const { data: profiles } = await supabase.from('profiles').select('id, full_name, username, avatar_url').in('id', userIds)
-    const cooksWithProfiles = cooksData.map(c => ({ ...c, profiles: profiles?.find(p => p.id === c.user_id) || null }))
+    const timesByUser = {}
+    for (const c of cooksData) timesByUser[c.user_id] = (timesByUser[c.user_id] || 0) + 1
+    const cooksWithProfiles = cooksData.map(c => ({ ...c, profiles: profiles?.find(p => p.id === c.user_id) || null, _times: timesByUser[c.user_id] }))
     const seen = new Set()
     const deduped = cooksWithProfiles.filter(c => {
-      if (c.user_id === cook.user_id) return false
+      if (c.user_id === cook.user_id || c.user_id === session.user.id) return false
       if (seen.has(c.user_id)) return false
       seen.add(c.user_id); return true
     })
@@ -457,7 +456,7 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
                       : <span style={{ fontFamily: 'var(--font-display)', fontSize: '9px', fontWeight: '700', color: 'var(--cream)' }}>{(profile?.full_name || profile?.username || '?')[0].toUpperCase()}</span>
                     }
                   </div>
-                  <span style={{ fontSize: '11px', fontWeight: '600', color: 'white' }}>Made by {profile?.full_name || profile?.username}</span>
+                  <span style={{ fontSize: '11px', fontWeight: '600', color: 'white' }}>{isOwner ? 'Made by You' : `Made by ${profile?.full_name || profile?.username}`}</span>
                 </div>
               )}
               {photo.isStock && (
@@ -469,44 +468,22 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
           ))}
           <div style={{ flexShrink: 0, width: '6px' }} />
         </div>
-      ) : recipe?.image_url ? (
-        <div style={{ marginTop: 'var(--top-bar-h)' }}>
-          <img loading="lazy" decoding="async" src={recipe.image_url} alt="" style={{ width: '100%', height: '260px', objectFit: 'cover', display: 'block' }} onError={e => e.target.style.display = 'none'} />
-        </div>
       ) : (
-        <div style={{ height: 'var(--top-bar-h)' }} />
+        <RecipeHero url={recipe.image_url} />
       )}
 
-      <div style={{ padding: '20px 20px 0' }}>
-        <div style={{ marginBottom: '14px' }}>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: '24px', fontWeight: '700', color: 'var(--ink)', lineHeight: '1.2', marginBottom: '10px' }}>{recipe.title}</div>
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-              {recipe.source_name && <div style={{ background: 'var(--parchment)', borderRadius: 'var(--radius-pill)', padding: '3px 10px', fontSize: '11px', fontWeight: '500', color: 'var(--charcoal)' }}>{recipe.source_name}</div>}
-              <RecipeTimes prep={recipe.prep_time} total={recipe.cook_time} />
-              {recipe.difficulty && <div style={{ fontSize: '11px', color: 'var(--muted)' }}>· {recipe.difficulty}</div>}
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
-            <button aria-label="Share" onClick={() => {
-              const fullUrl = `https://www.nomrecipeapp.com/?cook=${cook.id}`
-              if (navigator.share) {
-                navigator.share({ title: recipe.title, url: fullUrl }).catch(() => {})
-              } else {
-                navigator.clipboard.writeText(fullUrl).then(() => toast('Link copied'))
-              }
-            }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13" stroke="var(--muted)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </button>
-            {canModeratePost && (
-              <button onClick={() => setPostMenuOpen(true)} aria-label="More options" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0 2px 4px', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="var(--muted)"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>
-              </button>
-            )}
-            </div>
-          </div>
-        </div>
+      <div style={{ padding: '24px 24px 0' }}>
+        <RecipeHeader recipe={recipe}>
+          <ShareButton onClick={() => {
+            const fullUrl = `https://www.nomrecipeapp.com/?cook=${cook.id}`
+            if (navigator.share) {
+              navigator.share({ title: recipe.title, url: fullUrl }).catch(() => {})
+            } else {
+              navigator.clipboard.writeText(fullUrl).then(() => toast('Link copied'))
+            }
+          }} />
+          {canModeratePost && <MoreButton onClick={() => setPostMenuOpen(true)} />}
+        </RecipeHeader>
 
         {postMenuOpen && (
           <MoreMenuSheet onClose={() => setPostMenuOpen(false)} actions={[
@@ -519,52 +496,7 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
           <ModerationSheet mode={moderation.mode} target={moderation.target} session={session} onClose={handleModerationClose} />
         )}
 
-        {/* Main action: right under the title, and floats once you scroll past it */}
-        <div ref={saveAnchorRef} style={{ marginBottom: '20px', scrollMarginTop: 'calc(var(--top-bar-h) + 12px)' }}>
-        {isOwner && myRecipeId && (
-          <button onClick={() => onViewInCookbook && onViewInCookbook(myRecipeId)} style={{
-            width: '100%', padding: '15px', background: 'var(--parchment)', color: 'var(--charcoal)',
-            border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-pill)',
-            fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: '600', cursor: 'pointer', marginBottom: '0'
-          }}>View in Cookbook<IconChevronRight size={12} strokeWidth={2.4} style={{ marginLeft: '3px', marginTop: '-1px' }} /></button>
-        )}
-
-        {!isOwner && !duplicate && !myRecipeId && !saved && (
-          <button onClick={saveRecipe} disabled={saving} style={{
-            width: '100%', padding: '15px',
-            background: 'var(--clay)', color: 'var(--cream)',
-            border: 'none', borderRadius: 'var(--radius-pill)',
-            fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: '600',
-            cursor: 'pointer', transition: 'background 0.2s', marginBottom: '0'
-          }}>{saving ? 'Saving...' : <><IconPlus size={16} strokeWidth={2.4} style={{ marginRight: '6px', marginTop: '-2px' }} />Save to My Cookbook</>}</button>
-        )}
-        {!isOwner && !duplicate && saved && (
-          <div style={{ marginBottom: '0' }}>
-            <div style={{ fontSize: '13px', color: 'var(--sage)', fontWeight: '600', textAlign: 'center', marginBottom: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}><IconCheck size={14} strokeWidth={2.5} />Saved to Cookbook</div>
-            <button onClick={() => onViewInCookbook && onViewInCookbook(myRecipeId || recipe.id)} style={{
-              width: '100%', padding: '12px',
-              background: 'var(--parchment)', color: 'var(--charcoal)',
-              border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-pill)',
-              fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: '600', cursor: 'pointer'
-            }}>View in Cookbook<IconChevronRight size={12} strokeWidth={2.4} style={{ marginLeft: '3px', marginTop: '-1px' }} /></button>
-          </div>
-        )}
-
-        {!isOwner && myRecipeId && !saved && (
-          <button onClick={() => onViewInCookbook && onViewInCookbook(myRecipeId)} style={{
-            width: '100%', padding: '15px', background: 'var(--parchment)', color: 'var(--charcoal)',
-            border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-pill)',
-            fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: '600', cursor: 'pointer', marginBottom: '0'
-          }}>You have this · View in Cookbook<IconChevronRight size={12} strokeWidth={2.4} style={{ marginLeft: '3px', marginTop: '-1px' }} /></button>
-        )}
-
-        {!isOwner && duplicate && (
-          <div style={{ background: '#FEF3E2', border: '1px solid #F5C47A', borderRadius: 'var(--radius-md)', padding: '12px 16px', marginBottom: '0' }}>
-            <div style={{ fontSize: '13px', fontWeight: '600', color: '#9A6B1A', marginBottom: '8px' }}>Already in your Cookbook: "{duplicate.title}"</div>
-            <button onClick={addAnyway} style={{ width: '100%', padding: '8px', background: 'transparent', border: '1px solid #F5C47A', borderRadius: 'var(--radius-pill)', fontSize: '12px', fontWeight: '600', color: '#9A6B1A', cursor: 'pointer' }}>Add anyway</button>
-          </div>
-        )}
-        </div>
+        {!isOwner && <PersonRow label="Cooked by" profile={profile} onClick={() => onSelectUser && onSelectUser(cook.user_id)} />}
 
         {showCircleModal && (
           <CircleFriendsModal
@@ -576,153 +508,49 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
           />
         )}
 
-        {circleFriendsCount > 0 && (
-          <div onClick={() => setShowCircleModal(true)} style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            background: 'var(--parchment)', borderRadius: 'var(--radius-md)',
-            padding: '10px 14px', marginBottom: '12px', cursor: 'pointer'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
-                <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" stroke="var(--clay)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                <circle cx="9" cy="7" r="4" stroke="var(--clay)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke="var(--clay)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-              <span style={{ fontSize: '12px', color: 'var(--charcoal)' }}>
-                <span style={{ fontWeight: '600', color: 'var(--clay)' }}>{circleFriendsCount} {circleFriendsCount === 1 ? 'friend' : 'friends'}</span> also {circleFriendsCount === 1 ? 'has' : 'have'} this
-              </span>
-            </div>
-            <span style={{ fontSize: '12px', color: 'var(--clay)', fontWeight: '600' }}>See all<IconChevronRight size={12} strokeWidth={2.4} style={{ marginLeft: '3px', marginTop: '-1px' }} /></span>
-          </div>
-        )}
-
-        {recipe.source_url && (
-          <a {...linkProps(recipe.source_url)} style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            background: 'var(--parchment)', borderRadius: 'var(--radius-md)',
-            padding: '10px 14px', marginBottom: '16px', textDecoration: 'none'
-          }}>
-            <div style={{ fontSize: '12px', fontWeight: '600', color: 'var(--clay)' }}>View original recipe<IconChevronRight size={12} strokeWidth={2.4} style={{ marginLeft: '3px', marginTop: '-1px' }} /></div>
-            {recipe.source_name && <div style={{ fontSize: '10px', color: 'var(--muted)' }}>{recipe.source_name}</div>}
-          </a>
-        )}
-
-        <div style={{ height: '1px', background: 'var(--parchment)', marginBottom: '16px' }} />
-
         {!isOwner && (
-          <div onClick={() => onSelectUser && onSelectUser(cook.user_id)} style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px', cursor: 'pointer' }}>
-            {profile?.avatar_url ? (
-              <img loading="lazy" decoding="async" src={profile.avatar_url} alt="" style={{ width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
-            ) : (
-              <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--clay), var(--ember))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: '700', color: 'var(--cream)', flexShrink: 0 }}>{(profile?.full_name || profile?.username || '?')[0].toUpperCase()}</div>
-            )}
-            <div>
-              <div style={{ fontSize: '10px', color: 'var(--muted)', marginBottom: '1px' }}>Cooked by</div>
-              <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--ink)' }}>{profile?.full_name || profile?.username || 'Unknown'}<IconChevronRight size={12} strokeWidth={2.4} style={{ marginLeft: '3px', marginTop: '-1px' }} /></div>
-            </div>
+          <TakeSummary cooks={myCooks} circleCooks={circleCooks} friendsWithIt={circleFriendsCount} avatars={circleFriendAvatars}
+            onYourTake={() => onViewInCookbook && myRecipeId && onViewInCookbook(myRecipeId)}
+            onCircle={() => circleCooks.length > 0 ? scrollToRef(circleRef) : setShowCircleModal(true)} />
+        )}
+
+        {/* Main action: right under the title, and floats once you scroll past it */}
+        <div ref={saveAnchorRef} style={{ marginBottom: '24px', scrollMarginTop: 'calc(var(--top-bar-h) + 12px)' }}>
+        {isOwner && myRecipeId && (
+          <button onClick={() => onViewInCookbook && onViewInCookbook(myRecipeId)} style={quietActionBtn}>View in Cookbook<IconChevronRight size={12} strokeWidth={2.4} style={{ marginLeft: '3px', marginTop: '-1px' }} /></button>
+        )}
+
+        {!isOwner && !duplicate && !myRecipeId && !saved && (
+          <button onClick={saveRecipe} disabled={saving} style={primaryActionBtn}>{saving ? 'Saving...' : <><IconPlus size={18} strokeWidth={2.4} />Save to My Cookbook</>}</button>
+        )}
+        {!isOwner && !duplicate && saved && (
+          <div>
+            <div style={{ fontSize: '13px', color: 'var(--sage)', fontWeight: '600', textAlign: 'center', marginBottom: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}><IconCheck size={14} strokeWidth={2.5} />Saved to Cookbook</div>
+            <button onClick={() => onViewInCookbook && onViewInCookbook(myRecipeId || recipe.id)} style={quietActionBtn}>View in Cookbook<IconChevronRight size={12} strokeWidth={2.4} style={{ marginLeft: '3px', marginTop: '-1px' }} /></button>
           </div>
         )}
 
-        {v && (
-          <div style={{ marginBottom: '14px' }}>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: v.bg, border: '1px solid ' + v.border, borderRadius: 'var(--radius-pill)', padding: '6px 14px', fontSize: '12px', fontWeight: '600', color: v.color }}>{v.label}</div>
-          </div>
+        {!isOwner && myRecipeId && !saved && (
+          <button onClick={() => onViewInCookbook && onViewInCookbook(myRecipeId)} style={quietActionBtn}>You have this · View in Cookbook<IconChevronRight size={12} strokeWidth={2.4} style={{ marginLeft: '3px', marginTop: '-1px' }} /></button>
         )}
 
-        {cook.notes && (
-          <div style={{ background: 'var(--warm-white)', border: '1px solid var(--parchment)', borderRadius: 'var(--radius-md)', padding: '12px 14px', marginBottom: '12px' }}>
-            <div style={{ fontSize: '10px', fontWeight: '600', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '6px' }}>Notes</div>
-            <div style={{ fontSize: '13px', color: 'var(--charcoal)', lineHeight: '1.6', fontStyle: 'italic' }}>"{cook.notes}"</div>
+        {!isOwner && duplicate && (
+          <div style={{ background: '#FEF3E2', border: '1px solid #F5C47A', borderRadius: 'var(--radius-md)', padding: '12px 16px' }}>
+            <div style={{ fontSize: '13px', fontWeight: '600', color: '#9A6B1A', marginBottom: '8px' }}>Already in your Cookbook: "{duplicate.title}"</div>
+            <button onClick={addAnyway} style={{ width: '100%', padding: '8px', background: 'transparent', border: '1px solid #F5C47A', borderRadius: 'var(--radius-pill)', fontSize: '12px', fontWeight: '600', color: '#9A6B1A', cursor: 'pointer' }}>Add anyway</button>
           </div>
         )}
+        </div>
 
-        {(cook.flavor || cook.effort || cook.would_share || cook.true_to_recipe) && (
-          <div style={{ background: 'var(--warm-white)', border: '1px solid var(--parchment)', borderRadius: 'var(--radius-md)', padding: '12px 14px', marginBottom: '16px' }}>
-            <div style={{ fontSize: '10px', fontWeight: '600', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '10px' }}>Scores</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {cook.flavor && <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><div style={{ fontSize: '12px', color: 'var(--charcoal)' }}>Flavor</div><div style={{ fontSize: '12px', fontWeight: '700', color: 'var(--clay)' }}>{cook.flavor}/5</div></div>}
-              {cook.effort && <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><div style={{ fontSize: '12px', color: 'var(--charcoal)' }}>Effort vs. Reward</div><div style={{ fontSize: '12px', fontWeight: '700', color: 'var(--clay)' }}>{cook.effort}/5</div></div>}
-              {cook.would_share && <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><div style={{ fontSize: '12px', color: 'var(--charcoal)' }}>Would Share</div><div style={{ fontSize: '12px', fontWeight: '700', color: 'var(--clay)' }}>{cook.would_share}/5</div></div>}
-              {cook.true_to_recipe && <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><div style={{ fontSize: '12px', color: 'var(--charcoal)' }}>True to Recipe</div><div style={{ fontSize: '12px', fontWeight: '700', color: 'var(--clay)' }}>{cook.true_to_recipe}/5</div></div>}
-            </div>
-          </div>
-        )}
+        <TakeCard
+          label={isOwner ? 'Your take' : firstName ? `${firstName}'s take` : 'Their take'}
+          sub={`Cooked ${shortDate(cook.cooked_at)}`}
+          cook={cook}
+        />
 
-        {recipe.ingredients && (
-          <div style={{ background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--parchment)', marginBottom: '16px', overflow: 'hidden' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingRight: '20px' }}>
-              <button onClick={() => setIngredientsOpen(o => !o)} style={{
-                flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                padding: '14px 0 14px 20px', background: 'none', border: 'none', cursor: 'pointer'
-              }}>
-                <div style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--muted)' }}>Ingredients</div>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ transform: ingredientsOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>
-                  <path d="M6 9l6 6 6-6" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </button>
-              {ingredientsOpen && <CopyIngredientsButton text={recipe.ingredients} />}
-            </div>
-            {ingredientsOpen && (
-              <div style={{ padding: '0 20px 20px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <IngredientList text={recipe.ingredients} />
-              </div>
-            )}
-          </div>
-        )}
+        <RecipeBody recipe={recipe} />
 
-      {recipe.instructions && (
-                <div style={{ background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--parchment)', marginBottom: '16px', overflow: 'hidden' }}>
-                  <button onClick={() => setDirectionsOpen(o => !o)} style={{
-                    width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    padding: '14px 20px', background: 'none', border: 'none', cursor: 'pointer'
-                  }}>
-                    <div style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--muted)' }}>Directions</div>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ transform: directionsOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>
-                      <path d="M6 9l6 6 6-6" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  </button>
-                  {directionsOpen && (
-                    <div style={{ padding: '0 20px 20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                      <InstructionList text={recipe.instructions} />
-                    </div>
-                  )}
-                </div>
-              )}
-        
-        {circleCooks.length > 0 && (
-          <div style={{ background: 'var(--warm-white)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--parchment)', padding: '20px', marginBottom: '24px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
-              <div style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--muted)' }}>From your circle</div>
-              {circleCooks.length > 3 && (
-                <button className="nom-hit" onClick={() => setShowCircleModal(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: '600', color: 'var(--clay)', padding: 0 }}>See all {circleCooks.length}<IconChevronRight size={12} strokeWidth={2.4} style={{ marginLeft: '3px', marginTop: '-1px' }} /></button>
-              )}
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              {circleCooks.slice(0, 3).map((c, i) => {
-                const vs = verdictStylesShort[c.verdict]
-                const name = c.profiles?.full_name || c.profiles?.username || 'Someone'
-                return (
-                  <div key={c.id} style={{ paddingBottom: i < Math.min(circleCooks.length, 3) - 1 ? '14px' : '0', borderBottom: i < Math.min(circleCooks.length, 3) - 1 ? '1px solid var(--parchment)' : 'none' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <div style={{
-                          width: '28px', height: '28px', borderRadius: '50%',
-                          background: 'linear-gradient(135deg, var(--clay), var(--ember))',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: '700', color: 'var(--cream)', flexShrink: 0
-                        }}>{name[0].toUpperCase()}</div>
-                        <span onClick={() => onSelectUser && onSelectUser(c.user_id)} style={{ fontSize: '13px', fontWeight: '600', color: 'var(--ink)', cursor: 'pointer', textDecoration: 'underline', textDecorationColor: 'var(--tan)' }}>{name}</span>
-                      </div>
-                      {vs && <div style={{ background: vs.bg, border: '1px solid ' + vs.border, borderRadius: '100px', padding: '2px 8px', fontSize: '10px', fontWeight: '700', color: vs.color }}>{vs.label}</div>}
-                    </div>
-                    {c.notes && <div style={{ fontSize: '13px', color: 'var(--charcoal)', fontStyle: 'italic', lineHeight: '1.5', paddingLeft: '36px' }}>"{c.notes}"</div>}
-                    {c.flavor && <div style={{ fontSize: '11px', color: 'var(--muted)', paddingLeft: '36px', marginTop: '4px' }}>Flavor <strong style={{ color: 'var(--clay)' }}>{c.flavor}/5</strong></div>}
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        )}
+        <CircleCooksCard ref={circleRef} circleCooks={circleCooks} friendsCount={circleFriendsCount} onSeeAll={() => setShowCircleModal(true)} onSelectUser={onSelectUser} />
 
         {showLikesModal && (
           <LikesModal

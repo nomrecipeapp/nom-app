@@ -724,6 +724,7 @@ export default function App() {
           onBack={goBack}
           onSelectCook={goToSocialRecipe}
           onSelectSave={goToFriendRecipeDetail}
+          onSelectUser={goToFriendProfile}
           onViewFollowList={(userId, type) => goToFollowList(userId, type)}
         />
       )}

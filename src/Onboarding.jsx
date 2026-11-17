@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { linkProps } from './openLink'
 import { WHATS_NEW_VERSION } from './WhatsNew'
 import { supabase } from './supabase'
+import { canonicalIdFor } from './recipeLink'
 import { importRecipeFromUrl } from './importUrl'
 import { missingStepsReason } from './recipeCheck'
 import { IconCheck } from './icons'
@@ -273,7 +274,7 @@ export default function Onboarding({ onComplete, session, prefillInviteCode, sta
 
   async function saveFirstRecipe() {
     if (!importedRecipe || !userId) return
-    const canonicalId = crypto.randomUUID()
+    const canonicalId = await canonicalIdFor(supabase, importedRecipe.source_url)
     await supabase.from('recipes').insert({
       user_id: userId,
       title: importedRecipe.title,

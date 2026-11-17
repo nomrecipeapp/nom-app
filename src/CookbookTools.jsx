@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useLayoutEffect } from 'react'
-import { IconX } from './icons'
+import { IconX, IconChevronDown } from './icons'
+import { tap } from './haptics'
 import { addTag, tagKey } from './tags'
 import { LETTERS } from './letters'
 
@@ -247,6 +248,71 @@ export function FilterSheet({ tags, counts, active, onToggle, onClear, resultCou
           borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)', fontSize: '15px', fontWeight: '600', cursor: 'pointer',
         }}>{resultCount === 1 ? 'Show 1 recipe' : `Show ${resultCount} recipes`}</button>
       </div>
+    </div>
+  )
+}
+
+// Status: a sliding switch. The orange thumb glides to the picked status,
+// and you can drag your finger across to slide it, like iPhone switches.
+export function StatusSwitch({ options, value, onChange, style }) {
+  const idx = Math.max(0, options.indexOf(value))
+  const reduce = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+  const pickAt = (e) => {
+    const box = e.currentTarget.getBoundingClientRect()
+    const x = e.touches[0].clientX - box.left
+    const i = Math.min(options.length - 1, Math.max(0, Math.floor((x / box.width) * options.length)))
+    if (options[i] !== value) { tap(); onChange(options[i]) }
+  }
+  return (
+    <div role="group" aria-label="Status" onTouchMove={pickAt} style={{
+      position: 'relative', display: 'flex', background: 'var(--warm-white)', border: '1.5px solid var(--tan)',
+      borderRadius: 'var(--radius-pill)', padding: '3px', marginBottom: '12px', touchAction: 'pan-y', ...style,
+    }}>
+      <div aria-hidden="true" style={{
+        position: 'absolute', top: '3px', bottom: '3px',
+        left: `calc(3px + ${idx} * (100% - 6px) / ${options.length})`,
+        width: `calc((100% - 6px) / ${options.length})`,
+        background: 'var(--clay)', borderRadius: 'var(--radius-pill)',
+        boxShadow: '0 1px 3px rgba(28,26,23,0.15)',
+        transition: reduce ? 'none' : 'left 0.28s cubic-bezier(0.3, 0.9, 0.3, 1)',
+      }} />
+      {options.map(f => {
+        const on = value === f
+        return (
+          <button key={f} onClick={() => { if (!on) tap(); onChange(f) }} aria-pressed={on} style={{
+            position: 'relative', zIndex: 1, flex: 1, minWidth: 0, minHeight: '36px', padding: '0 4px',
+            border: 'none', background: 'transparent', color: on ? 'var(--cream)' : 'var(--charcoal)',
+            fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600', whiteSpace: 'nowrap', cursor: 'pointer',
+            transition: reduce ? 'none' : 'color 0.2s ease',
+          }}>{f}</button>
+        )
+      })}
+    </div>
+  )
+}
+
+// Looks like a pill; the real (invisible) select on top opens the iPhone picker
+export function SortPill({ options, labels = {}, value, onChange }) {
+  return (
+    <div style={{
+      position: 'relative', minHeight: '32px', display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '0 12px',
+      background: 'var(--warm-white)', border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-pill)',
+      fontSize: '12px', fontWeight: '600', color: 'var(--charcoal)', whiteSpace: 'nowrap'
+    }}>
+      {labels[value] || value}
+      <IconChevronDown size={12} strokeWidth={2.4} />
+      <select
+        aria-label="Sort recipes"
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        style={{
+          // On top of the pill and a little taller than it, so the tap area is 44px
+          position: 'absolute', left: 0, right: 0, top: '-6px', bottom: '-6px', zIndex: 1,
+          width: '100%', opacity: 0, cursor: 'pointer', fontSize: '16px',
+          WebkitAppearance: 'none', appearance: 'none', border: 'none', background: 'transparent',
+        }}>
+        {options.map(o => <option key={o} value={o}>{labels[o] || o}</option>)}
+      </select>
     </div>
   )
 }

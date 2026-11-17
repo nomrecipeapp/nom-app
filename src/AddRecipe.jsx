@@ -4,6 +4,7 @@ import { openLink } from './openLink'
 import { maybeAskForRating } from './rating'
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from './supabase'
+import { canonicalIdFor, findByLink } from './recipeLink'
 import { apiPost } from './api'
 import { importRecipeFromUrl, friendlySiteName } from './importUrl'
 import { IconCamera, IconCheck, IconChevronLeft, IconX } from './icons'
@@ -128,13 +129,8 @@ export default function AddRecipe({ session, onSave, onCancel, startLogging = fa
 
   async function checkDuplicate(urlToCheck) {
     if (!urlToCheck.trim()) return
-    const { data: existingList } = await supabase
-      .from('recipes')
-      .select('id, title')
-      .eq('user_id', session.user.id)
-      .eq('source_url', urlToCheck.trim())
-      .limit(1)
-    if (existingList && existingList.length > 0) {
+    const existingList = await findByLink(supabase, urlToCheck, { userId: session.user.id, select: 'id, title' })
+    if (existingList.length > 0) {
       setDuplicate(existingList[0])
     }
   }
@@ -306,20 +302,8 @@ export default function AddRecipe({ session, onSave, onCancel, startLogging = fa
     }
     setLoading(true)
     const { logCookNow, ...cleanRecipe } = recipeData
-    // Look up existing canonical_id for this source_url, or generate a new one
-    let canonicalId = null
-    if (cleanRecipe.source_url) {
-      const { data: existing } = await supabase
-        .from('recipes')
-        .select('canonical_id')
-        .eq('source_url', cleanRecipe.source_url)
-        .not('canonical_id', 'is', null)
-        .limit(1)
-        .maybeSingle()
-      canonicalId = existing?.canonical_id || crypto.randomUUID()
-    } else {
-      canonicalId = crypto.randomUUID()
-    }
+    // Share a canonical_id with everyone else who has this recipe, even if their link is a little different
+    const canonicalId = await canonicalIdFor(supabase, cleanRecipe.source_url)
 
     const { data: saved, error: saveError } = await supabase
       .from('recipes')
@@ -807,13 +791,8 @@ export default function AddRecipe({ session, onSave, onCancel, startLogging = fa
 
             {!duplicate && !importLimit && (
               <button onClick={async () => {
-                const { data: existingList } = await supabase
-                  .from('recipes')
-                  .select('id, title')
-                  .eq('user_id', session.user.id)
-                  .eq('source_url', url.trim())
-                  .limit(1)
-                if (existingList && existingList.length > 0) {
+                const existingList = await findByLink(supabase, url, { userId: session.user.id, select: 'id, title' })
+                if (existingList.length > 0) {
                   setDuplicate(existingList[0])
                   return
                 }
