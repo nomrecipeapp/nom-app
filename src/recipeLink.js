@@ -28,6 +28,11 @@ export function recipeLinkKey(raw) {
     .replace(/\/amp\/?$/, '')
     .replace(/\/+$/, '')
 
+  // NYT Cooking: the recipe number is what counts (the words after it can change or be missing)
+  if (host.endsWith('nytimes.com')) {
+    const m = url.pathname.match(/\/recipes\/(\d+)/)
+    if (m) return `cooking.nytimes.com/recipes/${m[1]}`
+  }
   // Instagram: posts, reels and tv links to the same code are the same post
   if (host.endsWith('instagram.com')) {
     const m = url.pathname.match(/\/(?:p|reels?|tv)\/([^/?#]+)/i)
