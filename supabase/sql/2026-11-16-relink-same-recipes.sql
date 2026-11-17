@@ -26,6 +26,8 @@ language sql immutable as $$
     when u is null or btrim(u) = '' then null
     when u ~* 'nytimes\.com/recipes/[0-9]+'
       then 'cooking.nytimes.com/recipes/' || substring(u from '(?i)nytimes\.com/recipes/([0-9]+)')
+    when u ~* '^([a-z]+://)?(www\.)?(delish|goodhousekeeping|countryliving|womansday|thepioneerwoman|esquire|prevention|womenshealthmag|menshealth)\.com/.*/a[0-9]{4,}/'
+      then lower(substring(u from '(?i)^(?:[a-z]+://)?(?:www\.)?([a-z]+\.com)/')) || '/' || lower(substring(u from '(?i)/(a[0-9]{4,})/'))
     when u ~* 'instagram\.com/(p|reels?|tv)/'
       then 'instagram.com/p/' || substring(u from '(?i)instagram\.com/(?:p|reels?|tv)/([^/?#]+)')
     when u ~* 'tiktok\.com/.*/video/[0-9]+'

@@ -10,6 +10,8 @@
 // (utm_*, fbclid, igsh, ref, ...) is tracking and gets dropped.
 const KEEP_PARAMS = ['p', 'page_id', 'id', 'recipe', 'recipeid', 'rid']
 
+const HEARST = ['delish.com', 'goodhousekeeping.com', 'countryliving.com', 'womansday.com', 'thepioneerwoman.com', 'esquire.com', 'prevention.com', 'womenshealthmag.com', 'menshealth.com']
+
 export function recipeLinkKey(raw) {
   if (!raw || typeof raw !== 'string') return null
   let url
@@ -32,6 +34,11 @@ export function recipeLinkKey(raw) {
   if (host.endsWith('nytimes.com')) {
     const m = url.pathname.match(/\/recipes\/(\d+)/)
     if (m) return `cooking.nytimes.com/recipes/${m[1]}`
+  }
+  // Hearst sites (Delish, Good Housekeeping, ...): the article number like /a49380/ is what counts
+  if (HEARST.some(h => host === h)) {
+    const m = url.pathname.match(/\/(a\d{4,})\//i)
+    if (m) return `${host}/${m[1].toLowerCase()}`
   }
   // Instagram: posts, reels and tv links to the same code are the same post
   if (host.endsWith('instagram.com')) {
