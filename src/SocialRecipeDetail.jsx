@@ -137,7 +137,7 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
       .from('recipes').select('id, user_id')
       .eq('canonical_id', recipe.canonical_id).in('user_id', followingIds)
     if (!matchingRecipes || matchingRecipes.length === 0) return
-    const userIds = [...new Set(matchingRecipes.map(r => r.user_id))].filter(id => id !== cook.user_id)
+    const userIds = [...new Set(matchingRecipes.map(r => r.user_id))].filter(id => id !== session.user.id)
     const { data: profiles } = await supabase
       .from('profiles').select('id, full_name, username, avatar_url').in('id', userIds.slice(0, 3))
     setCircleFriendsCount(userIds.length)
@@ -338,7 +338,7 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
     const cooksWithProfiles = cooksData.map(c => ({ ...c, profiles: profiles?.find(p => p.id === c.user_id) || null, _times: timesByUser[c.user_id] }))
     const seen = new Set()
     const deduped = cooksWithProfiles.filter(c => {
-      if (c.user_id === cook.user_id || c.user_id === session.user.id) return false
+      if (c.user_id === session.user.id) return false
       if (seen.has(c.user_id)) return false
       seen.add(c.user_id); return true
     })
@@ -502,7 +502,6 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
           <CircleFriendsModal
             canonicalId={recipe.canonical_id}
             sourceUrl={recipe.source_url}
-            excludeUserId={cook.user_id}
             session={session}
             onClose={() => setShowCircleModal(false)}
             onSelectUser={onSelectUser}
