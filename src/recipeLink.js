@@ -2,13 +2,14 @@
 //
 // Links to one recipe often differ only in things that don't matter:
 //   https://www.site.com/chili/?utm_source=pinterest   vs   http://site.com/chili
+// (Only tracking bits are dropped; a ?r=12 that picks the recipe still counts.)
 //   instagram.com/reel/ABC123/?igsh=xyz                 vs   instagram.com/p/ABC123
 //   youtu.be/XYZ                                        vs   youtube.com/watch?v=XYZ&t=30
 // recipeLinkKey() boils a link down to what does matter, so those come out equal.
 
-// Query bits that actually pick the page (WordPress ?p=123 and the like). Everything else
-// (utm_*, fbclid, igsh, ref, ...) is tracking and gets dropped.
-const KEEP_PARAMS = ['p', 'page_id', 'id', 'recipe', 'recipeid', 'rid']
+// Query bits that are only tracking (who shared it, which ad, which newsletter). These get
+// dropped; anything else (like ?p=123 or ?r=12) can pick the page, so it's kept.
+const TRACKING = /^(utm_.*|mc_.*|_ga|_gl|fbclid|gclid|dclid|msclkid|yclid|igsh|igshid|smid|unlocked_article_code|ref|ref_src|ref_url|referrer|si|share|share_id|sharetype|cmp|cmpid|campaign|epik|via|s_cid|cid|src|source|from|amp|ito|mbid|xtor)$/i
 
 const HEARST = ['delish.com', 'goodhousekeeping.com', 'countryliving.com', 'womansday.com', 'thepioneerwoman.com', 'esquire.com', 'prevention.com', 'womenshealthmag.com', 'menshealth.com']
 
@@ -57,9 +58,10 @@ export function recipeLinkKey(raw) {
     if (id) return `youtube.com/watch/${id}`
   }
 
-  const kept = KEEP_PARAMS
-    .filter(k => url.searchParams.get(k))
-    .map(k => `${k}=${url.searchParams.get(k).toLowerCase()}`)
+  const kept = [...url.searchParams.entries()]
+    .filter(([k, v]) => v && !TRACKING.test(k))
+    .map(([k, v]) => `${k.toLowerCase()}=${v.toLowerCase()}`)
+    .sort()
   return host + path + (kept.length ? `?${kept.join('&')}` : '')
 }
 

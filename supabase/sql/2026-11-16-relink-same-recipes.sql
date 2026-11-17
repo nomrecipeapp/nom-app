@@ -40,11 +40,12 @@ language sql immutable as $$
       then 'youtube.com/watch/' || substring(u from '/shorts/([^/?#]+)')
     else (
       select c.hp || coalesce('?' || (
-        select string_agg(k || '=' || lower(v), '&' order by array_position(array['p','page_id','id','recipe','recipeid','rid'], k))
+        select string_agg(k || '=' || lower(v), '&' order by k || '=' || lower(v))
         from (
           select lower(m[1]) as k, m[2] as v
-          from regexp_matches(c.query, '(?:^|&)(p|page_id|id|recipe|recipeid|rid)=([^&]+)', 'gi') as m
-        ) kept
+          from regexp_matches(c.query, '(?:^|&)([^=&]+)=([^&]+)', 'g') as m
+        ) params
+        where k !~ '^(utm_.*|mc_.*|_ga|_gl|fbclid|gclid|dclid|msclkid|yclid|igsh|igshid|smid|unlocked_article_code|ref|ref_src|ref_url|referrer|si|share|share_id|sharetype|cmp|cmpid|campaign|epik|via|s_cid|cid|src|source|from|amp|ito|mbid|xtor)$'
       ), '')
       from cleaned c
     )
