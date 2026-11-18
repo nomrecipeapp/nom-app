@@ -385,8 +385,8 @@ export default function FriendProfile({ userId, session, onSelectCook, onSelectS
   }
 
   // Cooks loaded here don't carry the profile, so add it before opening one
-  function openCook(cook) {
-    onSelectCook({ ...cook, profiles: cook.profiles || profile })
+  function openCook(cook, toComments = false) {
+    onSelectCook({ ...cook, profiles: cook.profiles || profile }, toComments)
   }
 
   // A recipe they've cooked opens their latest cook; anything else opens the saved recipe
@@ -557,7 +557,8 @@ export default function FriendProfile({ userId, session, onSelectCook, onSelectS
               ) : friendActivity.length === 0 ? (
                 <EmptyState icon={IconPot} title="Nothing here yet" body={`When ${first} saves or cooks something, it shows up here.`} />
               ) : (
-                <ActivityList items={friendActivity} engagement={friendEngagement} onSelectCook={openCook} onSelectSave={onSelectSave} />
+                <ActivityList items={friendActivity} engagement={friendEngagement} onSelectCook={cook => openCook(cook)} onSelectSave={onSelectSave}
+                  onOpenComments={item => item._type === 'save' ? onSelectSave && onSelectSave(item, true) : openCook(item, true)} />
               )}
             </div>
           )}

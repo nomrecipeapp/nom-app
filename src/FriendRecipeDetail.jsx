@@ -7,6 +7,7 @@ import { getHiddenContent, isHidden } from './moderation'
 import { IconCheck, IconChevronRight, IconX, IconPlus } from './icons'
 import FloatingAction from './FloatingAction'
 import { toast, LoadError } from './ui'
+import { useScrollToComments } from './useScrollToComments'
 import { RecipeHeader, RecipeBody, RecipeHero, ShareButton, MoreButton, PersonRow, TakeSummary, CircleCooksCard } from './RecipeParts'
 import { scrollToRef } from './recipeStyle'
 import { tap, success } from './haptics'
@@ -107,11 +108,7 @@ useEffect(() => {
   fetchCircleCooks()
 }, [recipe.id])
 
-  useEffect(() => {
-    if (scrollToComments && commentsRef.current) {
-      setTimeout(() => { commentsRef.current.scrollIntoView({ behavior: 'smooth' }) }, 300)
-    }
-  }, [scrollToComments])
+  useScrollToComments(commentsRef, scrollToComments, !loadingComments)
 
   async function fetchFollowing() {
     const { data: follows } = await supabase.from('follows').select('following_id')
@@ -653,7 +650,7 @@ async function fetchCircleCookPhotos() {
           </div>
         </div>
 
-        <div ref={commentsRef}>
+        <div ref={commentsRef} style={{ scrollMarginTop: 'calc(var(--top-bar-h) + 12px)' }}>
           <div style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '16px' }}>
             Comments{comments.length > 0 ? ` · ${comments.length}` : ''}
           </div>

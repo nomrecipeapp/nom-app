@@ -201,23 +201,25 @@ export function StatsLists({ recentCooks, topRated, wantToMake, onSelectRecent, 
 const heartPath = 'M12 21C12 21 3 14.5 3 8.5C3 5.42 5.42 3 8.5 3C10.24 3 11.91 3.81 13 5.08C14.09 3.81 15.76 3 17.5 3C20.58 3 23 5.42 23 8.5C23 14.5 12 21 12 21Z'
 const bubblePath = 'M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z'
 
-function Engagement({ eng }) {
+function Engagement({ eng, onComment }) {
   return (
     <div style={{ display: 'flex', gap: '16px', padding: '10px 16px', borderTop: '1px solid var(--parchment)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d={heartPath} stroke="var(--muted)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
         <span style={{ fontSize: '12px', color: 'var(--muted)', fontWeight: '600' }}>{eng.likes > 0 ? `${eng.likes} ${eng.likes === 1 ? 'Like' : 'Likes'}` : 'Like'}</span>
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+      <button className="nom-hit" aria-label={eng.comments > 0 ? `${eng.comments} comments, open comments` : 'Add a comment'}
+        onClick={e => { e.stopPropagation(); onComment && onComment() }}
+        style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d={bubblePath} stroke="var(--muted)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
         <span style={{ fontSize: '12px', color: 'var(--muted)', fontWeight: '600' }}>{eng.comments > 0 ? `${eng.comments} ` : ''}Comment</span>
-      </div>
+      </button>
     </div>
   )
 }
 
-// Cooks and saves, newest first
-export function ActivityList({ items, engagement, onSelectCook, onSelectSave }) {
+// Cooks and saves, newest first. onOpenComments(item) opens that cook or save straight to its comments.
+export function ActivityList({ items, engagement, onSelectCook, onSelectSave, onOpenComments }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
       {items.map(item => {
@@ -248,7 +250,7 @@ export function ActivityList({ items, engagement, onSelectCook, onSelectSave }) 
                 </div>
                 <div style={{ background: 'var(--parchment)', border: '1.5px dashed var(--tan)', borderRadius: 'var(--radius-pill)', padding: '4px 10px', fontSize: '11px', fontWeight: '600', color: 'var(--muted)', flexShrink: 0 }}>Want to Make</div>
               </div>
-              <Engagement eng={eng} />
+              <Engagement eng={eng} onComment={() => onOpenComments && onOpenComments(item)} />
             </div>
           )
         }
@@ -273,7 +275,7 @@ export function ActivityList({ items, engagement, onSelectCook, onSelectSave }) 
               <div style={{ fontSize: '11px', color: 'var(--muted)' }}>{new Date(item.cooked_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
               {item.notes && <div style={{ fontSize: '13px', color: 'var(--charcoal)', lineHeight: '1.55', fontStyle: 'italic', marginTop: '8px' }}>"{item.notes}"</div>}
             </div>
-            <Engagement eng={eng} />
+            <Engagement eng={eng} onComment={() => onOpenComments && onOpenComments(item)} />
           </div>
         )
       })}

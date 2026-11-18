@@ -333,7 +333,8 @@ export default function Profile({ session, onBack, onSelectRecipe, onSelectCook,
             ) : activityFeed.length === 0 ? (
               stats && <EmptyState {...startRecordEmpty()} />
             ) : (
-              <ActivityList items={activityFeed} engagement={activityEngagement} onSelectCook={onSelectCook} onSelectSave={onSelectRecipe} />
+              <ActivityList items={activityFeed} engagement={activityEngagement} onSelectCook={cook => onSelectCook(cook)} onSelectSave={onSelectRecipe}
+                onOpenComments={item => item._type === 'save' ? onSelectSave && onSelectSave(item, true) : onSelectCook(item, true)} />
             )}
           </div>
         )}
