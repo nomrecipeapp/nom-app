@@ -364,8 +364,66 @@ function RecipesDetail({ metrics, metricsError }) {
   )
 }
 
+// Same answers as HEARD_ABOUT_OPTIONS in Onboarding.jsx. "other: what they typed" counts as Other.
+const HEARD_ABOUT_LABELS = {
+  friend: 'A friend or family member', tiktok: 'TikTok', instagram: 'Instagram',
+  app_store: 'App Store search', google: 'Google search', reddit: 'Reddit', other: 'Other',
+}
+const heardKey = (v) => (v || '').split(':')[0].trim()
+const heardOtherText = (v) => (v || '').includes(':') ? v.slice(v.indexOf(':') + 1).trim() : ''
+
+function foundUsSummary(metrics) {
+  const rows = metrics?.heard_about
+  if (!rows) return null
+  const counts = {}
+  rows.forEach(r => { const k = heardKey(r.heard_about); counts[k] = (counts[k] || 0) + 1 })
+  const ranked = Object.entries(counts).sort((a, b) => b[1] - a[1])
+  return { rows, ranked, top: ranked[0]?.[0] }
+}
+
+function FoundUsDetail({ metrics, metricsError }) {
+  const [filter, setFilter] = useState('counts')
+  if (metricsError) return <DetailCard title="How they found Nom"><ErrorNote>Couldn't load: {metricsError}</ErrorNote></DetailCard>
+  if (!metrics) return <DetailCard title="How they found Nom"><div style={{ fontSize: '13px', color: 'var(--muted)' }}>Loading...</div></DetailCard>
+  const s = foundUsSummary(metrics)
+  if (!s) return <DetailCard title="How they found Nom"><ErrorNote>Run supabase/sql/2026-11-20-admin-heard-about.sql in Supabase to see these.</ErrorNote></DetailCard>
+  const total = s.rows.length
+  const since = metrics.asked_since ? `Asked at sign-up since ${shortDate(metrics.asked_since)}` : 'Asked at sign-up starting Nov 20'
+  const others = s.rows.filter(r => heardKey(r.heard_about) === 'other')
+  return (
+    <DetailCard title="How they found Nom" summary={`${since}. ${plural(total, 'person')} answered`.replace('persons', 'people') + `, ${metrics.terms_accepted ?? 0} ticked the Terms box. People who joined earlier weren't asked.`}>
+      <Pills value={filter} onChange={setFilter} options={[['counts', 'By source'], ['people', `Each person (${total})`], ['other', `Other answers (${others.length})`]]} />
+      {filter === 'counts' && (
+        <RowList empty="No answers yet. They'll show up as new people sign up." rows={s.ranked.map(([k, n]) => ({
+          key: k,
+          main: HEARD_ABOUT_LABELS[k] || k,
+          right: `${n} (${Math.round((n / total) * 100)}%)`,
+        }))} />
+      )}
+      {filter === 'people' && (
+        <RowList empty="No answers yet." rows={s.rows.map(r => ({
+          key: r.id,
+          main: r.who || 'Someone',
+          sub: `Joined ${shortDate(r.joined_at)}`,
+          right: heardKey(r.heard_about) === 'other' && heardOtherText(r.heard_about) ? `Other: ${heardOtherText(r.heard_about)}` : (HEARD_ABOUT_LABELS[heardKey(r.heard_about)] || r.heard_about),
+        }))} />
+      )}
+      {filter === 'other' && (
+        <RowList empty="Nobody picked Other yet." rows={others.map(r => ({
+          key: r.id,
+          main: heardOtherText(r.heard_about) || 'Left it blank',
+          sub: `${r.who || 'Someone'} · joined ${shortDate(r.joined_at)}`,
+        }))} />
+      )}
+    </DetailCard>
+  )
+}
+
 function Overview({ data, users, metrics, metricsError, onNeedMetrics, onGoTo, onSaveSettings }) {
-  const [open, setOpen] = useState(null) // 'users' | 'active' | 'recipes'
+  const [open, setOpen] = useState(null) // 'users' | 'active' | 'recipes' | 'found'
+  // Load tile details up front so the Found us tile can show its top answer
+  useEffect(() => { onNeedMetrics() }, [onNeedMetrics])
+  const found = foundUsSummary(metrics)
   function toggle(key) {
     const next = open === key ? null : key
     setOpen(next)
@@ -461,10 +519,12 @@ function Overview({ data, users, metrics, metricsError, onNeedMetrics, onGoTo, o
         <Stat title="Active" value={data.active_30d} sub={`last 30 days (${data.active_7d} this week)`} onClick={() => toggle('active')} selected={open === 'active'} />
         <Stat title="Waiting" value={data.waiting} sub="on the waitlist, not invited" accent onClick={() => onGoTo('waitlist')} action="Open" />
         <Stat title="Recipes" value={data.recipes} sub={`${data.cooks} cooks logged`} onClick={() => toggle('recipes')} selected={open === 'recipes'} />
+        <Stat title="Found us via" value={found ? found.rows.length : '...'} sub={found?.top ? `Top: ${HEARD_ABOUT_LABELS[found.top] || found.top}` : 'answers at sign-up'} onClick={() => toggle('found')} selected={open === 'found'} />
       </div>
       {open === 'users' && <UsersDetail users={users} />}
       {open === 'active' && <ActiveDetail users={users} metrics={metrics} metricsError={metricsError} />}
       {open === 'recipes' && <RecipesDetail metrics={metrics} metricsError={metricsError} />}
+      {open === 'found' && <FoundUsDetail metrics={metrics} metricsError={metricsError} />}
       <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '8px' }}>Active means they saved a recipe, logged a cook or imported something. Tap a tile for details.</div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '10px', marginTop: '16px' }}>
