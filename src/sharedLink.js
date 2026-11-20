@@ -4,6 +4,7 @@
 // and opens that recipe or cook. Website: always null.
 import { Capacitor } from '@capacitor/core'
 import { Preferences } from '@capacitor/preferences'
+import { supabase } from './supabase'
 
 const KEY = 'nom-open-link'
 
@@ -23,4 +24,14 @@ export async function takeOpenLink() {
 // The link people get when they tap Share on a recipe or cook
 export function shareLink(kind, id) {
   return `https://www.nomrecipeapp.com/${kind === 'cook' ? 'c' : 'r'}/${id}`
+}
+
+// Tapping Share on your OWN recipe or cook marks it as shareable, so its link shows the
+// full preview even if your account is Private (see 2026-11-20-share-links-owner.sql).
+// Runs in the background: the share sheet has to open right away from the tap.
+export function markShared(kind, id) {
+  supabase.from(kind === 'cook' ? 'cooks' : 'recipes')
+    .update({ link_shared_at: new Date().toISOString() })
+    .eq('id', id)
+    .then(({ error }) => { if (error) console.error('markShared', error) })
 }

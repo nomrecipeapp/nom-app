@@ -12,7 +12,7 @@ import { tap, success } from './haptics'
 import { shrinkImage } from './shrinkImage'
 
 import { TakeSummary, TakeCard, CircleCooksCard, RecipeHeader, RecipeBody, ShareButton } from './RecipeParts'
-import { shareLink } from './sharedLink'
+import { shareLink, markShared } from './sharedLink'
 import { verdictOptions, scrollToRef, roundIconBtn, shortDate } from './recipeStyle'
 
 const nuanceCategories = [
@@ -859,6 +859,7 @@ async function saveEditCook() {
           </button>
           <ShareButton onClick={() => {
             const fullUrl = shareLink('recipe', recipe.id)
+            markShared('recipe', recipe.id)
             if (navigator.share) {
               navigator.share({ title: recipe.title, url: fullUrl }).catch(() => {})
             } else {

@@ -9,7 +9,7 @@ import FloatingAction from './FloatingAction'
 import { toast, LoadError } from './ui'
 import { useScrollToComments } from './useScrollToComments'
 import { RecipeHeader, RecipeBody, RecipeHero, ShareButton, MoreButton, PersonRow, TakeSummary, CircleCooksCard } from './RecipeParts'
-import { shareLink } from './sharedLink'
+import { shareLink, markShared } from './sharedLink'
 import { scrollToRef } from './recipeStyle'
 import { tap, success } from './haptics'
 
@@ -552,6 +552,7 @@ async function fetchCircleCookPhotos() {
         <RecipeHeader recipe={recipe}>
           <ShareButton onClick={() => {
             const fullUrl = shareLink('recipe', recipe.id)
+            if (recipe.user_id === session.user.id) markShared('recipe', recipe.id)
             if (navigator.share) {
               navigator.share({ title: recipe.title, url: fullUrl }).catch(() => {})
             } else {

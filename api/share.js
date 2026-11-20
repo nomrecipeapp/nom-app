@@ -5,7 +5,7 @@
 //
 // What a visitor sees: photo, title, the person's first name and verdict, their cook note,
 // a credit link to the original site, and Get Nom. Never ingredients or steps.
-// Private accounts get a plain "shared on Nom" card. Data comes from the share_preview()
+// Private accounts get a plain "shared on Nom" card, unless the owner shared that item themselves. Data comes from the share_preview()
 // database function (supabase/sql/2026-11-20-share-links.sql), which only hands out those fields.
 //
 // People who have Nom: the iPhone opens these links straight in the app (Universal Links,
@@ -205,6 +205,8 @@ export default async function handler(req, res) {
   res.setHeader('Content-Type', 'text/html; charset=utf-8')
   // Cache briefly at Vercel's edge so a link posted in a group chat doesn't hit the database every tap,
   // but an edited photo or a switch to private shows up within a few minutes.
-  res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600')
+  // The plain card is never cached, so a link shows its preview as soon as the owner taps Share.
+  const full = data && !data.private
+  res.setHeader('Cache-Control', full ? 'public, s-maxage=300, stale-while-revalidate=600' : 'no-store')
   res.status(200).send(buildPage({ kind, id: UUID.test(id) ? id : '', data }))
 }
