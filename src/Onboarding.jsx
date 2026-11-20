@@ -5,11 +5,25 @@ import { supabase } from './supabase'
 import { canonicalIdFor } from './recipeLink'
 import { importRecipeFromUrl } from './importUrl'
 import { missingStepsReason } from './recipeCheck'
-import { IconCheck } from './icons'
+import { IconCheck, IconChevronDown } from './icons'
 import { PasswordInput } from './ui'
 import { shrinkImage } from './shrinkImage'
 
 const TOTAL_STEPS = 5
+
+const TERMS_URL = 'https://app.termly.io/policy-viewer/policy.html?policyUUID=61e1bda6-9414-4896-bd55-972479e2c5ee'
+const PRIVACY_URL = 'https://app.termly.io/policy-viewer/policy.html?policyUUID=758a4b17-ed24-4c70-acda-5aaa6c508907'
+
+// "How did you hear about Nom?" answers. Value is what's saved in profiles.heard_about.
+const HEARD_ABOUT_OPTIONS = [
+  { value: 'friend', label: 'A friend or family member' },
+  { value: 'tiktok', label: 'TikTok' },
+  { value: 'instagram', label: 'Instagram' },
+  { value: 'app_store', label: 'App Store search' },
+  { value: 'google', label: 'Google search' },
+  { value: 'reddit', label: 'Reddit' },
+  { value: 'other', label: 'Other' },
+]
 
 // Same bottom block on every step so the main button never jumps around.
 // The second line always takes up its space, even when there's nothing in it.
@@ -71,6 +85,9 @@ export default function Onboarding({ onComplete, session, prefillInviteCode, sta
   const [authError, setAuthError] = useState(null)
   const [userId, setUserId] = useState(session?.user?.id || null)
   const [inviteCode, setInviteCode] = useState(prefillInviteCode || '')
+  const [heardAbout, setHeardAbout] = useState('')
+  const [heardAboutOther, setHeardAboutOther] = useState('')
+  const [agreedToTerms, setAgreedToTerms] = useState(false)
   const [avatarUrl, setAvatarUrl] = useState(null)
   const [avatarUploading, setAvatarUploading] = useState(false)
 
@@ -145,6 +162,7 @@ export default function Onboarding({ onComplete, session, prefillInviteCode, sta
     if (!username.trim()) return 'Please choose a username.'
     if (!email.trim()) return 'Please enter your email.'
     if (password.length < 8) return 'Password must be at least 8 characters.'
+    if (!agreedToTerms) return 'Please agree to the Terms and Privacy Policy.'
     return null
   }
 
@@ -200,6 +218,15 @@ export default function Onboarding({ onComplete, session, prefillInviteCode, sta
       onboarding_complete: false
     })
     if (profileError) console.error('Profile insert error:', profileError.message)
+
+    // Saved separately so a problem here can never block the account itself
+    const heardAboutValue = heardAbout === 'other'
+      ? (heardAboutOther.trim() ? `other: ${heardAboutOther.trim().slice(0, 120)}` : 'other')
+      : (heardAbout || null)
+    const { error: extrasError } = await supabase.from('profiles')
+      .update({ heard_about: heardAboutValue, terms_accepted_at: new Date().toISOString() })
+      .eq('id', user.id)
+    if (extrasError) console.error('Sign-up extras save error:', extrasError.message)
 
     // Mark invite as used
     await supabase.from('invites')
@@ -522,7 +549,7 @@ export default function Onboarding({ onComplete, session, prefillInviteCode, sta
           <div style={{ fontSize: '13px', color: 'var(--muted)', marginBottom: '28px' }}>Your Cookbook starts here.</div>
 
           {/* A real form so the keyboard's Go button submits and iPhone offers to save the password */}
-          <form onSubmit={e => { e.preventDefault(); if (!(authLoading || !fullName || !username || !email || !password)) handleCreateAccount() }}>
+          <form onSubmit={e => { e.preventDefault(); if (!(authLoading || !fullName || !username || !email || !password || !agreedToTerms)) handleCreateAccount() }}>
 
           <div style={{ marginBottom: '14px' }}>
             <label style={labelStyle}>Your name</label>
@@ -549,7 +576,7 @@ export default function Onboarding({ onComplete, session, prefillInviteCode, sta
           </div>
           <div style={{ fontSize: '11px', color: 'var(--muted)', marginBottom: '16px' }}>Must be at least 8 characters</div>
 
-          <div style={{ marginBottom: '24px' }}>
+          <div style={{ marginBottom: '14px' }}>
             <label style={labelStyle}>Invite code</label>
             <input type="text" autoComplete="off" autoCapitalize="characters" autoCorrect="off" spellCheck={false} value={inviteCode} onChange={e => setInviteCode(e.target.value.trim().toUpperCase())} placeholder="XXXXXXXX" style={{ ...inputStyle, letterSpacing: '0.1em' }} />
             <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '4px' }}>
@@ -558,6 +585,36 @@ export default function Onboarding({ onComplete, session, prefillInviteCode, sta
             </div>
           </div>
 
+          <div style={{ marginBottom: '20px' }}>
+            <label htmlFor="onboarding-heard-about" style={labelStyle}>How did you hear about Nom?</label>
+            <div style={{ position: 'relative' }}>
+              <select id="onboarding-heard-about" value={heardAbout} onChange={e => setHeardAbout(e.target.value)} style={{ ...inputStyle, appearance: 'none', WebkitAppearance: 'none', paddingRight: '44px', color: heardAbout ? 'var(--ink)' : 'var(--muted)', cursor: 'pointer' }}>
+                <option value="" disabled>Choose one</option>
+                {HEARD_ABOUT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+              <span aria-hidden="true" style={{ position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)', display: 'flex', pointerEvents: 'none' }}>
+                <IconChevronDown size={16} strokeWidth={2} />
+              </span>
+            </div>
+            {heardAbout === 'other' && (
+              <input type="text" aria-label="Where did you hear about Nom?" value={heardAboutOther} onChange={e => setHeardAboutOther(e.target.value)} maxLength={120} placeholder="Tell us where" style={{ ...inputStyle, marginTop: '8px' }} />
+            )}
+          </div>
+
+          {/* Must be ticked before Create account turns on */}
+          <label style={{ position: 'relative', display: 'flex', alignItems: 'flex-start', gap: '12px', minHeight: '44px', marginBottom: '16px', cursor: 'pointer' }}>
+            <input type="checkbox" checked={agreedToTerms} onChange={e => setAgreedToTerms(e.target.checked)} style={{ position: 'absolute', opacity: 0, width: 0, height: 0 }} />
+            <span aria-hidden="true" style={{ width: '22px', height: '22px', flexShrink: 0, marginTop: '1px', borderRadius: '6px', border: `1.5px solid ${agreedToTerms ? 'var(--clay)' : 'var(--tan)'}`, background: agreedToTerms ? 'var(--clay)' : 'var(--parchment)', color: 'var(--cream)', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.15s, border-color 0.15s' }}>
+              {agreedToTerms && <IconCheck size={14} strokeWidth={3} />}
+            </span>
+            <span style={{ fontSize: '13px', color: 'var(--charcoal)', lineHeight: '1.5' }}>
+              I agree to the{' '}
+              <a {...linkProps(TERMS_URL)} onClick={e => { e.stopPropagation(); linkProps(TERMS_URL).onClick(e) }} style={{ color: 'var(--clay)', fontWeight: '600', textDecoration: 'underline' }}>Terms and Conditions</a>
+              {' and '}
+              <a {...linkProps(PRIVACY_URL)} onClick={e => { e.stopPropagation(); linkProps(PRIVACY_URL).onClick(e) }} style={{ color: 'var(--clay)', fontWeight: '600', textDecoration: 'underline' }}>Privacy Policy</a>
+            </span>
+          </label>
+
           {authError && (
             <div style={{ background: '#FDE8E8', border: '1px solid #F5C0C0', borderRadius: 'var(--radius-md)', padding: '12px 16px', fontSize: '13px', color: '#B85252', marginBottom: '16px' }}>{authError}</div>
           )}
@@ -565,19 +622,13 @@ export default function Onboarding({ onComplete, session, prefillInviteCode, sta
           <ProgressDots step={2} />
           <button type="submit" disabled={authLoading || !fullName || !username || !email || !password} style={{
             width: '100%', padding: '15px',
-            background: (authLoading || !fullName || !username || !email || !password) ? 'var(--tan)' : 'var(--clay)',
+            background: (authLoading || !fullName || !username || !email || !password || !agreedToTerms) ? 'var(--tan)' : 'var(--clay)',
             color: 'var(--cream)', border: 'none', borderRadius: 'var(--radius-pill)',
             fontFamily: 'var(--font-body)', fontSize: '15px', fontWeight: '700',
-            cursor: (authLoading || !fullName || !username || !email || !password) ? 'not-allowed' : 'pointer',
+            cursor: (authLoading || !fullName || !username || !email || !password || !agreedToTerms) ? 'not-allowed' : 'pointer',
             marginBottom: '10px'
           }}>{authLoading ? 'Creating account...' : 'Create account'}</button>
           </form>
-          <div style={{ fontSize: '11px', color: 'var(--muted)', textAlign: 'center', lineHeight: '1.5' }}>
-            By continuing you agree to our{' '}
-            <a {...linkProps('https://app.termly.io/policy-viewer/policy.html?policyUUID=61e1bda6-9414-4896-bd55-972479e2c5ee')} style={{ color: 'var(--clay)', textDecoration: 'underline' }}>Terms</a>
-            {' & '}
-            <a {...linkProps('https://app.termly.io/policy-viewer/policy.html?policyUUID=758a4b17-ed24-4c70-acda-5aaa6c508907')} style={{ color: 'var(--clay)', textDecoration: 'underline' }}>Privacy Policy</a>
-          </div>
         </>
       )}
     </div>
