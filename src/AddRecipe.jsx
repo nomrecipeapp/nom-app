@@ -52,14 +52,14 @@ function importLimitCopy(limit) {
   }
 }
 
-export default function AddRecipe({ session, onSave, onCancel, onOpenImport, startLogging = false }) {
+export default function AddRecipe({ session, onSave, onCancel, onOpenImport, startLogging = false, sharedUrl = null, onSharedTaken }) {
   const [mode, setMode] = useState('url')
   const [importIssue, setImportIssue] = useState(null) // { blocked, site } when a link can't be read
   const [importCheck, setImportCheck] = useState(null) // hints for the 'might be missing some steps' card
   const [stepsCheckDismissed, setStepsCheckDismissed] = useState(false)
   const [importLimit, setImportLimit] = useState(null) // { cap, first_week, reset_at } when today's imports are used up
   const [importsLeft, setImportsLeft] = useState(null) // for the "2 imports left today" heads-up
-  const [url, setUrl] = useState('')
+  const [url, setUrl] = useState(sharedUrl || '')
   const [loading, setLoading] = useState(false)
   const [loadingMsg, setLoadingMsg] = useState(loadingMessages[0])
   const [error, setError] = useState(null)
@@ -101,7 +101,10 @@ export default function AddRecipe({ session, onSave, onCancel, onOpenImport, sta
   const draftKey = addDraftKey(session.user.id)
   const [draftReady, setDraftReady] = useState(false)
   const [restoredDraft, setRestoredDraft] = useState(false)
+  // Opened from the share sheet with a link: start fresh with that link instead of an old draft
+  const fromShareRef = useRef(!!sharedUrl)
   useEffect(() => {
+    if (fromShareRef.current) { setDraftReady(true); return }
     let cancelled = false
     loadSaved(draftKey).then(d => {
       if (cancelled) return
@@ -178,6 +181,21 @@ export default function AddRecipe({ session, onSave, onCancel, onOpenImport, sta
     const t = setInterval(() => { i = (i + 1) % loadingMessages.length; setLoadingMsg(loadingMessages[i]) }, 2000)
     return () => { clearInterval(t); setLoadingMsg(loadingMessages[0]) }
   }, [linkImporting])
+
+  // Share to Nom: start importing the shared link right away (after the same
+  // Already in your Cookbook check a pasted link gets)
+  const shareStartedRef = useRef(false)
+  useEffect(() => {
+    if (!fromShareRef.current || shareStartedRef.current || !url) return
+    shareStartedRef.current = true
+    onSharedTaken?.()
+    ;(async () => {
+      const existing = await findByLink(supabase, url, { userId: session.user.id, select: 'id, title' }).catch(() => [])
+      if (existing.length > 0) { setDuplicate(existing[0]); return }
+      importFromUrl(true)
+    })()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [url])
 
   // How many AI imports are left today (see claim_import in Supabase). Quietly does nothing if unavailable.
   async function refreshImportStatus() {

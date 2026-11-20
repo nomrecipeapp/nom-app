@@ -25,6 +25,9 @@ import { runBackGuard, hasBackGuard } from './backGuard'
 import { tap } from './haptics'
 import WhatsNew from './WhatsNew'
 import { setupPush, clearBadge } from './push'
+import { takeSharedLinks } from './shareInbox'
+import { addWaitingLinks } from './waitingLinks'
+import { toast } from './ui'
 
 // Screens that always show a Back button, even when opened from a shared link
 const DETAIL_SCREENS = ['recipe', 'socialRecipe', 'friendRecipeDetail', 'friendProfile', 'followList', 'notifications']
@@ -51,6 +54,10 @@ export default function App() {
   useEffect(() => { screenRef.current = screen }, [screen])
   // Add Recipe can open with "Log a Cook right away" already switched on (from Profile's empty state)
   const [addStartLogging, setAddStartLogging] = useState(false)
+  // Share to Nom: a link shared from another app opens Add with it importing.
+  // addKey starts a fresh Add when a new link comes in while Add is already open.
+  const [sharedUrl, setSharedUrl] = useState(null)
+  const [addKey, setAddKey] = useState(0)
   // Bring your recipes: true when opened from the "links waiting" card
   const [importFromWaiting, setImportFromWaiting] = useState(false)
   // Cookbook opens on Needs a look after an import with recipes to fix
@@ -166,6 +173,43 @@ export default function App() {
       setAddStartLogging(false)
       setScreen('add')
     })
+  }, [session?.user?.id, onboardingComplete])
+
+  // Share to Nom: pick up links shared from TikTok, Instagram, Safari (the iPhone share
+  // sheet) when Nom opens or comes back, and open Add with the newest one importing.
+  // If a few piled up, the rest go to the links waiting card in the Cookbook.
+  const openSharedRef = useRef(null)
+  openSharedRef.current = (links) => {
+    const userId = session?.user?.id
+    if (!userId || !links.length) return
+    // Mid bulk import: don't interrupt it, save them for the links waiting card
+    if (screenRef.current === 'import') {
+      addWaitingLinks(userId, links)
+      toast(links.length === 1 ? 'Link saved for your next import' : `${links.length} links saved for your next import`)
+      return
+    }
+    const newest = links[links.length - 1]
+    if (links.length > 1) addWaitingLinks(userId, links.slice(0, -1))
+    setSettingsVisible(false)
+    if (screenRef.current !== 'add') pushNav()
+    setAddStartLogging(false)
+    setSharedUrl(newest)
+    setAddKey(k => k + 1)
+    setScreen('add')
+  }
+  useEffect(() => {
+    if (!session?.user?.id || !onboardingComplete || !Capacitor.isNativePlatform()) return
+    const timers = []
+    const check = () => takeSharedLinks().then(links => { if (links.length) openSharedRef.current?.(links) })
+    function onVisible() {
+      if (document.visibilityState !== 'visible') return
+      check()
+      // iOS hands the links over as Nom comes back, so look again a moment later too
+      timers.push(setTimeout(check, 500), setTimeout(check, 1500))
+    }
+    check()
+    document.addEventListener('visibilitychange', onVisible)
+    return () => { document.removeEventListener('visibilitychange', onVisible); timers.forEach(clearTimeout) }
   }, [session?.user?.id, onboardingComplete])
 
   // Push notifications: set up once per signed-in member (after onboarding).
@@ -545,7 +589,7 @@ export default function App() {
   if (!session) return <Onboarding onComplete={handleOnboardingComplete} prefillInviteCode={prefillInviteCode} startOnWaitlist={startOnWaitlist} startOnSignup={startOnSignup} />
   if (!onboardingComplete) return <Onboarding session={session} onComplete={handleOnboardingComplete} prefillInviteCode={prefillInviteCode} />
 
-  function openAdd(startLogging = false) { pushNav(); setAddStartLogging(startLogging); setScreen('add') }
+  function openAdd(startLogging = false) { pushNav(); setSharedUrl(null); setAddStartLogging(startLogging); setScreen('add') }
   function openImport(fromWaiting = false) { setSettingsVisible(false); pushNav(); setImportFromWaiting(fromWaiting); setScreen('import') }
 
   const hideNav = screen === 'add' || screen === 'import'
@@ -679,8 +723,11 @@ export default function App() {
 
       {screen === 'add' && (
         <AddRecipe
+          key={addKey}
           session={session}
           startLogging={addStartLogging}
+          sharedUrl={sharedUrl}
+          onSharedTaken={() => setSharedUrl(null)}
           onSave={(recipe, logCookNow) => {
             setCookbookNeedsLook(false); setCookbookKey(k => k + 1)
             setCookbookScrollY(0)
