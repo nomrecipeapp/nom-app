@@ -97,7 +97,7 @@ begin
     select conname, pg_get_constraintdef(oid) as def
     from pg_constraint
     where conrelid = 'public.notifications'::regclass and contype = 'c'
-      and pg_get_constraintdef(oid) ilike '%type%'
+      and pg_get_constraintdef(oid) ilike '%follow_request%'  -- only the list of notification types
   loop
     if c.def not ilike '%cook_tag%' then
       execute format('alter table public.notifications drop constraint %I', c.conname);
