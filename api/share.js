@@ -9,7 +9,9 @@
 // database function (supabase/sql/2026-11-20-share-links.sql), which only hands out those fields.
 //
 // People who have Nom: the iPhone opens these links straight in the app (Universal Links,
-// public/.well-known/apple-app-site-association). This page is for everyone else.
+// public/.well-known/apple-app-site-association). This page is for everyone else, plus
+// members whose link opened in another app's browser (Instagram): "Already a member? Log in"
+// opens Nom on the recipe or cook. Website login stays off.
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY
@@ -142,7 +144,6 @@ ${hidden ? '<meta name="robots" content="noindex">' : ''}
   .wrap { max-width: 480px; margin: 0 auto; padding: calc(16px + env(safe-area-inset-top)) 20px calc(32px + env(safe-area-inset-bottom)); }
   .top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
   .logo { font-family: var(--font-display); font-weight: 700; font-size: 28px; color: var(--clay); letter-spacing: -1px; text-decoration: none; }
-  .open { font-size: 14px; font-weight: 600; color: var(--charcoal); text-decoration: none; padding: 10px 0; }
   .card { background: var(--warm-white); border: 1px solid var(--parchment); border-radius: var(--radius-lg); overflow: hidden; }
   .hero { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; background: var(--parchment); }
   .hero-empty { display: flex; align-items: center; justify-content: center; }
@@ -163,6 +164,8 @@ ${hidden ? '<meta name="robots" content="noindex">' : ''}
   .cta p { font-size: 15px; line-height: 1.55; color: var(--charcoal); margin: 0 0 16px; }
   .btn { display: flex; align-items: center; justify-content: center; min-height: 52px; background: var(--clay); color: var(--cream); border-radius: var(--radius-pill); font-size: 16px; font-weight: 700; text-decoration: none; }
   .btn:active { transform: scale(0.98); }
+  .btn-2 { margin-top: 10px; width: 100%; border: 1.5px solid var(--tan); background: transparent; color: var(--ink); font-family: var(--font-body); cursor: pointer; }
+  .desk { display: none; font-size: 14px; line-height: 1.5; color: var(--charcoal); margin: 10px 0 0; }
   .fine { font-size: 13px; color: var(--muted); margin-top: 12px; }
 </style>
 </head>
@@ -170,7 +173,6 @@ ${hidden ? '<meta name="robots" content="noindex">' : ''}
 <div class="wrap">
   <div class="top">
     <a class="logo" href="/">nom</a>
-    <a class="open" href="${esc(appUrl)}">Open in Nom</a>
   </div>
   <div class="card">
     ${hero}
@@ -186,9 +188,25 @@ ${hidden ? '<meta name="robots" content="noindex">' : ''}
     <h2>${hidden ? 'See what your friends are cooking' : `See the full ${thing} on Nom`}</h2>
     <p>Save recipes from anywhere, log what you actually cook, and see what your friends would make again.</p>
     <a class="btn" href="${APP_STORE_URL}">Get Nom on the App Store</a>
+    <button class="btn btn-2" id="login" type="button">Already a member? Log in</button>
+    <p class="desk" id="desk">Nom lives on the iPhone. Open this link on your iPhone to see the full ${thing}.</p>
     <p class="fine">${askLine}</p>
   </div>
 </div>
+<script>
+  // Already a member: open Nom on this recipe or cook (Nom asks them to sign in first if needed,
+  // then opens it). No Nom on this phone: go to the App Store instead of Safari's error.
+  // On a computer: Nom lives on the iPhone, so say so.
+  document.getElementById('login').addEventListener('click', function () {
+    var ua = navigator.userAgent;
+    var iOS = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+    if (!iOS) { document.getElementById('desk').style.display = 'block'; return; }
+    var left = false;
+    document.addEventListener('visibilitychange', function () { if (document.hidden) left = true; });
+    window.location.href = ${JSON.stringify(appUrl)};
+    setTimeout(function () { if (!left && !document.hidden) window.location.href = ${JSON.stringify(APP_STORE_URL)}; }, 2000);
+  });
+</script>
 </body>
 </html>`
 }
