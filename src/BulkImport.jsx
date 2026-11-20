@@ -432,7 +432,7 @@ export default function BulkImport({ session, onClose, onFinish, startWithWaitin
       <div style={{ ...card, background: 'var(--parchment)', border: 'none', padding: '16px', marginBottom: '12px' }}>
         <div style={{ ...body, fontSize: '15px', fontWeight: '700', color: 'var(--ink)', marginBottom: '4px' }}>{r.needsLook} {r.needsLook === 1 ? 'needs' : 'need'} a look</div>
         <div style={{ ...body, fontSize: '13px', color: 'var(--charcoal)', lineHeight: 1.5, marginBottom: '12px' }}>Some steps or ingredients might be missing. Fix them now, or find them anytime under Needs a look in your Cookbook.</div>
-        <button onClick={() => onFinish({ needsLook: true })} style={{ ...primaryBtn(false), minHeight: '44px', padding: '11px', fontSize: '14px' }}>Fix them now</button>
+        <button onClick={() => onFinish({ needsLook: true })} style={{ ...primaryBtn(false), minHeight: '44px', padding: '11px', fontSize: '14px', background: 'var(--warm-white)', color: 'var(--clay)', border: '1.5px solid var(--clay)' }}>Fix them now</button>
       </div>
     )}
 
@@ -460,7 +460,10 @@ export default function BulkImport({ session, onClose, onFinish, startWithWaitin
     )}
 
     <div style={{ marginTop: '12px' }}>
-      <button onClick={() => onFinish({ needsLook: false })} style={r.needsLook > 0 ? { ...quietBtn, color: 'var(--charcoal)' } : primaryBtn(false)}>Go to my Cookbook</button>
+      {/* The Cookbook sorts newest first, so the new recipes are right at the top */}
+      <button onClick={() => onFinish({ needsLook: false })} style={r.added > 0 ? primaryBtn(false) : { ...quietBtn, color: 'var(--charcoal)' }}>
+        {r.added > 0 ? `See your new ${r.added === 1 ? 'recipe' : 'recipes'}` : 'Go to my Cookbook'}
+      </button>
     </div>
   </>)
 }
