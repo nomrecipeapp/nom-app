@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { openLink } from './openLink'
 import { supabase } from './supabase'
+import { appleSignInAvailable, isAppleAccount, askAppleForCode } from './appleSignIn'
 import { listBlocked, unblockUser } from './moderation'
 import { IconCheck, IconX } from './icons'
 import { toast, PasswordInput } from './ui'
@@ -160,7 +161,18 @@ export default function Settings({ session, onBack, onOpenImport }) {
     try {
       // delete-account removes the account and then their photos.
       // If it can't be reached, fall back to the old database delete (account only).
-      const { error: fnError } = await supabase.functions.invoke('delete-account', { method: 'POST' })
+      // Signed up with Apple: one more Apple tap gives a code to cut Apple's link (Apple's rule)
+      let body = {}
+      if (appleSignInAvailable() && isAppleAccount(session?.user)) {
+        const apple = await askAppleForCode()
+        if (apple.cancelled) {
+          setDeleteError('Confirm with Apple to finish deleting your account.')
+          setDeleting(false)
+          return
+        }
+        if (apple.code) body = { appleAuthorizationCode: apple.code }
+      }
+      const { error: fnError } = await supabase.functions.invoke('delete-account', { method: 'POST', body })
       if (fnError) {
         console.error('delete-account failed, falling back:', fnError)
         const { error } = await supabase.rpc('delete_user')

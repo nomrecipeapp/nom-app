@@ -203,3 +203,40 @@ export function ShareToFeedToggle({ value, onChange }) {
     </div>
   )
 }
+
+// Apple's "Continue with Apple" button, in Apple's white-with-outline style
+// (their rules: Apple logo, Apple's wording, white/black/outlined only).
+// Only shown in the iPhone app; see appleSignIn.js.
+//   <AppleButton onClick={handleApple} busy={appleBusy} />
+export function AppleButton({ onClick, busy = false, label = 'Continue with Apple' }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={busy}
+      aria-label={label}
+      style={{
+        width: '100%', height: '50px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+        background: '#FFFFFF', color: '#000000', border: '1px solid #000000', borderRadius: 'var(--radius-pill)',
+        fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif',
+        fontSize: '16px', fontWeight: '600', cursor: busy ? 'default' : 'pointer', opacity: busy ? 0.6 : 1,
+      }}
+    >
+      <svg width="16" height="19" viewBox="0 0 17 20" aria-hidden="true">
+        <path fill="#000000" d="M14.04 10.62c-.02-2.28 1.86-3.38 1.95-3.43-1.06-1.55-2.71-1.77-3.3-1.79-1.4-.14-2.74.83-3.45.83-.71 0-1.81-.81-2.97-.79-1.53.02-2.94.89-3.73 2.26-1.59 2.76-.41 6.85 1.14 9.09.76 1.1 1.66 2.33 2.84 2.28 1.14-.05 1.57-.74 2.95-.74 1.38 0 1.77.74 2.97.71 1.23-.02 2.01-1.11 2.76-2.21.87-1.27 1.23-2.5 1.25-2.57-.03-.01-2.39-.92-2.41-3.64zM11.77 3.93c.63-.76 1.05-1.82.94-2.88-.9.04-2 .6-2.65 1.36-.58.67-1.09 1.75-.95 2.79 1.01.08 2.03-.51 2.66-1.27z"/>
+      </svg>
+      {busy ? 'One moment...' : label}
+    </button>
+  )
+}
+
+// "or" line between the Apple button and the email form
+export function OrDivider() {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '18px 0' }}>
+      <div style={{ flex: 1, height: '1px', background: 'var(--tan)' }} />
+      <span style={{ fontSize: '12px', color: 'var(--muted)', fontWeight: '600' }}>or</span>
+      <div style={{ flex: 1, height: '1px', background: 'var(--tan)' }} />
+    </div>
+  )
+}

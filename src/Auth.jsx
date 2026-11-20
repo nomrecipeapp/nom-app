@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { supabase } from './supabase'
 import { IconChevronLeft } from './icons'
-import { PasswordInput } from './ui'
+import { PasswordInput, AppleButton, OrDivider } from './ui'
+import { appleSignInAvailable, signInWithApple } from './appleSignIn'
 
 // Supabase's own error text is technical ("Invalid login credentials"). Say it like a person.
 function friendlyAuthError(error) {
@@ -20,6 +21,19 @@ export default function Auth({ onBack, onSignUp }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [message, setMessage] = useState(null)
+  const [appleBusy, setAppleBusy] = useState(false)
+
+  // Success hands off to App's sign-in listener (Feed, or "Almost there" for someone new)
+  async function handleApple() {
+    setError(null)
+    setMessage(null)
+    setAppleBusy(true)
+    const result = await signInWithApple()
+    if (!result.ok) {
+      setAppleBusy(false)
+      if (result.error) setError(result.error)
+    }
+  }
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -112,6 +126,13 @@ export default function Auth({ onBack, onSignUp }) {
               <div style={{ fontSize: '16px', fontWeight: '700', color: 'var(--ink)', marginBottom: '4px' }}>Reset your password</div>
               <div style={{ fontSize: '13px', color: 'var(--muted)' }}>Enter your email and we'll send you a reset link.</div>
             </div>
+          )}
+
+          {mode === 'login' && appleSignInAvailable() && (
+            <>
+              <AppleButton onClick={handleApple} busy={appleBusy} />
+              <OrDivider />
+            </>
           )}
 
           {/* Form */}

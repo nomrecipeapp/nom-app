@@ -7,7 +7,8 @@ import { canonicalIdFor } from './recipeLink'
 import { importRecipeFromUrl } from './importUrl'
 import { missingStepsReason } from './recipeCheck'
 import { IconCheck, IconChevronDown } from './icons'
-import { PasswordInput } from './ui'
+import { PasswordInput, AppleButton, OrDivider } from './ui'
+import { appleSignInAvailable, signInWithApple, discardEmptyAppleAccount, lastNameFromApple } from './appleSignIn'
 import { shrinkImage } from './shrinkImage'
 import { loadSaved, clearSaved, useSaveState } from './savedState'
 
@@ -99,6 +100,10 @@ export default function Onboarding({ onComplete, session, prefillInviteCode, sta
   const [heardAboutOther, setHeardAboutOther] = useState('')
   const [agreedToTerms, setAgreedToTerms] = useState(false)
   const [avatarUrl, setAvatarUrl] = useState(null)
+  // Signed in with Apple but no Nom profile yet (brand-new person): show "Almost there"
+  // to collect the invite code, username and Terms tick before onboarding carries on.
+  const [needsProfile, setNeedsProfile] = useState(false)
+  const [appleBusy, setAppleBusy] = useState(false)
   const [avatarUploading, setAvatarUploading] = useState(false)
 
   // Invite waitlist (for people without a code)
@@ -122,6 +127,8 @@ export default function Onboarding({ onComplete, session, prefillInviteCode, sta
   const [pausedCode, setPausedCode] = useState(null) // { code, firstName }
   const [pausedEmail, setPausedEmail] = useState(null)
   const [pausedStatus, setPausedStatus] = useState('idle') // idle | sending | done | already | error
+  // Set alongside pausedCode so code that's still running can tell right away
+  const pausedCodeRef = useRef(null)
 
   const codeToCheck = !session && step === 2 && inviteCode.trim().length >= 6 ? inviteCode.trim().toUpperCase() : null
   useEffect(() => {
@@ -145,6 +152,7 @@ export default function Onboarding({ onComplete, session, prefillInviteCode, sta
   }
 
   function resetPausedCode() {
+    pausedCodeRef.current = null
     setPausedCode(null)
     setInviteCode('')
     setPausedStatus('idle')
@@ -173,7 +181,11 @@ export default function Onboarding({ onComplete, session, prefillInviteCode, sta
     let cancelled = false
     const id = session?.user?.id
     const restore = id
-      ? loadSaved(onboardingKey(id)).then(d => {
+      ? supabase.from('profiles').select('id').eq('id', id).maybeSingle().then(({ data: prof, error: profError }) => {
+          if (cancelled) return null
+          if (!profError && !prof) { startProfileStep(session.user); return null }
+          return loadSaved(onboardingKey(id))
+        }).then(d => {
           if (cancelled || !d) return
           const savedStep = [2, 3, 4, 5].includes(d.step) ? d.step : 3
           prevStepRef.current = savedStep // no slide-in when picking back up
@@ -222,10 +234,9 @@ export default function Onboarding({ onComplete, session, prefillInviteCode, sta
     return null
   }
 
-  async function handleCreateAccount() {
-    const validationError = validateStep2()
-    if (validationError) { setAuthError(validationError); return }
-
+  // Looks up the invite code. Returns the invite, or null after showing why it can't be used
+  // (invalid, already used, or friend invites paused).
+  async function findInvite() {
     const { data: invite } = await supabase
       .from('invites').select('id, used_by')
       .eq('code', inviteCode.trim().toUpperCase()).maybeSingle()
@@ -233,14 +244,24 @@ export default function Onboarding({ onComplete, session, prefillInviteCode, sta
     if (!invite) {
       const { data: status } = await supabase.rpc('invite_code_status', { p_code: inviteCode })
       if (status?.status === 'paused') {
-        setPausedCode({ code: inviteCode.trim().toUpperCase(), firstName: status.first_name || null })
+        pausedCodeRef.current = { code: inviteCode.trim().toUpperCase(), firstName: status.first_name || null }
+        setPausedCode(pausedCodeRef.current)
         setPausedStatus('idle')
-        return
+        return null
       }
       setAuthError('That invite code is invalid. Ask a friend for one.')
-      return
+      return null
     }
-    if (invite.used_by) { setAuthError('That invite code has already been used.'); return }
+    if (invite.used_by) { setAuthError('That invite code has already been used.'); return null }
+    return invite
+  }
+
+  async function handleCreateAccount() {
+    const validationError = validateStep2()
+    if (validationError) { setAuthError(validationError); return }
+
+    const invite = await findInvite()
+    if (!invite) return
 
     setAuthLoading(true)
     setAuthError(null)
@@ -272,6 +293,12 @@ export default function Onboarding({ onComplete, session, prefillInviteCode, sta
     })
     if (profileError) console.error('Profile insert error:', profileError.message)
 
+    await finishNewMember(user, invite)
+  }
+
+  // After the profile row exists: sign-up answers, use up the invite, hand out 3 codes, then the photo step.
+  // Shared by email sign-up and "Almost there" (Apple).
+  async function finishNewMember(user, invite) {
     // Saved separately so a problem here can never block the account itself
     const heardAboutValue = heardAbout === 'other'
       ? (heardAboutOther.trim() ? `other: ${heardAboutOther.trim().slice(0, 120)}` : 'other')
@@ -296,6 +323,90 @@ export default function Onboarding({ onComplete, session, prefillInviteCode, sta
     setAccountCreated(true)
     setAuthLoading(false)
     setShowPhotoStep(true)
+  }
+
+  // ── Sign in with Apple ──
+  // Signed in, but no Nom profile yet: fill in what Apple shared and show "Almost there"
+  function startProfileStep(user) {
+    setUserId(user.id)
+    setAccountCreated(false)
+    setFullName(f => f || user.user_metadata?.full_name || lastNameFromApple() || '')
+    setEmail(user.email || '')
+    setAuthError(null)
+    setNeedsProfile(true)
+  }
+
+  // "Continue with Apple" on Create your account
+  async function handleAppleSignup() {
+    setAuthError(null)
+    setAppleBusy(true)
+    const result = await signInWithApple()
+    if (!result.ok) {
+      setAppleBusy(false)
+      if (result.error) setAuthError(result.error)
+      return
+    }
+    const { data: { user } } = await supabase.auth.getUser()
+    const { data: prof } = user ? await supabase.from('profiles').select('id, onboarding_complete').eq('id', user.id).maybeSingle() : { data: null }
+    setAppleBusy(false)
+    if (!user) { setAuthError('Something went wrong signing in with Apple. Please try again.'); return }
+    // Already a member (same email): App takes them to the Feed, or back into onboarding
+    if (prof) { if (!prof.onboarding_complete) { setUserId(user.id); setAccountCreated(true); setStep(3) } return }
+    startProfileStep(user)
+  }
+
+  // "Continue" on Almost there
+  async function handleFinishProfile() {
+    if (!fullName.trim()) { setAuthError('Please enter your name.'); return }
+    if (!username.trim()) { setAuthError('Please choose a username.'); return }
+    if (!agreedToTerms) { setAuthError('Please agree to the Terms and Privacy Policy.'); return }
+    setAuthError(null)
+    setAuthLoading(true)
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { setAuthLoading(false); setAuthError('Something went wrong. Please try again.'); return }
+
+    const invite = await findInvite()
+    if (!invite) {
+      // Friend invites paused: same "Nom is full" screen as email sign-up, after removing the empty account
+      if (pausedCodeRef.current) await leaveAppleSignup({ keepScreen: true })
+      setAuthLoading(false)
+      return
+    }
+
+    const { data: usernameTaken } = await supabase.rpc('username_taken', { p_username: username })
+    if (usernameTaken) { setAuthError('That username is already taken. Try another one.'); setAuthLoading(false); return }
+
+    const { error: profileError } = await supabase.from('profiles').insert({
+      id: user.id,
+      full_name: fullName.trim(),
+      username,
+      email: user.email || null,
+      onboarding_complete: false,
+    })
+    if (profileError) {
+      console.error('Profile insert error:', profileError.message)
+      setAuthError('Something went wrong. Please try again.')
+      setAuthLoading(false)
+      return
+    }
+    setNeedsProfile(false)
+    setStep(2)
+    await finishNewMember(user, invite)
+  }
+
+  // No invite code (or a different Apple ID): remove the empty account, sign out, start over
+  async function leaveAppleSignup({ keepScreen = false } = {}) {
+    setAuthLoading(true)
+    await discardEmptyAppleAccount()
+    setNeedsProfile(false)
+    setUserId(null)
+    setAuthLoading(false)
+    if (!keepScreen) { setAgreedToTerms(false); setStep(1) }
+  }
+
+  async function appleNoCode() {
+    await leaveAppleSignup({ keepScreen: true })
+    openWaitlist()
   }
 
   async function handlePhotoUpload(e) {
@@ -517,6 +628,86 @@ export default function Onboarding({ onComplete, session, prefillInviteCode, sta
     return <div key={step} style={{ position: 'relative', animation: anim }}>{content}</div>
   }
 
+  // ── ALMOST THERE (signed in with Apple, no Nom profile yet) ──
+  // Same invite-only rules as email sign-up: invite code, username and the Terms tick.
+  if (needsProfile && session) return (
+    <div style={{ minHeight: '100vh', background: 'var(--cream)', display: 'flex', flexDirection: 'column', maxWidth: '480px', margin: '0 auto', padding: 'calc(48px + var(--safe-top)) 28px calc(40px + var(--safe-bottom))' }}>
+      <div style={{ fontFamily: 'var(--font-display)', fontSize: '24px', fontWeight: '700', color: 'var(--ink)', marginBottom: '4px' }}>Almost there</div>
+      <div style={{ fontSize: '13px', color: 'var(--muted)', marginBottom: '28px', lineHeight: '1.5' }}>You're signed in with Apple. A few more details and your Cookbook is ready.</div>
+
+      <form onSubmit={e => { e.preventDefault(); if (!authLoading) handleFinishProfile() }}>
+        <div style={{ marginBottom: '14px' }}>
+          <label style={labelStyle}>Your name</label>
+          <input type="text" autoComplete="name" autoCapitalize="words" value={fullName} onChange={e => setFullName(e.target.value)} placeholder="Alex" style={inputStyle} />
+        </div>
+
+        <div style={{ marginBottom: '14px' }}>
+          <label style={labelStyle}>Username</label>
+          <div style={{ position: 'relative' }}>
+            <span style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', fontSize: '14px', color: 'var(--muted)', fontFamily: 'var(--font-body)' }}>@</span>
+            <input type="text" autoComplete="off" autoCapitalize="none" autoCorrect="off" spellCheck={false} value={username} onChange={e => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))} placeholder="alexcooks" style={{ ...inputStyle, paddingLeft: '28px' }} />
+          </div>
+          <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '4px' }}>Letters, numbers, and underscores only</div>
+        </div>
+
+        <div style={{ marginBottom: '14px' }}>
+          <label style={labelStyle}>Invite code</label>
+          <input type="text" autoComplete="off" autoCapitalize="characters" autoCorrect="off" spellCheck={false} value={inviteCode} onChange={e => setInviteCode(e.target.value.trim().toUpperCase())} placeholder="XXXXXXXX" style={{ ...inputStyle, letterSpacing: '0.1em' }} />
+          <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '4px' }}>
+            You need an invite code to join Nom.{' '}
+            <button className="nom-hit" type="button" onClick={appleNoCode} disabled={authLoading} style={{ padding: 0, background: 'none', border: 'none', fontFamily: 'var(--font-body)', fontSize: '11px', fontWeight: '600', color: 'var(--clay)', cursor: 'pointer' }}>No code? Request one</button>
+          </div>
+        </div>
+
+        <div style={{ marginBottom: '20px' }}>
+          <label htmlFor="almost-heard-about" style={labelStyle}>How did you hear about Nom?</label>
+          <div style={{ position: 'relative' }}>
+            <select id="almost-heard-about" value={heardAbout} onChange={e => setHeardAbout(e.target.value)} style={{ ...inputStyle, appearance: 'none', WebkitAppearance: 'none', paddingRight: '44px', color: heardAbout ? 'var(--ink)' : 'var(--muted)', cursor: 'pointer' }}>
+              <option value="" disabled>Choose one</option>
+              {HEARD_ABOUT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+            <span aria-hidden="true" style={{ position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)', display: 'flex', pointerEvents: 'none' }}>
+              <IconChevronDown size={16} strokeWidth={2} />
+            </span>
+          </div>
+          {heardAbout === 'other' && (
+            <input type="text" aria-label="Where did you hear about Nom?" value={heardAboutOther} onChange={e => setHeardAboutOther(e.target.value)} maxLength={120} placeholder="Tell us where" style={{ ...inputStyle, marginTop: '8px' }} />
+          )}
+        </div>
+
+        <label style={{ position: 'relative', display: 'flex', alignItems: 'flex-start', gap: '12px', minHeight: '44px', marginBottom: '16px', cursor: 'pointer' }}>
+          <input type="checkbox" checked={agreedToTerms} onChange={e => setAgreedToTerms(e.target.checked)} style={{ position: 'absolute', opacity: 0, width: 0, height: 0 }} />
+          <span aria-hidden="true" style={{ width: '22px', height: '22px', flexShrink: 0, marginTop: '1px', borderRadius: '6px', border: `1.5px solid ${agreedToTerms ? 'var(--clay)' : 'var(--tan)'}`, background: agreedToTerms ? 'var(--clay)' : 'var(--parchment)', color: 'var(--cream)', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.15s, border-color 0.15s' }}>
+            {agreedToTerms && <IconCheck size={14} strokeWidth={3} />}
+          </span>
+          <span style={{ fontSize: '13px', color: 'var(--charcoal)', lineHeight: '1.5' }}>
+            I agree to the{' '}
+            <a {...linkProps(TERMS_URL)} onClick={e => { e.stopPropagation(); linkProps(TERMS_URL).onClick(e) }} style={{ color: 'var(--clay)', fontWeight: '600', textDecoration: 'underline' }}>Terms and Conditions</a>
+            {' and '}
+            <a {...linkProps(PRIVACY_URL)} onClick={e => { e.stopPropagation(); linkProps(PRIVACY_URL).onClick(e) }} style={{ color: 'var(--clay)', fontWeight: '600', textDecoration: 'underline' }}>Privacy Policy</a>
+          </span>
+        </label>
+
+        {authError && (
+          <div style={{ background: '#FDE8E8', border: '1px solid #F5C0C0', borderRadius: 'var(--radius-md)', padding: '12px 16px', fontSize: '13px', color: '#B85252', marginBottom: '16px' }}>{authError}</div>
+        )}
+
+        {(() => {
+          const off = authLoading || !fullName.trim() || !username || !inviteCode.trim() || !agreedToTerms
+          return (
+            <button type="submit" disabled={off} style={{
+              width: '100%', padding: '15px', background: off ? 'var(--tan)' : 'var(--clay)',
+              color: 'var(--cream)', border: 'none', borderRadius: 'var(--radius-pill)',
+              fontFamily: 'var(--font-body)', fontSize: '15px', fontWeight: '700',
+              cursor: off ? 'not-allowed' : 'pointer', marginBottom: '6px'
+            }}>{authLoading ? 'One moment...' : 'Continue'}</button>
+          )
+        })()}
+      </form>
+      <button type="button" onClick={() => leaveAppleSignup()} disabled={authLoading} style={{ width: '100%', minHeight: '44px', background: 'none', border: 'none', fontFamily: 'var(--font-body)', fontSize: '13px', color: 'var(--muted)', cursor: 'pointer' }}>Not you? <span style={{ color: 'var(--clay)', fontWeight: '600' }}>Start over</span></button>
+    </div>
+  )
+
   // ── STEP 1: WELCOME ──
   // Fits on one screen: the illustration shrinks on smaller iPhones so the buttons never need a scroll
   if (step === 1) return wrap(
@@ -606,6 +797,13 @@ export default function Onboarding({ onComplete, session, prefillInviteCode, sta
 
           <div style={{ fontFamily: 'var(--font-display)', fontSize: '24px', fontWeight: '700', color: 'var(--ink)', marginBottom: '4px' }}>Create your account</div>
           <div style={{ fontSize: '13px', color: 'var(--muted)', marginBottom: '28px' }}>Your Cookbook starts here.</div>
+
+          {appleSignInAvailable() && (
+            <>
+              <AppleButton onClick={handleAppleSignup} busy={appleBusy} />
+              <OrDivider />
+            </>
+          )}
 
           {/* A real form so the keyboard's Go button submits and iPhone offers to save the password */}
           <form onSubmit={e => { e.preventDefault(); if (!(authLoading || !fullName || !username || !email || !password || !agreedToTerms)) handleCreateAccount() }}>
