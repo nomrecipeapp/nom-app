@@ -14,6 +14,8 @@ import { shrinkImage } from './shrinkImage'
 import { TakeSummary, TakeCard, CircleCooksCard, RecipeHeader, RecipeBody, ShareButton } from './RecipeParts'
 import { shareLink, markShared } from './sharedLink'
 import { verdictOptions, scrollToRef, roundIconBtn, shortDate } from './recipeStyle'
+import { TagPicker, CookedWith } from './CookTagParts'
+import { useCookTags, saveCookTags } from './cookTags'
 
 const nuanceCategories = [
   { key: 'flavor', label: 'Flavor' },
@@ -23,9 +25,9 @@ const nuanceCategories = [
 ]
 
 // Your latest cook, labeled with its date.
-const YourTake = forwardRef(function YourTake({ cook, times, onSeeAll }, ref) {
+const YourTake = forwardRef(function YourTake({ cook, times, onSeeAll, cookedWith }, ref) {
   return (
-    <TakeCard ref={ref} label="Your take" sub={`From your latest cook, ${shortDate(cook.cooked_at)}`} cook={cook} footer={
+    <TakeCard ref={ref} label="Your take" sub={`From your latest cook, ${shortDate(cook.cooked_at)}`} cook={cook} cookedWith={cookedWith} footer={
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '14px', paddingTop: '4px', borderTop: '1px solid var(--parchment)' }}>
         <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--charcoal)' }}>You've made this {times === 1 ? 'once' : `${times} times`}</span>
         {times > 1 && (
@@ -36,9 +38,14 @@ const YourTake = forwardRef(function YourTake({ cook, times, onSeeAll }, ref) {
   )
 })
 
-export default function RecipeDetail({ recipe: initialRecipe, session, onBack, onUpdate, onSelectUser }) {
+export default function RecipeDetail({ recipe: initialRecipe, session, onBack, onUpdate, onSelectUser, startLogging = false, initialTagIds }) {
   const [recipe, setRecipe] = useState(initialRecipe)
-  const [logging, setLogging] = useState(false)
+  // "Log it too" opens straight into Log a Cook with the friend already tagged
+  const [logging, setLogging] = useState(startLogging)
+  const [tagIds, setTagIds] = useState(initialTagIds || [])
+  // The friend from "Log it too" stays taggable even if you don't follow them
+  const [extraTaggable] = useState(initialTagIds || [])
+  const [tagRefresh, setTagRefresh] = useState(0)
   const [editing, setEditing] = useState(false)
   const [verdict, setVerdict] = useState(null)
   const [scores, setScores] = useState({ flavor: 0, effort: 0, would_share: 0, true_to_recipe: 0 })
@@ -95,6 +102,16 @@ export default function RecipeDetail({ recipe: initialRecipe, session, onBack, o
   useEffect(() => {
     fetchUserTags()
     fetchMyProfile()
+  }, [])
+
+  // Who each of my cooks was cooked with
+  const cookTags = useCookTags(cooks.map(c => c.id), tagRefresh)
+
+  // Opened from "Log it too": bring the Log a Cook form into view
+  useEffect(() => {
+    if (!startLogging) return
+    const t = setTimeout(() => logFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 350)
+    return () => clearTimeout(t)
   }, [])
 
   // While editing the recipe or a cook, Back (button or swipe) closes the editor instead of leaving
@@ -318,6 +335,8 @@ export default function RecipeDetail({ recipe: initialRecipe, session, onBack, o
     true_to_recipe: cook.true_to_recipe || 0,
     notes: cook.notes || '',
     existingPhotos: cook.photo_urls || [],
+    tagIds: (cookTags[cook.id] || []).map(p => p.id),
+    prevTagIds: (cookTags[cook.id] || []).map(p => p.id),
   })
   setEditCookPhotoFiles([])
   setEditCookPhotoPreviews([])
@@ -361,6 +380,10 @@ async function saveEditCook() {
     }).eq('id', editingCookId)
     if (cookUpdateError) throw new Error(cookUpdateError.message)
 
+    const tagsOk = await saveCookTags({ cookId: editingCookId, recipeId: recipe.id, actorId: session.user.id, nextIds: editCookForm.tagIds, prevIds: editCookForm.prevTagIds })
+    if (!tagsOk) toast("Saved, but couldn't update who you cooked with. Try again?", { icon: null })
+    setTagRefresh(n => n + 1)
+
     await supabase.from('recipes')
       .update({ status: newStatus }).eq('id', recipe.id)
 
@@ -401,7 +424,7 @@ async function saveEditCook() {
 
     const newStatus = verdict === 'never_again' ? 'never_again' : 'cooked'
 
-    const { error: cookError } = await supabase.from('cooks').insert({
+    const { data: newCook, error: cookError } = await supabase.from('cooks').insert({
       user_id: session.user.id,
       recipe_id: recipe.id,
       verdict,
@@ -412,9 +435,14 @@ async function saveEditCook() {
       notes: cookNotes || null,
       photo_urls: photoUrls.length > 0 ? photoUrls : null,
       ...(shareToFeed ? {} : { shared_to_feed: false }),
-    })
+    }).select('id').single()
 
     if (cookError) { setError(cookError.message); setSaving(false); return }
+
+    if (newCook && tagIds.length > 0) {
+      const tagsOk = await saveCookTags({ cookId: newCook.id, recipeId: recipe.id, actorId: session.user.id, nextIds: tagIds })
+      if (!tagsOk) toast("Cook saved, but couldn't tag everyone. Try again from Edit.", { icon: null })
+    }
 
     await supabase.from('recipes')
       .update({ status: newStatus, updated_at: new Date().toISOString() })
@@ -427,9 +455,11 @@ async function saveEditCook() {
     setScores({ flavor: 0, effort: 0, would_share: 0, true_to_recipe: 0 })
     setCookNotes('')
     setShareToFeed(true)
+    setTagIds([])
     setCookPhotoFiles([])
     setCookPhotoPreviews([])
     await fetchCooks()
+    setTagRefresh(n => n + 1)
     onUpdate()
     setSaving(false)
   }
@@ -577,6 +607,8 @@ async function saveEditCook() {
                 ))}
               </div>
             </div>
+
+            <TagPicker myId={session.user.id} value={editCookForm.tagIds} onChange={ids => setEditCookForm(f => ({ ...f, tagIds: ids }))} alsoIds={editCookForm.prevTagIds} />
 
             {/* Notes */}
             <div>
@@ -942,6 +974,10 @@ async function saveEditCook() {
               <textarea value={cookNotes} onChange={e => setCookNotes(e.target.value)} placeholder="What did you tweak? Would you change anything?" rows={3} style={{ width: '100%', padding: '10px 14px', border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-md)', background: 'var(--cream)', fontFamily: 'var(--font-body)', fontSize: '14px', color: 'var(--ink)', outline: 'none', resize: 'vertical' }} />
             </div>
 
+            <div style={{ marginBottom: '24px' }}>
+              <TagPicker myId={session.user.id} value={tagIds} onChange={setTagIds} alsoIds={extraTaggable} />
+            </div>
+
             <div style={{ marginBottom: '20px' }}>
               <ShareToFeedToggle value={shareToFeed} onChange={setShareToFeed} />
             </div>
@@ -950,7 +986,7 @@ async function saveEditCook() {
 
             <div style={{ display: 'flex', gap: '10px' }}>
               <button onClick={logCook} disabled={saving} style={{ flex: 1, padding: '13px', background: saving ? 'var(--tan)' : 'var(--clay)', color: 'var(--cream)', border: 'none', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '600', cursor: saving ? 'not-allowed' : 'pointer' }}>{uploadingPhotos ? 'Uploading photos...' : saving ? 'Saving...' : 'Save cook'}</button>
-              <button onClick={() => { setLogging(false); setError(null); setCookPhotoFiles([]); setCookPhotoPreviews([]) }} style={{ padding: '13px 20px', background: 'transparent', color: 'var(--muted)', border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>Cancel</button>
+              <button onClick={() => { setLogging(false); setError(null); setTagIds([]); setCookPhotoFiles([]); setCookPhotoPreviews([]) }} style={{ padding: '13px 20px', background: 'transparent', color: 'var(--muted)', border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>Cancel</button>
             </div>
           </div>
         )}
@@ -958,7 +994,8 @@ async function saveEditCook() {
         <RecipeBody recipe={recipe} />
 
         {cooks.length > 0 && (
-          <YourTake ref={yourTakeRef} cook={cooks[0]} times={cooks.length} onSeeAll={() => scrollToRef(historyRef)} />
+          <YourTake ref={yourTakeRef} cook={cooks[0]} times={cooks.length} onSeeAll={() => scrollToRef(historyRef)}
+            cookedWith={cookTags[cooks[0].id]?.length ? <CookedWith people={cookTags[cooks[0].id]} onSelectUser={onSelectUser} /> : null} />
         )}
 
         <CircleCooksCard ref={circleRef} circleCooks={circleCooks} friendsCount={circleFriendsCount} onSeeAll={() => setShowCircleModal(true)} onSelectUser={onSelectUser} />
@@ -1037,6 +1074,7 @@ async function saveEditCook() {
                       </div>
                     )}
                     {cook.notes && <div style={{ fontSize: '13px', color: 'var(--charcoal)', fontStyle: 'italic', lineHeight: '1.5' }}>"{cook.notes}"</div>}
+                    <CookedWith people={cookTags[cook.id]} onSelectUser={onSelectUser} style={{ marginTop: '8px' }} />
                   </div>
                 )
               })}

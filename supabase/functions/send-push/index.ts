@@ -49,6 +49,7 @@ function messageFor(type: string, actor: string, recipe: string | null): string 
     case 'comment': return `${actor} commented on your cook${recipe ? ` of ${recipe}` : ''}`
     case 'mention': return `${actor} mentioned you in a comment${recipe ? ` on ${recipe}` : ''}`
     case 'save': return `${actor} saved ${recipe ? `"${recipe}"` : 'a recipe'} from your Cookbook`
+    case 'cook_tag': return `${actor} cooked ${recipe ?? 'something'} with you. Log It Too?`
     default: return null
   }
 }

@@ -8,6 +8,8 @@ import { getHiddenContent, isHidden } from './moderation'
 import LikesModal from './LikesModal'
 import CircleFriendsModal from './CircleFriendsModal'
 import { tap } from './haptics'
+import { CookedWith } from './CookTagParts'
+import { useCookTags } from './cookTags'
 
 const firstName = p => ((p?.full_name || '').trim().split(/\s+/)[0] || p?.username || 'Their')
 
@@ -42,6 +44,8 @@ function SkeletonCard() {
 
 export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave, onGoToSearch, onGoToCookbook, savedScrollY, onScrollChange }) {
   const [feed, setFeed] = useState([])
+  // Who each cook was cooked with (reloads when the Feed refreshes)
+  const feedCookTags = useCookTags(feed.filter(i => i._type === 'cook').map(i => i.id))
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
   const [feedLikes, setFeedLikes] = useState({})
@@ -672,6 +676,7 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
                   {item.notes && (
                     <div style={{ fontSize: '13px', color: 'var(--charcoal)', lineHeight: '1.55', fontStyle: 'italic' }}>"{item.notes}"</div>
                   )}
+                  <CookedWith people={feedCookTags[item.id]} meId={session.user.id} onSelectUser={onSelectUser} style={{ marginTop: item.notes ? '8px' : '2px' }} />
                 </div>
                 {circleBadge(`cook-${item.id}`)}
                 {engagementBar(item, 'cook')}

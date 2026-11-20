@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from './supabase'
 import { LoadError, toast } from './ui'
 import { usePullToRefresh, PullIndicator } from './PullToRefresh'
-import { IconAt, IconBell, IconBookmark, IconCheck, IconComment, IconHeart, IconUserCheck, IconUserPlus } from './icons'
+import { IconAt, IconBell, IconBookmark, IconCheck, IconComment, IconHeart, IconUserCheck, IconUserPlus, IconUsers } from './icons'
 
 const typeConfig = {
   follow_request: {
@@ -25,13 +25,18 @@ const typeConfig = {
     icon: <IconBookmark size={18} />,
     label: (actor, recipeName) => `${actor} saved ${recipeName ? `"${recipeName}"` : 'a recipe'} from your Cookbook`,
   },
+  cook_tag: {
+    icon: <IconUsers size={18} />,
+    label: (actor, recipeName) => `${actor} tagged you in their cook${recipeName ? ` of ${recipeName}` : ''}. Cooked it together?`,
+  },
   mention: {
     icon: <IconAt size={18} />,
     label: (actor, recipeName) => `${actor} mentioned you in a comment${recipeName ? ` on ${recipeName}` : ''}`,
   },
 }
 
-export default function Notifications({ session, onSelectUser, onSelectCook, onSelectSaveCard, onClose, onMarkedRead }) {
+export default function Notifications({ session, onSelectUser, onSelectCook, onSelectSaveCard, onClose, onMarkedRead, onLogItToo }) {
+  const [startingLogId, setStartingLogId] = useState(null)
   const [notifications, setNotifications] = useState([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
@@ -109,12 +114,13 @@ export default function Notifications({ session, onSelectUser, onSelectCook, onS
     if (n.type === 'follow_request' || n.type === 'follow_approved') {
       onClose()
       setTimeout(() => onSelectUser(n.actor_id), 50)
-    } else if ((n.type === 'like' || n.type === 'comment' || n.type === 'mention') && n.target_id && n.target_type === 'cook') {
+    } else if ((n.type === 'like' || n.type === 'comment' || n.type === 'mention' || n.type === 'cook_tag') && n.target_id && n.target_type === 'cook') {
       const { data: cook } = await supabase
         .from('cooks')
         .select('*, recipes(*)')
         .eq('id', n.target_id)
         .single()
+      if (!cook && n.type === 'cook_tag') { toast('That cook was deleted.', { icon: null }); return }
       if (cook) {
         const { data: profile } = await supabase
           .from('profiles')
@@ -178,7 +184,7 @@ export default function Notifications({ session, onSelectUser, onSelectCook, onS
             if (!config) return null
             const actorName = n.actorProfile?.full_name || n.actorProfile?.username || 'Someone'
             const label = config.label(actorName, n.recipeName)
-            const tappable = ['follow_request', 'follow_approved', 'like', 'comment', 'save', 'mention'].includes(n.type)
+            const tappable = ['follow_request', 'follow_approved', 'like', 'comment', 'save', 'mention', 'cook_tag'].includes(n.type)
             return (
               <div
                 key={n.id}
@@ -214,6 +220,20 @@ export default function Notifications({ session, onSelectUser, onSelectCook, onS
                     {label}
                   </div>
                   <div style={{ fontSize: '11px', color: 'var(--muted)' }}>{timeAgo(n.created_at)}</div>
+                  {n.type === 'cook_tag' && n.target_id && onLogItToo && (
+                    <button disabled={startingLogId === n.id} onClick={async e => {
+                      e.stopPropagation()
+                      setStartingLogId(n.id)
+                      const { data: cook } = await supabase.from('cooks').select('*, recipes(*)').eq('id', n.target_id).maybeSingle()
+                      if (!cook) { setStartingLogId(null); toast('That cook was deleted.', { icon: null }); return }
+                      await onLogItToo(cook)
+                      setStartingLogId(null)
+                    }} style={{
+                      marginTop: '8px', minHeight: '32px', padding: '6px 14px', background: 'var(--clay)', color: 'var(--cream)',
+                      border: 'none', borderRadius: 'var(--radius-pill)',
+                      fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600', cursor: 'pointer'
+                    }}>{startingLogId === n.id ? 'One moment...' : 'Log It Too'}</button>
+                  )}
                   {n.type === 'follow_request' && !n._approved && (
                     <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
                       <button onClick={async e => {

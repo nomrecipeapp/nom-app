@@ -4,7 +4,7 @@ import LikesModal from './LikesModal'
 import CircleFriendsModal from './CircleFriendsModal'
 import ModerationSheet, { MoreMenuSheet } from './ModerationSheet'
 import { getHiddenContent, isHidden } from './moderation'
-import { IconCheck, IconChevronRight, IconX, IconPlus } from './icons'
+import { IconCheck, IconChevronRight, IconX, IconPlus, IconUsers } from './icons'
 import FloatingAction from './FloatingAction'
 import { toast, LoadError } from './ui'
 import { useScrollToComments } from './useScrollToComments'
@@ -12,6 +12,8 @@ import { RecipeHeader, RecipeBody, RecipeHero, ShareButton, MoreButton, PersonRo
 import { shareLink, markShared } from './sharedLink'
 import { shortDate, scrollToRef } from './recipeStyle'
 import { tap, success } from './haptics'
+import { CookedWith } from './CookTagParts'
+import { useCookTags, removeMyTag } from './cookTags'
 
 const primaryActionBtn = { width: '100%', padding: '17px', background: 'var(--clay)', color: 'var(--cream)', border: 'none', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)', fontSize: '16px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', boxShadow: '0 6px 18px rgba(196,113,58,0.28)' }
 const quietActionBtn = { width: '100%', padding: '15px', background: 'var(--parchment)', color: 'var(--charcoal)', border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: '600', cursor: 'pointer' }
@@ -33,7 +35,13 @@ function renderCommentBody(body, onSelectUser, profiles) {
   })
 }
 
-export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser, scrollToComments, isOwner, onViewInCookbook }) {
+export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser, scrollToComments, isOwner, onViewInCookbook, onLogItToo }) {
+  // Who this cook was cooked with, and whether that includes me
+  const [tagRefresh, setTagRefresh] = useState(0)
+  const [removingTag, setRemovingTag] = useState(false)
+  const [startingLog, setStartingLog] = useState(false)
+  const cookedWith = useCookTags([cook.id], tagRefresh)[cook.id] || []
+  const iAmTagged = !isOwner && cookedWith.some(p => p.id === session.user.id)
   const [saved, setSaved] = useState(false)
   const [saving, setSaving] = useState(false)
   const [circleCooks, setCircleCooks] = useState([])
@@ -515,6 +523,29 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
             onCircle={() => circleCooks.length > 0 ? scrollToRef(circleRef) : setShowCircleModal(true)} />
         )}
 
+        {iAmTagged && (
+          <div style={{ background: 'var(--warm-white)', border: '1px solid var(--parchment)', borderRadius: 'var(--radius-lg)', padding: '18px 20px', marginBottom: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontWeight: '600', color: 'var(--ink)', marginBottom: '4px' }}>
+              <IconUsers size={16} strokeWidth={2} style={{ color: 'var(--clay)' }} />{firstName || 'A friend'} tagged you in this cook
+            </div>
+            <div style={{ fontSize: '12px', color: 'var(--muted)', marginBottom: '14px' }}>Cooked it together? Add it to your own cooks with your verdict.</div>
+            <button disabled={startingLog} onClick={async () => {
+              if (!onLogItToo) return
+              tap(); setStartingLog(true)
+              await onLogItToo(cook)
+              setStartingLog(false)
+            }} style={{ ...primaryActionBtn, padding: '14px', fontSize: '15px' }}>{startingLog ? 'One moment...' : 'Log It Too'}</button>
+            <button disabled={removingTag} onClick={async () => {
+              setRemovingTag(true)
+              const ok = await removeMyTag(cook.id, session.user.id)
+              setRemovingTag(false)
+              if (!ok) { toast("Couldn't remove you. Try again?", { icon: null }); return }
+              toast("Removed. You're no longer tagged.")
+              setTagRefresh(n => n + 1)
+            }} style={{ width: '100%', minHeight: '44px', marginTop: '6px', background: 'none', border: 'none', fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '600', color: 'var(--muted)', cursor: 'pointer' }}>{removingTag ? 'Removing...' : 'Remove me from this cook'}</button>
+          </div>
+        )}
+
         {/* Main action: right under the title, and floats once you scroll past it */}
         <div ref={saveAnchorRef} style={{ marginBottom: '24px', scrollMarginTop: 'calc(var(--top-bar-h) + 12px)' }}>
         {isOwner && myRecipeId && (
@@ -547,6 +578,7 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
           label={isOwner ? 'Your take' : firstName ? `${firstName}'s take` : 'Their take'}
           sub={`Cooked ${shortDate(cook.cooked_at)}`}
           cook={cook}
+          cookedWith={cookedWith.length > 0 ? <CookedWith people={cookedWith} meId={session.user.id} onSelectUser={onSelectUser} /> : null}
         />
 
         <RecipeBody recipe={recipe} />

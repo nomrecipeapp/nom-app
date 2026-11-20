@@ -46,6 +46,8 @@ Auth/onboarding gating happens at the top of `App.jsx`'s render: `loading` → `
 ### Data model (inferred from Supabase table usage — no migrations checked into this repo)
 Tables queried from the client: `profiles`, `recipes`, `cooks`, `follows`, `notifications`, `comments`, `likes`, `invites`, `recipe_views`. Storage buckets: `avatars`, `recipe-images`, `cook-photos`.
 
+Cook tags (1.0.4): `cook_tags` (cook_id, user_id = who's tagged, tagged_by) powers "Cooked with" and "Log it too". Data helpers in `src/cookTags.js`, UI in `src/CookTagParts.jsx` (different name on purpose: macOS treats CookTags/cookTags as the same file). Rules and the tagged-people read access live in `supabase/sql/2026-11-20-cook-tags.sql`. Notification type `cook_tag`.
+
 Key relationship: a `recipe` is the cookbook entry (title, ingredients, instructions); a `cook` is a logged instance of making it (photo, verdict, ratings, timestamp) and is what shows up in the social feed. `follows` has a `status` column (`'approved'` vs pending) — the app is follow-request-gated, not open-follow, so most friend-content queries check `.eq('status', 'approved')` before showing anything.
 
 Since there are no SQL migrations in-repo, treat the live Supabase schema as the source of truth for column names — grep `src/*.jsx` for `.from('table_name')` and `.select(...)` calls to find current fields in use before adding new columns.

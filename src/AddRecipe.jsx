@@ -1,5 +1,7 @@
 import SectionTextarea from './SectionTextarea'
 import { ShareToFeedToggle } from './ui'
+import { TagPicker } from './CookTagParts'
+import { saveCookTags } from './cookTags'
 import { openLink } from './openLink'
 import { maybeAskForRating } from './rating'
 import { useState, useEffect, useRef } from 'react'
@@ -81,6 +83,7 @@ export default function AddRecipe({ session, onSave, onCancel, onOpenImport, sta
   const [scores, setScores] = useState({ flavor: 0, effort: 0, would_share: 0, true_to_recipe: 0 })
   const [cookNotes, setCookNotes] = useState('')
   const [shareToFeed, setShareToFeed] = useState(true)
+  const [tagIds, setTagIds] = useState([])
 
   // Manual form fields
   const [title, setTitle] = useState('')
@@ -122,6 +125,7 @@ export default function AddRecipe({ session, onSave, onCancel, onOpenImport, sta
         if (d.scores) setScores(d.scores)
         setCookNotes(d.cookNotes || '')
         setShareToFeed(d.shareToFeed !== false)
+        setTagIds(Array.isArray(d.tagIds) ? d.tagIds : [])
         setRestoredDraft(true)
       }
       setDraftReady(true)
@@ -137,7 +141,7 @@ export default function AddRecipe({ session, onSave, onCancel, onOpenImport, sta
   const draft = !draftReady ? null : !hasDraft ? false : {
     open: true, mode, url, recipe: keepableRecipe, importCheck, stepsCheckDismissed,
     title, sourceName, cookTime, prepTime, difficulty, ingredients, instructions, notes,
-    manualLogCook, verdict, scores, cookNotes, shareToFeed,
+    manualLogCook, verdict, scores, cookNotes, shareToFeed, tagIds,
   }
   const finishDraft = useSaveState(draftKey, draft)
 
@@ -161,7 +165,7 @@ export default function AddRecipe({ session, onSave, onCancel, onOpenImport, sta
     setIngredients(''); setInstructions(''); setNotes('')
     setManualLogCook(startLogging); setVerdict(null)
     setScores({ flavor: 0, effort: 0, would_share: 0, true_to_recipe: 0 })
-    setCookNotes(''); setShareToFeed(true)
+    setCookNotes(''); setShareToFeed(true); setTagIds([])
     setCookPhotoFiles([]); setCookPhotoPreviews([])
     setPhotoPreview(null); setDuplicate(null); setError(null); setImportIssue(null)
     setRestoredDraft(false)
@@ -432,7 +436,7 @@ export default function AddRecipe({ session, onSave, onCancel, onOpenImport, sta
         }
         setCookPhotoUploading(false)
       }
-      await supabase.from('cooks').insert({
+      const { data: newCook } = await supabase.from('cooks').insert({
         user_id: session.user.id,
         recipe_id: saved.id,
         verdict,
@@ -443,7 +447,10 @@ export default function AddRecipe({ session, onSave, onCancel, onOpenImport, sta
         notes: cookNotes || null,
         photo_urls: cookPhotoUrls.length > 0 ? cookPhotoUrls : null,
         ...(shareToFeed ? {} : { shared_to_feed: false }),
-      })
+      }).select('id').single()
+      if (newCook && tagIds.length > 0) {
+        await saveCookTags({ cookId: newCook.id, recipeId: saved.id, actorId: session.user.id, nextIds: tagIds })
+      }
       success()
       maybeAskForRating(session.user.id, verdict)
       endDraft()
@@ -563,6 +570,7 @@ export default function AddRecipe({ session, onSave, onCancel, onOpenImport, sta
           placeholder="What did you tweak? Would you change anything?" rows={3}
           style={{ ...inputStyle, resize: 'vertical' }} />
       </div>
+      <TagPicker myId={session.user.id} value={tagIds} onChange={setTagIds} />
       <ShareToFeedToggle value={shareToFeed} onChange={setShareToFeed} />
     </div>
   )

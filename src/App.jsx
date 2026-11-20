@@ -29,6 +29,7 @@ import { takeSharedLinks } from './shareInbox'
 import { takeOpenLink } from './sharedLink'
 import { addWaitingLinks } from './waitingLinks'
 import { toast } from './ui'
+import { myRecipeForCook } from './cookTags'
 
 // Screens that always show a Back button, even when opened from a shared link
 const DETAIL_SCREENS = ['recipe', 'socialRecipe', 'friendRecipeDetail', 'friendProfile', 'followList', 'notifications']
@@ -79,6 +80,12 @@ export default function App() {
   const [feedScrollY, setFeedScrollY] = useState(0)
   const [cookbookScrollY, setCookbookScrollY] = useState(0)
   const [cookbookKey, setCookbookKey] = useState(0)
+  // "Log it too": open my copy of the recipe straight into Log a Cook, with the friend tagged
+  const [logItToo, setLogItToo] = useState(null) // { recipeId, tagIds }
+  // RecipeDetail only reads it when it opens, so clear it right after (Back later won't reopen the form)
+  useEffect(() => {
+    if (logItToo && screen === 'recipe') setLogItToo(null)
+  }, [logItToo, screen])
   const [prefillInviteCode, setPrefillInviteCode] = useState('')
   const [startOnWaitlist, setStartOnWaitlist] = useState(false)
   const [startOnSignup, setStartOnSignup] = useState(false)
@@ -564,6 +571,17 @@ export default function App() {
     setScreen('friendRecipeDetail')
   }
 
+  async function startLogItToo(cook) {
+    const mine = await myRecipeForCook(cook, session.user.id)
+    if (!mine) { toast("Couldn't add this recipe to your Cookbook. Try again?", { icon: null }); return }
+    pushNav()
+    window.scrollTo(0, 0)
+    setCookbookKey(k => k + 1)
+    setLogItToo({ recipeId: mine.id, tagIds: [cook.user_id] })
+    setSelectedRecipe(mine)
+    setScreen('recipe')
+  }
+
   function goToSocialRecipe(cook, toComments = false) {
     pushNav()
     window.scrollTo(0, 0)
@@ -750,6 +768,7 @@ export default function App() {
           onSelectSaveCard={(recipe, toComments) => goToFriendRecipeDetail(recipe, toComments)}
           onClose={() => { goBack(); fetchUnreadCount(session.user.id) }}
           onMarkedRead={() => fetchUnreadCount(session.user.id)}
+          onLogItToo={startLogItToo}
         />
       )}
 
@@ -810,8 +829,11 @@ export default function App() {
 
       {screen === 'recipe' && selectedRecipe && (
         <RecipeDetail
+          key={selectedRecipe.id}
           recipe={selectedRecipe}
           session={session}
+          startLogging={logItToo?.recipeId === selectedRecipe.id}
+          initialTagIds={logItToo?.recipeId === selectedRecipe.id ? logItToo.tagIds : undefined}
           onBack={goBack}
           onSelectUser={goToFriendProfile}
           onUpdate={async () => {
@@ -830,6 +852,7 @@ export default function App() {
           scrollToComments={scrollToComments}
           isOwner={selectedCook.user_id === session.user.id}
           onViewInCookbook={goToRecipeFromId}
+          onLogItToo={startLogItToo}
         />
       )}
 

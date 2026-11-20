@@ -92,7 +92,7 @@ export function TakeSummary({ cooks, circleCooks, friendsWithIt, avatars, onYour
 }
 
 // A cook's verdict, sliders and notes in one card. Used for "Your take" and a friend's cook.
-export const TakeCard = forwardRef(function TakeCard({ label, sub, cook, footer }, ref) {
+export const TakeCard = forwardRef(function TakeCard({ label, sub, cook, footer, cookedWith }, ref) {
   const v = verdictOptions.find(o => o.value === cook.verdict)
   const filled = SLIDERS.filter(s => cook[s.key])
   return (
@@ -101,6 +101,7 @@ export const TakeCard = forwardRef(function TakeCard({ label, sub, cook, footer 
         <div style={{ minWidth: 0 }}>
           <div style={sectionLabelStyle}>{label}</div>
           {sub && <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '4px' }}>{sub}</div>}
+          {cookedWith && <div style={{ marginTop: '6px' }}>{cookedWith}</div>}
         </div>
         {v && <div style={{ background: v.bg, border: '1px solid ' + v.border, borderRadius: '100px', padding: '4px 10px', fontSize: '11px', fontWeight: '700', color: v.color, whiteSpace: 'nowrap' }}>{v.label}</div>}
       </div>

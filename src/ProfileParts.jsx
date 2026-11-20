@@ -1,5 +1,7 @@
 // Shared pieces of the profile page, so your profile and a friend's look the same.
 import { IconChevronRight } from './icons'
+import { CookedWith } from './CookTagParts'
+import { useCookTags } from './cookTags'
 
 const verdictShort = {
   would_make_again: { bg: '#EEF4E5', border: '#7A8C6E', color: '#4A5E42', label: 'Again' },
@@ -220,6 +222,7 @@ function Engagement({ eng, onComment }) {
 
 // Cooks and saves, newest first. onOpenComments(item) opens that cook or save straight to its comments.
 export function ActivityList({ items, engagement, onSelectCook, onSelectSave, onOpenComments }) {
+  const cookTags = useCookTags(items.filter(i => i._type !== 'save').map(i => i.id))
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
       {items.map(item => {
@@ -274,6 +277,7 @@ export function ActivityList({ items, engagement, onSelectCook, onSelectSave, on
               <div style={{ fontFamily: 'var(--font-display)', fontSize: '16px', fontWeight: '500', color: 'var(--ink)', marginBottom: '4px' }}>{recipe.title}</div>
               <div style={{ fontSize: '11px', color: 'var(--muted)' }}>{new Date(item.cooked_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
               {item.notes && <div style={{ fontSize: '13px', color: 'var(--charcoal)', lineHeight: '1.55', fontStyle: 'italic', marginTop: '8px' }}>"{item.notes}"</div>}
+              <CookedWith people={cookTags[item.id]} style={{ marginTop: '8px' }} />
             </div>
             <Engagement eng={eng} onComment={() => onOpenComments && onOpenComments(item)} />
           </div>
