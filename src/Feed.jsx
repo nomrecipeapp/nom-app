@@ -2,6 +2,7 @@ import PeopleYouMightKnow from './PeopleYouMightKnow'
 import { cookNumber, ordinal } from './cookStats'
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from './supabase'
+import { PROFILE_FIELDS } from './profileData'
 import { LoadError, toast } from './ui'
 import { getHiddenContent, isHidden } from './moderation'
 import LikesModal from './LikesModal'
@@ -169,7 +170,7 @@ export default function Feed({ session, onSelectCook, onSelectUser, onSelectSave
       supabase.from('cooks').select('*, recipes(*)').in('user_id', ids).order('cooked_at', { ascending: false }).limit(40),
       // Bulk-imported recipes stay out of the Feed (imports are silent)
       supabase.from('recipes').select('*').in('user_id', ids).eq('status', 'want_to_make').is('imported_from', null).order('created_at', { ascending: false }).limit(40),
-      supabase.from('profiles').select('*').in('id', ids),
+      supabase.from('profiles').select(PROFILE_FIELDS).in('id', ids),
       getHiddenContent(session.user.id),
     ])
     if (cooksError || savesError) { feedFailed(); return }

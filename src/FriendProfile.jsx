@@ -10,7 +10,7 @@ import CircleFriendsModal from './CircleFriendsModal'
 import { canonicalSpellings, recipeTags, sortTags, hasTag, tagKey } from './tags'
 import { StatusSwitch, SortPill } from './CookbookTools'
 import { FollowCounts, StatsStrip, ProfileTabs, StatsLists, ActivityList } from './ProfileParts'
-import { fetchActivity, recentByRecipe } from './profileData'
+import { fetchActivity, recentByRecipe, PROFILE_FIELDS } from './profileData'
 
 const FILTERS = ['All', 'Want to Make', 'Cooked', 'Never Again']
 const SORT_OPTIONS = ['Newest', 'Oldest', 'A to Z', 'Favorites', 'Friends Have It']
@@ -275,7 +275,7 @@ export default function FriendProfile({ userId, session, onSelectCook, onSelectS
 
   async function fetchProfile() {
     setLoadError(false)
-    const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single()
+    const { data, error } = await supabase.from('profiles').select(PROFILE_FIELDS).eq('id', userId).single()
     // PGRST116 = no such profile (handled as "not available"); anything else is a load problem
     if (error && error.code !== 'PGRST116') setLoadError(true)
     if (data) setProfile(data)

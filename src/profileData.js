@@ -1,5 +1,9 @@
 // Data for a profile's Activity tab, shared by your profile and a friend's.
 
+// The only profile fields the app reads. Never select('*') on profiles: the table
+// also holds private columns (email, sign-up answers) that only Admin may see.
+export const PROFILE_FIELDS = 'id, full_name, username, avatar_url, is_private'
+
 // Cooks and Want to Make saves, newest first, plus like and comment counts for each.
 export async function fetchActivity(supabase, userId, profile) {
   const [{ data: cooks }, { data: saves }] = await Promise.all([

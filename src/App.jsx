@@ -174,7 +174,7 @@ export default function App() {
     async function handlePendingShare() {
       if (pendingCookId) {
         const { data: cook } = await supabase
-          .from('cooks').select('*, recipes(*), profiles(*)')
+          .from('cooks').select('*, recipes(*), profiles(id, full_name, username, avatar_url, is_private)')
           .eq('id', pendingCookId).single()
         if (!cook) return
         setPendingCookId(null)

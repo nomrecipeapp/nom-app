@@ -1,6 +1,7 @@
 import PeopleYouMightKnow from './PeopleYouMightKnow'
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from './supabase'
+import { PROFILE_FIELDS } from './profileData'
 import { getHiddenContent } from './moderation'
 import { IconX, IconChevronDown } from './icons'
 import { LoadError, confirmSheet, toast } from './ui'
@@ -196,7 +197,7 @@ export default function Search({ session, onSelectUser, onSelectSave, onSelectCo
 
     const [mine, peopleRes, hidden, followsRes] = await Promise.all([
       findRecipes(b => b.eq('user_id', session.user.id), safe),
-      supabase.from('profiles').select('*')
+      supabase.from('profiles').select(PROFILE_FIELDS)
         .or(`username.ilike.%${safe}%,full_name.ilike.%${safe}%`)
         .neq('id', session.user.id).limit(MAX_ROWS),
       getHiddenContent(session.user.id),

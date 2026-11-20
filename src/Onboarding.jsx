@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { linkProps } from './openLink'
 import { WHATS_NEW_VERSION } from './WhatsNew'
 import { supabase } from './supabase'
+import { PROFILE_FIELDS } from './profileData'
 import { canonicalIdFor } from './recipeLink'
 import { importRecipeFromUrl } from './importUrl'
 import { missingStepsReason } from './recipeCheck'
@@ -191,13 +192,10 @@ export default function Onboarding({ onComplete, session, prefillInviteCode, sta
     setAuthLoading(true)
     setAuthError(null)
 
-    const { data: existingUsername } = await supabase
-      .from('profiles').select('id').eq('username', username).maybeSingle()
-    if (existingUsername) { setAuthError('That username is already taken. Try another one.'); setAuthLoading(false); return }
-
-    const { data: existingEmail } = await supabase
-      .from('profiles').select('id').eq('email', email).maybeSingle()
-    if (existingEmail) { setAuthError('An account with this email already exists. Try logging in instead.'); setAuthLoading(false); return }
+    // Asked through a small database function: people who aren't signed in yet can't read profiles.
+    // (Taken emails are caught by Supabase itself in signUp below.)
+    const { data: usernameTaken } = await supabase.rpc('username_taken', { p_username: username })
+    if (usernameTaken) { setAuthError('That username is already taken. Try another one.'); setAuthLoading(false); return }
 
     const { data, error } = await supabase.auth.signUp({ email, password })
     if (error) {
@@ -272,7 +270,7 @@ export default function Onboarding({ onComplete, session, prefillInviteCode, sta
     latestSearchRef.current = query
     if (query.trim().length < 2) { setSearchResults([]); setSearchDone(false); return }
     const { data } = await supabase
-      .from('profiles').select('*')
+      .from('profiles').select(PROFILE_FIELDS)
       .or(`full_name.ilike.%${query.trim()}%,username.ilike.%${query.trim()}%`)
       .neq('id', userId).limit(5)
     // Ignore answers to older searches that arrive after a newer one

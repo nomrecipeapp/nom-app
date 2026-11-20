@@ -7,7 +7,7 @@ import { shrinkImage } from './shrinkImage'
 import { unregisterPush } from './push'
 import { LoadError } from './ui'
 import { FollowCounts, StatsStrip, ProfileTabs, StatsSkeleton, StatsLists, ActivityList } from './ProfileParts'
-import { fetchActivity, recentByRecipe } from './profileData'
+import { fetchActivity, recentByRecipe, PROFILE_FIELDS } from './profileData'
 
 export default function Profile({ session, onBack, onSelectRecipe, onSelectCook, onSelectSave, onViewFollowList, externalEditing, onEditingDone, onViewCookbook, onAddRecipe, onLogNewCook }) {
   const [profile, setProfile] = useState({ full_name: '', username: '', avatar_url: null })
@@ -55,7 +55,7 @@ export default function Profile({ session, onBack, onSelectRecipe, onSelectCook,
 
   async function fetchProfile() {
     const { data, error } = await supabase
-      .from('profiles').select('*').eq('id', session.user.id).single()
+      .from('profiles').select(PROFILE_FIELDS).eq('id', session.user.id).single()
     if (data) setProfile(data)
     const ok = !(error && error.code !== 'PGRST116')
     if (ok) setProfileLoaded(true)
