@@ -701,8 +701,8 @@ export default function Onboarding({ onComplete, session, prefillInviteCode, sta
         )}
         {!importedRecipe && (
           <button onClick={() => { wantsImportRef.current = true; setStep(5) }} style={{ width: '100%', marginTop: '20px', padding: '14px 16px', background: 'var(--warm-white)', border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-md)', textAlign: 'left', cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
-            <div style={{ fontSize: '14px', fontWeight: '700', color: 'var(--ink)', marginBottom: '2px' }}>Bring your recipes</div>
-            <div style={{ fontSize: '12px', color: 'var(--muted)', lineHeight: 1.45 }}>Move a whole library from Paprika or a list of links. We'll start right after this.</div>
+            <div style={{ fontSize: '14px', fontWeight: '700', color: 'var(--ink)', marginBottom: '2px' }}>Add recipes in bulk</div>
+            <div style={{ fontSize: '12px', color: 'var(--muted)', lineHeight: 1.45 }}>Have a ton of saved recipes you're ready to bring into Nom? Bring them over in bulk from Paprika or a list of links. We'll start right after this.</div>
           </button>
         )}
       </div>

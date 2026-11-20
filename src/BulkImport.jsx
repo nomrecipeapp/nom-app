@@ -264,7 +264,7 @@ export default function BulkImport({ session, onClose, onFinish, startWithWaitin
   )
 
   if (stage === 'source') return frame(<>
-    <Header title="Bring your recipes" sub="Move your recipes into Nom from another app or a list of links. They come in as Want to Make and stay private to your Cookbook." onBack={onClose} />
+    <Header title="Add recipes in bulk" sub="Have a ton of saved recipes you&apos;re ready to bring into Nom? Bring them over in bulk from Paprika or a list of links. They come in as Want to Make." onBack={onClose} />
     <div style={{ ...body, fontSize: '11px', fontWeight: '700', color: 'var(--charcoal)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '8px' }}>Where are your recipes?</div>
     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
       {SOURCES.map(s => (

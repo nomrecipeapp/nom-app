@@ -382,7 +382,7 @@ export default function Cookbook({ session, onAddRecipe, onOpenImport, onSelectR
       title: 'Your Cookbook starts here',
       body: 'Save a recipe from any website, TikTok or Instagram, or snap a page from a cookbook.',
       primary: add,
-      ...(onOpenImport ? { secondary: { label: 'Bring your recipes from another app', onClick: () => onOpenImport() } } : {})
+      ...(onOpenImport ? { secondary: { label: 'Add recipes in bulk', onClick: () => onOpenImport() } } : {})
     }
   }
 

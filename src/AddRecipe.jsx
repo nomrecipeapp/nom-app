@@ -961,8 +961,8 @@ export default function AddRecipe({ session, onSave, onCancel, onOpenImport, sta
             textAlign: 'left', cursor: 'pointer', fontFamily: 'var(--font-body)'
           }}>
             <span style={{ flex: 1 }}>
-              <span style={{ display: 'block', fontSize: '14px', fontWeight: '700', color: 'var(--ink)' }}>Bring your recipes</span>
-              <span style={{ display: 'block', fontSize: '12px', color: 'var(--muted)', marginTop: '2px' }}>Move lots at once from Paprika or a list of links</span>
+              <span style={{ display: 'block', fontSize: '14px', fontWeight: '700', color: 'var(--ink)' }}>Add recipes in bulk</span>
+              <span style={{ display: 'block', fontSize: '12px', color: 'var(--muted)', marginTop: '2px', lineHeight: 1.45 }}>Have a ton of saved recipes you're ready to bring into Nom? Bring them over in bulk from Paprika or a list of links.</span>
             </span>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 6l6 6-6 6" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
           </button>
