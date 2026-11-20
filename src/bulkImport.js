@@ -145,7 +145,7 @@ export async function fetchLink(url) {
     const data = await res.json().catch(() => ({}))
     if (res.status === 429 || data.limitReached) return { limitReached: true }
     if (data.recipe) return { recipe: data.recipe, hints: { sourceSteps: data.source_steps || 0 } }
-    if (data.blocked) return { failed: 'blocked' }
+    // Blocked sites still go on to step 3: Spoonacular can often read pages that turn our server away
   } catch { /* fall through to the AI */ }
 
   // 2. TikTok and Instagram captions
