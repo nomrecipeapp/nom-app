@@ -1,4 +1,15 @@
 {
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["748YZ93889.com.nomrecipeapp.nom"],
+        "components": [
+          { "/": "/r/*", "comment": "Shared recipe" },
+          { "/": "/c/*", "comment": "Shared cook" }
+        ]
+      }
+    ]
+  },
   "webcredentials": {
     "apps": ["748YZ93889.com.nomrecipeapp.nom"]
   }

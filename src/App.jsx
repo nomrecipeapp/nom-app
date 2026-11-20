@@ -26,6 +26,7 @@ import { tap } from './haptics'
 import WhatsNew from './WhatsNew'
 import { setupPush, clearBadge } from './push'
 import { takeSharedLinks } from './shareInbox'
+import { takeOpenLink } from './sharedLink'
 import { addWaitingLinks } from './waitingLinks'
 import { toast } from './ui'
 
@@ -213,6 +214,26 @@ export default function App() {
     return () => { document.removeEventListener('visibilitychange', onVisible); timers.forEach(clearTimeout) }
   }, [session?.user?.id, onboardingComplete])
 
+  // Shareable links (1.0.4): a nomrecipeapp.com/r/<id> or /c/<id> link tapped on the iPhone
+  // opens Nom (see SceneDelegate.swift). Hand it to the same code that opens ?recipe= / ?cook= links.
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return
+    const timers = []
+    const check = () => takeOpenLink().then(link => {
+      if (!link) return
+      if (link.kind === 'cook') setPendingCookId(link.id)
+      else setPendingRecipeId(link.id)
+    })
+    function onVisible() {
+      if (document.visibilityState !== 'visible') return
+      check()
+      timers.push(setTimeout(check, 500), setTimeout(check, 1500))
+    }
+    check()
+    document.addEventListener('visibilitychange', onVisible)
+    return () => { document.removeEventListener('visibilitychange', onVisible); timers.forEach(clearTimeout) }
+  }, [])
+
   // Push notifications: set up once per signed-in member (after onboarding).
   // Tapping a push opens Notifications; the ref keeps that pointing at the latest screen state.
   const openNotificationsRef = useRef(null)
@@ -241,8 +262,13 @@ export default function App() {
       if (pendingCookId) {
         const { data: cook } = await supabase
           .from('cooks').select('*, recipes(*), profiles(id, full_name, username, avatar_url, is_private)')
-          .eq('id', pendingCookId).single()
-        if (!cook) return
+          .eq('id', pendingCookId).maybeSingle()
+        if (!cook) {
+          setPendingCookId(null)
+          window.history.replaceState({}, '', window.location.pathname)
+          toast("Couldn't open that cook. It may be private or removed.")
+          return
+        }
         setPendingCookId(null)
         window.history.replaceState({}, '', window.location.pathname)
         if (cook.user_id === session.user.id) {
@@ -262,8 +288,13 @@ export default function App() {
       } else if (pendingRecipeId) {
         const { data: recipe } = await supabase
           .from('recipes').select('*')
-          .eq('id', pendingRecipeId).single()
-        if (!recipe) return
+          .eq('id', pendingRecipeId).maybeSingle()
+        if (!recipe) {
+          setPendingRecipeId(null)
+          window.history.replaceState({}, '', window.location.pathname)
+          toast("Couldn't open that recipe. It may be private or removed.")
+          return
+        }
         setPendingRecipeId(null)
         window.history.replaceState({}, '', window.location.pathname)
         if (recipe.user_id === session.user.id) {

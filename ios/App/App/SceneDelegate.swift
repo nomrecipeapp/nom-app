@@ -7,6 +7,9 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
         guard let windowScene = scene as? UIWindowScene else { return }
         ShareInbox.moveToApp()
+        // Nom opened from a shared recipe or cook link while it was closed
+        for activity in connectionOptions.userActivities { OpenLink.save(activity.webpageURL) }
+        for context in connectionOptions.urlContexts { OpenLink.save(context.url) }
 
         window = UIWindow(windowScene: windowScene)
         window?.rootViewController = CAPBridgeViewController()
@@ -17,10 +20,12 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
     func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
         ShareInbox.moveToApp()
+        for context in URLContexts { OpenLink.save(context.url) }
         SceneDelegateProxy.shared.scene(scene, openURLContexts: URLContexts)
     }
 
     func scene(_ scene: UIScene, continue userActivity: NSUserActivity) {
+        OpenLink.save(userActivity.webpageURL)
         SceneDelegateProxy.shared.scene(scene, continue: userActivity)
     }
 
@@ -53,5 +58,28 @@ enum ShareInbox {
               let json = String(data: data, encoding: .utf8) else { return }
         UserDefaults.standard.set(json, forKey: appKey)
         shared.removeObject(forKey: groupKey)
+    }
+}
+
+// Shareable links (1.0.4): www.nomrecipeapp.com/r/<id> and /c/<id> open Nom (Universal Links),
+// and so do nomrecipeapp://r/<id> and nomrecipeapp://c/<id> from the preview page's Open in Nom.
+// Saves "recipe:<id>" or "cook:<id>" where the Preferences plugin reads it ("CapacitorStorage." + key);
+// src/sharedLink.js picks it up and App.jsx opens that recipe or cook.
+enum OpenLink {
+    static let appKey = "CapacitorStorage.nom-open-link"
+
+    static func save(_ url: URL?) {
+        guard let url = url else { return }
+        var parts = url.pathComponents.filter { $0 != "/" }
+        // nomrecipeapp://r/<id>: the "r" is the host, not part of the path
+        if url.scheme == "nomrecipeapp", let host = url.host { parts.insert(host, at: 0) }
+        guard parts.count >= 2, UUID(uuidString: parts[1]) != nil else { return }
+        let kind: String
+        switch parts[0] {
+        case "r": kind = "recipe"
+        case "c": kind = "cook"
+        default: return
+        }
+        UserDefaults.standard.set("\(kind):\(parts[1].lowercased())", forKey: appKey)
     }
 }

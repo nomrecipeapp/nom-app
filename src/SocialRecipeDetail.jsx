@@ -9,6 +9,7 @@ import FloatingAction from './FloatingAction'
 import { toast, LoadError } from './ui'
 import { useScrollToComments } from './useScrollToComments'
 import { RecipeHeader, RecipeBody, RecipeHero, ShareButton, MoreButton, PersonRow, TakeSummary, TakeCard, CircleCooksCard } from './RecipeParts'
+import { shareLink } from './sharedLink'
 import { shortDate, scrollToRef } from './recipeStyle'
 import { tap, success } from './haptics'
 
@@ -474,7 +475,7 @@ export default function SocialRecipeDetail({ cook, session, onBack, onSelectUser
       <div style={{ padding: '24px 24px 0' }}>
         <RecipeHeader recipe={recipe}>
           <ShareButton onClick={() => {
-            const fullUrl = `https://www.nomrecipeapp.com/?cook=${cook.id}`
+            const fullUrl = shareLink('cook', cook.id)
             if (navigator.share) {
               navigator.share({ title: recipe.title, url: fullUrl }).catch(() => {})
             } else {

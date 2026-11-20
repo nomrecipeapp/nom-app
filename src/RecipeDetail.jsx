@@ -12,6 +12,7 @@ import { tap, success } from './haptics'
 import { shrinkImage } from './shrinkImage'
 
 import { TakeSummary, TakeCard, CircleCooksCard, RecipeHeader, RecipeBody, ShareButton } from './RecipeParts'
+import { shareLink } from './sharedLink'
 import { verdictOptions, scrollToRef, roundIconBtn, shortDate } from './recipeStyle'
 
 const nuanceCategories = [
@@ -857,7 +858,7 @@ async function saveEditCook() {
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--charcoal)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z" /></svg>
           </button>
           <ShareButton onClick={() => {
-            const fullUrl = `https://www.nomrecipeapp.com/?recipe=${recipe.id}`
+            const fullUrl = shareLink('recipe', recipe.id)
             if (navigator.share) {
               navigator.share({ title: recipe.title, url: fullUrl }).catch(() => {})
             } else {

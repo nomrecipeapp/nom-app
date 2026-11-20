@@ -9,6 +9,7 @@ import FloatingAction from './FloatingAction'
 import { toast, LoadError } from './ui'
 import { useScrollToComments } from './useScrollToComments'
 import { RecipeHeader, RecipeBody, RecipeHero, ShareButton, MoreButton, PersonRow, TakeSummary, CircleCooksCard } from './RecipeParts'
+import { shareLink } from './sharedLink'
 import { scrollToRef } from './recipeStyle'
 import { tap, success } from './haptics'
 
@@ -550,7 +551,7 @@ async function fetchCircleCookPhotos() {
       <div style={{ padding: '24px 24px 0' }}>
         <RecipeHeader recipe={recipe}>
           <ShareButton onClick={() => {
-            const fullUrl = `https://www.nomrecipeapp.com/?recipe=${recipe.id}`
+            const fullUrl = shareLink('recipe', recipe.id)
             if (navigator.share) {
               navigator.share({ title: recipe.title, url: fullUrl }).catch(() => {})
             } else {

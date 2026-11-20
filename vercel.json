@@ -1,4 +1,18 @@
 {
+  "rewrites": [
+    { "source": "/r/:id", "destination": "/api/share?kind=recipe&id=:id" },
+    { "source": "/c/:id", "destination": "/api/share?kind=cook&id=:id" },
+    {
+      "source": "/",
+      "has": [{ "type": "query", "key": "recipe", "value": "(?<rid>[0-9a-fA-F-]{36})" }],
+      "destination": "/api/share?kind=recipe&id=:rid"
+    },
+    {
+      "source": "/",
+      "has": [{ "type": "query", "key": "cook", "value": "(?<cid>[0-9a-fA-F-]{36})" }],
+      "destination": "/api/share?kind=cook&id=:cid"
+    }
+  ],
   "headers": [
     {
       "source": "/.well-known/apple-app-site-association",
