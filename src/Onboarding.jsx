@@ -67,6 +67,8 @@ function ProgressDots({ step }) {
 }
 
 export default function Onboarding({ onComplete, session, prefillInviteCode, startOnWaitlist, startOnSignup }) {
+  // Set when someone picks Bring your recipes on the first-recipe step; Nom opens the import after onboarding
+  const wantsImportRef = useRef(false)
   const [searchDone, setSearchDone] = useState(false)
   const [step, setStep] = useState(session ? 3 : (prefillInviteCode || startOnSignup) ? 2 : 1)
   const prevStepRef = useRef(step)
@@ -321,7 +323,8 @@ export default function Onboarding({ onComplete, session, prefillInviteCode, sta
 
   async function finishOnboarding() {
     const id = userId || session?.user?.id
-    if (!id) { onComplete(); return }
+    const next = wantsImportRef.current ? 'import' : undefined
+    if (!id) { onComplete(next); return }
 
     try {
       const { error: profileError } = await supabase
@@ -333,7 +336,7 @@ export default function Onboarding({ onComplete, session, prefillInviteCode, sta
 
       await supabase.auth.updateUser({ data: { onboarding_complete: true, whats_new_seen: WHATS_NEW_VERSION } })
 
-      onComplete()
+      onComplete(next)
     } catch (e) {
       console.error('Onboarding completion error:', e)
       // Try one more time silently, then let them through anyway
@@ -341,7 +344,7 @@ export default function Onboarding({ onComplete, session, prefillInviteCode, sta
         await supabase.from('profiles').update({ onboarding_complete: true }).eq('id', id)
         await supabase.auth.updateUser({ data: { onboarding_complete: true, whats_new_seen: WHATS_NEW_VERSION } })
       } catch {}
-      onComplete()
+      onComplete(next)
     }
   }
 
@@ -695,6 +698,12 @@ export default function Onboarding({ onComplete, session, prefillInviteCode, sta
             {importedRecipe.source_name && <div style={{ fontSize: '11px', color: 'var(--muted)' }}>{importedRecipe.source_name}</div>}
             {importedRecipe.mightBeMissingSteps && <div style={{ fontSize: '12px', color: 'var(--charcoal)', marginTop: '8px', lineHeight: 1.45 }}>This one might be missing some steps. You can check the original and fill them in from the recipe later.</div>}
           </div>
+        )}
+        {!importedRecipe && (
+          <button onClick={() => { wantsImportRef.current = true; setStep(5) }} style={{ width: '100%', marginTop: '20px', padding: '14px 16px', background: 'var(--warm-white)', border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-md)', textAlign: 'left', cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
+            <div style={{ fontSize: '14px', fontWeight: '700', color: 'var(--ink)', marginBottom: '2px' }}>Bring your recipes</div>
+            <div style={{ fontSize: '12px', color: 'var(--muted)', lineHeight: 1.45 }}>Move a whole library from Paprika or a list of links. We'll start right after this.</div>
+          </button>
         )}
       </div>
       <StepFooter

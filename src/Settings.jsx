@@ -7,7 +7,7 @@ import { toast, PasswordInput } from './ui'
 import { shrinkImage } from './shrinkImage'
 import { unregisterPush } from './push'
 
-export default function Settings({ session, onBack }) {
+export default function Settings({ session, onBack, onOpenImport }) {
   const [profile, setProfile] = useState({ full_name: '', username: '', email: '', is_private: true })
   const [loading, setLoading] = useState(true)
 
@@ -559,6 +559,7 @@ export default function Settings({ session, onBack }) {
                 {[
                   { q: 'What ways can I add a recipe?', a: 'Three ways: paste a URL from any recipe website, scan a photo of a recipe (cookbook, screenshot, handwritten card), or enter it manually.' },
                   { q: 'Which recipe websites work with link import?', a: 'Most food blogs and recipe sites work, like Serious Eats, Bon Appétit and Smitten Kitchen. A few sites, like NYT Cooking and Food Network, sometimes block apps from reading their recipes. If a link doesn\'t work, take a screenshot and use From photo instead. If a site only brings in the title and photo, you can fill in the rest on the review screen.' },
+                  { q: 'Can I bring my recipes from another app?', a: 'Yes. Go to Settings, then Bring your recipes. Paprika files bring your whole library over at once, photos included, with no limit. You can also paste a list of links, up to 40 at a time. Links count toward the daily link limit, and any extra are saved for the next day.' },
                   { q: 'Can I scan a recipe from a photo?', a: 'Yes. Take a screenshot or photo of any recipe: a cookbook page, a website, or even a handwritten card. If the recipe spans multiple pages, select all the photos at once and Nom will combine them.' },
                   { q: 'Can I import from TikTok or Instagram?', a: 'Yes! Paste a TikTok or Instagram link into "From link" and Nom pulls the recipe from the post\'s caption. It reads the caption, not the video, so it works best when the creator wrote the recipe out. If the recipe is only in the video, or the post won\'t load, screenshot it and use "From photo" instead.' },
                 ].map((item, i, arr) => (
@@ -576,6 +577,17 @@ export default function Settings({ session, onBack }) {
             </div>
 
             <Divider />
+
+          {/* Bring your recipes */}
+          {onOpenImport && (
+            <>
+              <div style={{ background: 'var(--cream)' }}>
+                <SectionHeader label="Your recipes" />
+                <SettingsRow iconBg="var(--parchment)" icon={<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1.5v7.5M4 6l3 3 3-3" stroke="var(--charcoal)" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/><path d="M2 10v1.5a1 1 0 001 1h8a1 1 0 001-1V10" stroke="var(--charcoal)" strokeWidth="1.3" strokeLinecap="round"/></svg>} label="Bring your recipes" onTap={onOpenImport} />
+              </div>
+              <Divider />
+            </>
+          )}
 
           {/* Help & Legal */}
           <div style={{ background: 'var(--cream)' }}>

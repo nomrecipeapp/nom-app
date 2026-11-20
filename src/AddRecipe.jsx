@@ -51,7 +51,7 @@ function importLimitCopy(limit) {
   }
 }
 
-export default function AddRecipe({ session, onSave, onCancel, startLogging = false }) {
+export default function AddRecipe({ session, onSave, onCancel, onOpenImport, startLogging = false }) {
   const [mode, setMode] = useState('url')
   const [importIssue, setImportIssue] = useState(null) // { blocked, site } when a link can't be read
   const [importCheck, setImportCheck] = useState(null) // hints for the 'might be missing some steps' card
@@ -951,6 +951,21 @@ export default function AddRecipe({ session, onSave, onCancel, startLogging = fa
               cursor: loading ? 'not-allowed' : 'pointer', marginTop: '8px'
             }}>{loading ? 'Saving...' : 'Save to My Cookbook'}</button>
           </div>
+        )}
+
+        {/* Bulk import lives one tap away from the single-recipe tabs */}
+        {!recipe && !loading && !startLogging && onOpenImport && (
+          <button onClick={onOpenImport} style={{
+            width: '100%', marginTop: '20px', padding: '14px 16px', display: 'flex', alignItems: 'center', gap: '12px',
+            background: 'transparent', border: '1.5px dashed var(--tan)', borderRadius: 'var(--radius-md)',
+            textAlign: 'left', cursor: 'pointer', fontFamily: 'var(--font-body)'
+          }}>
+            <span style={{ flex: 1 }}>
+              <span style={{ display: 'block', fontSize: '14px', fontWeight: '700', color: 'var(--ink)' }}>Bring your recipes</span>
+              <span style={{ display: 'block', fontSize: '12px', color: 'var(--muted)', marginTop: '2px' }}>Move lots at once from Paprika or a list of links</span>
+            </span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 6l6 6-6 6" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          </button>
         )}
 
       </div>

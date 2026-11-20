@@ -452,6 +452,8 @@ async function saveEditCook() {
         instructions: editForm.instructions.trim() || null,
         notes: editForm.notes.trim() || null,
         tags: editForm.tags || [],
+        // Saving an edit takes an imported recipe off the Needs a look list
+        needs_look: null,
         updated_at: new Date().toISOString()
       }).eq('id', recipe.id).select().single()
     if (error) { setEditError(error.message); setSavingEdit(false); return }

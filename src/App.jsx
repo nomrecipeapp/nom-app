@@ -7,6 +7,7 @@ import Onboarding from './Onboarding'
 import Profile from './Profile'
 import Cookbook from './Cookbook'
 import AddRecipe from './AddRecipe'
+import BulkImport from './BulkImport'
 import RecipeDetail from './RecipeDetail'
 import SocialRecipeDetail from './SocialRecipeDetail'
 import Feed from './Feed'
@@ -27,7 +28,11 @@ import { setupPush, clearBadge } from './push'
 // Screens that always show a Back button, even when opened from a shared link
 const DETAIL_SCREENS = ['recipe', 'socialRecipe', 'friendRecipeDetail', 'friendProfile', 'followList', 'notifications']
 // Screens where swiping from the left edge should never go back (forms you could lose)
-const NO_SWIPE_SCREENS = ['feed', 'add', 'resetPassword']
+const NO_SWIPE_SCREENS = ['feed', 'add', 'import', 'resetPassword']
+
+// Vercel preview links (and localhost) skip the App Store landing page so you can
+// sign in and test a branch on the web. nomrecipeapp.com always shows the landing page.
+const IS_PREVIEW_SITE = typeof window !== 'undefined' && !/(^|\.)nomrecipeapp\.com$/i.test(window.location.hostname)
 
 export default function App() {
   const [session, setSession] = useState(null)
@@ -39,10 +44,14 @@ export default function App() {
   const [showLogin, setShowLogin] = useState(false)
   // Public homepage for every logged-out web visitor, invite links (?code=) included.
   // Sign-in and sign-up happen in the iOS app for now; the homepage only points to the App Store.
-  const [showLanding, setShowLanding] = useState(() => !Capacitor.isNativePlatform())
+  const [showLanding, setShowLanding] = useState(() => !Capacitor.isNativePlatform() && !IS_PREVIEW_SITE)
   const [screen, setScreen] = useState('feed')
   // Add Recipe can open with "Log a Cook right away" already switched on (from Profile's empty state)
   const [addStartLogging, setAddStartLogging] = useState(false)
+  // Bring your recipes: true when opened from the "links waiting" card
+  const [importFromWaiting, setImportFromWaiting] = useState(false)
+  // Cookbook opens on Needs a look after an import with recipes to fix
+  const [cookbookNeedsLook, setCookbookNeedsLook] = useState(false)
   const [selectedRecipe, setSelectedRecipe] = useState(null)
   const [selectedCook, setSelectedCook] = useState(null)
   const [selectedUserId, setSelectedUserId] = useState(null)
@@ -114,7 +123,7 @@ export default function App() {
         setScreen('feed')
         navRef.current = []
         setNavDepth(0)
-        setShowLanding(!Capacitor.isNativePlatform())
+        setShowLanding(!Capacitor.isNativePlatform() && !IS_PREVIEW_SITE)
         return
       }
       // During signup, the SIGNED_IN event fires before we finish onboarding
@@ -385,7 +394,9 @@ export default function App() {
       setOnboardingComplete(true)
       setSettingsVisible(false)
       setMidSignup(false)
-      setScreen('feed')
+      // Picked Bring your recipes during onboarding: go straight there (Back lands on the Feed)
+      setImportFromWaiting(false)
+      setScreen(action === 'import' ? 'import' : 'feed')
     }
   }
 
@@ -514,9 +525,10 @@ export default function App() {
   if (!onboardingComplete) return <Onboarding session={session} onComplete={handleOnboardingComplete} prefillInviteCode={prefillInviteCode} />
 
   function openAdd(startLogging = false) { pushNav(); setAddStartLogging(startLogging); setScreen('add') }
+  function openImport(fromWaiting = false) { setSettingsVisible(false); pushNav(); setImportFromWaiting(fromWaiting); setScreen('import') }
 
-  const hideNav = screen === 'add'
-  const hideTopBar = screen === 'add' || screen === 'resetPassword'
+  const hideNav = screen === 'add' || screen === 'import'
+  const hideTopBar = screen === 'add' || screen === 'import' || screen === 'resetPassword'
 
   const screenTitles = {
     cookbook: 'Cookbook',
@@ -625,7 +637,7 @@ export default function App() {
             <div style={{ fontFamily: 'var(--font-display)', fontSize: '17px', fontWeight: '600', color: 'var(--ink)' }}>Settings</div>
             <div style={{ width: '72px' }} />
           </div>
-          <Settings session={session} onBack={() => setSettingsVisible(false)} />
+          <Settings session={session} onBack={() => setSettingsVisible(false)} onOpenImport={() => openImport()} />
         </div>
       )}
 
@@ -649,7 +661,7 @@ export default function App() {
           session={session}
           startLogging={addStartLogging}
           onSave={(recipe, logCookNow) => {
-            setCookbookKey(k => k + 1)
+            setCookbookNeedsLook(false); setCookbookKey(k => k + 1)
             setCookbookScrollY(0)
             if (logCookNow && recipe) {
               // Back from the new recipe goes to the Cookbook
@@ -661,6 +673,22 @@ export default function App() {
             }
           }}
           onCancel={goBack}
+          onOpenImport={() => openImport()}
+        />
+      )}
+
+      {screen === 'import' && (
+        <BulkImport
+          session={session}
+          startWithWaiting={importFromWaiting}
+          onClose={goBack}
+          onFinish={({ needsLook }) => {
+            setCookbookNeedsLook(needsLook)
+            setCookbookDefaultFilter('All')
+            setCookbookKey(k => k + 1)
+            setCookbookScrollY(0)
+            goTab('cookbook')
+          }}
         />
       )}
 
@@ -674,7 +702,7 @@ export default function App() {
           onViewFollowList={(type) => goToFollowList(session.user.id, type)}
           externalEditing={profileEditing}
           onEditingDone={() => setProfileEditing(false)}
-          onViewCookbook={(filter) => { setCookbookDefaultFilter(filter); setCookbookKey(k => k + 1); goTab('cookbook') }}
+          onViewCookbook={(filter) => { setCookbookDefaultFilter(filter); setCookbookNeedsLook(false); setCookbookKey(k => k + 1); goTab('cookbook') }}
           onAddRecipe={() => openAdd()}
           onLogNewCook={() => openAdd(true)}
         />
@@ -774,6 +802,8 @@ export default function App() {
           session={session}
           onAddRecipe={() => openAdd()}
           defaultFilter={cookbookDefaultFilter}
+          startOnNeedsLook={cookbookNeedsLook}
+          onOpenImport={openImport}
           visible={screen === 'cookbook'}
           onSelectRecipe={(recipe) => {
             pushNav()

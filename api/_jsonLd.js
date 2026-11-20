@@ -23,29 +23,35 @@ function findRecipe(node) {
   return null
 }
 
-// Returns a trimmed recipe object, or null if the page has none
-export function extractJsonLdRecipe(html) {
+// The page's full recipe data (every field), or null if the page has none.
+// Used by bulk import, which turns it into a recipe without the AI.
+export function findJsonLdRecipeNode(html) {
   const blocks = html.match(/<script[^>]*application\/ld\+json[^>]*>[\s\S]*?<\/script>/gi) || []
   for (const block of blocks) {
     const json = block.replace(/^<script[^>]*>/i, '').replace(/<\/script>$/i, '').trim()
     let parsed
     try { parsed = JSON.parse(json) } catch { continue }
     const r = findRecipe(parsed)
-    if (r && (r.recipeIngredient || r.ingredients)) {
-      return {
-        name: r.name,
-        description: r.description,
-        author: r.author,
-        recipeYield: r.recipeYield,
-        prepTime: r.prepTime,
-        cookTime: r.cookTime,
-        totalTime: r.totalTime,
-        recipeIngredient: r.recipeIngredient || r.ingredients,
-        recipeInstructions: r.recipeInstructions,
-      }
-    }
+    if (r && (r.recipeIngredient || r.ingredients)) return r
   }
   return null
+}
+
+// Returns a trimmed recipe object, or null if the page has none
+export function extractJsonLdRecipe(html) {
+  const r = findJsonLdRecipeNode(html)
+  if (!r) return null
+  return {
+    name: r.name,
+    description: r.description,
+    author: r.author,
+    recipeYield: r.recipeYield,
+    prepTime: r.prepTime,
+    cookTime: r.cookTime,
+    totalTime: r.totalTime,
+    recipeIngredient: r.recipeIngredient || r.ingredients,
+    recipeInstructions: r.recipeInstructions,
+  }
 }
 
 // How many steps the page's recipe data lists (HowToStep, HowToSection or plain

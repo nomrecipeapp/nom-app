@@ -5,8 +5,9 @@ export async function fetchActivity(supabase, userId, profile) {
   const [{ data: cooks }, { data: saves }] = await Promise.all([
     supabase.from('cooks').select('*, recipes(*)').eq('user_id', userId)
       .order('cooked_at', { ascending: false }).limit(30),
+    // Bulk-imported recipes are left out of Activity, like the Feed (imports are silent)
     supabase.from('recipes').select('*').eq('user_id', userId)
-      .eq('status', 'want_to_make').order('created_at', { ascending: false }).limit(30),
+      .eq('status', 'want_to_make').is('imported_from', null).order('created_at', { ascending: false }).limit(30),
   ])
 
   const cookItems = (cooks || []).filter(c => c.recipes).map(c => ({ ...c, profiles: profile, _type: 'cook', _date: c.cooked_at }))

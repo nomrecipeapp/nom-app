@@ -9,6 +9,7 @@ import { AlphabetRail, TagSheet, FilterSheet, StatusSwitch, SortPill } from './C
 import BottomBar, { BAR_SHADOW } from './BottomBar'
 import { letterOf } from './letters'
 import { confirmSheet, toast, LoadError } from './ui'
+import { getWaitingLinks, setWaitingLinks, onWaitingLinksChange } from './waitingLinks'
 
 const FILTERS = ['All', 'Want to Make', 'Cooked', 'Never Again']
 
@@ -27,7 +28,7 @@ const verdictStyle = {
 const SORT_OPTIONS = ['Newest', 'Oldest', 'A to Z', 'Favorites', 'Friends Have It']
 const SORT_LABELS = { 'Friends Have It': 'Friends have it' }
 
-export default function Cookbook({ session, onAddRecipe, onSelectRecipe, defaultFilter, onSelectUser, savedScrollY, onScrollChange, visible }) {
+export default function Cookbook({ session, onAddRecipe, onOpenImport, onSelectRecipe, defaultFilter, startOnNeedsLook = false, onSelectUser, savedScrollY, onScrollChange, visible }) {
   const [recipes, setRecipes] = useState([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
@@ -52,6 +53,14 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
   const loadedRef = useRef(false)
   const listRef = useRef(null)
   const [railTop, setRailTop] = useState(null)
+  // Bulk import: recipes that came in looking incomplete, and pasted links saved for tomorrow
+  const [needsLookOnly, setNeedsLookOnly] = useState(startOnNeedsLook)
+  const [waitingCount, setWaitingCount] = useState(0)
+
+  useEffect(() => {
+    getWaitingLinks(session.user.id).then(list => setWaitingCount(list.length))
+    return onWaitingLinksChange(setWaitingCount)
+  }, [session.user.id])
 
   // Load once, then quietly reload every time you come back to the Cookbook,
   // so edits (tags, titles, deletes) show up without restarting the app
@@ -203,7 +212,11 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
     String(r.ingredients ?? '').toLowerCase().includes(q) ||
     String(r.notes ?? '').toLowerCase().includes(q)
 
+  const needsLookCount = recipes.filter(r => r.needs_look).length
+  const showNeedsLook = needsLookOnly && needsLookCount > 0
+
   const sorted = recipes
+    .filter(r => !showNeedsLook || r.needs_look)
     .filter(r => {
       if (filter === 'Want to Make') return r.status === 'want_to_make'
       if (filter === 'Cooked') return r.status === 'cooked'
@@ -368,7 +381,8 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
       icon: IconBook,
       title: 'Your Cookbook starts here',
       body: 'Save a recipe from any website, TikTok or Instagram, or snap a page from a cookbook.',
-      primary: add
+      primary: add,
+      ...(onOpenImport ? { secondary: { label: 'Bring your recipes from another app', onClick: () => onOpenImport() } } : {})
     }
   }
 
@@ -445,7 +459,37 @@ export default function Cookbook({ session, onAddRecipe, onSelectRecipe, default
         {/* Status switch + one swipe row of tags */}
         <div style={{ padding: '12px 20px 0' }}>
 
+          {/* Pasted links that didn't fit in yesterday's limit */}
+          {waitingCount > 0 && onOpenImport && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'var(--warm-white)', border: '1px solid var(--parchment)', borderRadius: 'var(--radius-md)', padding: '10px 6px 10px 14px', marginBottom: '12px' }}>
+              <div style={{ flex: 1, fontSize: '13px', color: 'var(--charcoal)', lineHeight: 1.4 }}>
+                <span style={{ fontWeight: '700', color: 'var(--ink)' }}>{waitingCount} {waitingCount === 1 ? 'link' : 'links'} waiting</span>
+              </div>
+              <button onClick={() => onOpenImport(true)} style={{ minHeight: '36px', padding: '0 14px', background: 'var(--clay)', color: 'var(--cream)', border: 'none', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '700', cursor: 'pointer', whiteSpace: 'nowrap' }}>Bring them in</button>
+              <button className="nom-hit" aria-label="Clear waiting links" onClick={async () => {
+                if (!(await confirmSheet({ title: `Clear ${waitingCount} waiting ${waitingCount === 1 ? 'link' : 'links'}?`, message: "They won't be imported.", confirmLabel: 'Clear', destructive: true }))) return
+                setWaitingLinks(session.user.id, [])
+              }} style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer' }}>
+                <IconX size={14} strokeWidth={2.2} />
+              </button>
+            </div>
+          )}
+
           <StatusSwitch options={FILTERS} value={filter} onChange={setFilter} />
+
+          {/* Imported recipes that look incomplete. Goes away once they're all fixed */}
+          {needsLookCount > 0 && (
+            <button onClick={() => setNeedsLookOnly(v => !v)} aria-pressed={showNeedsLook} style={{
+              display: 'inline-flex', alignItems: 'center', gap: '6px', minHeight: '32px', padding: '0 12px', marginBottom: '10px',
+              borderRadius: 'var(--radius-pill)', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '700',
+              border: showNeedsLook ? 'none' : '1.5px solid var(--ember)',
+              background: showNeedsLook ? 'var(--clay)' : '#FBF0E6',
+              color: showNeedsLook ? 'var(--cream)' : 'var(--rust)',
+            }}>
+              Needs a look ({needsLookCount})
+              {showNeedsLook && <IconX size={11} strokeWidth={2.4} />}
+            </button>
+          )}
 
           {/* Filters first (every tag lives in its sheet), then the tags themselves */}
           <div className="nom-hscroll" style={{
