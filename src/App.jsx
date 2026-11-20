@@ -8,7 +8,7 @@ import Profile from './Profile'
 import Cookbook from './Cookbook'
 import AddRecipe from './AddRecipe'
 import { loadSaved, addDraftKey } from './savedState'
-import BulkImport from './BulkImport'
+import BulkImport from './BulkImport.jsx' // full name: on a Mac, './BulkImport' can pick up bulkImport.js
 import RecipeDetail from './RecipeDetail'
 import SocialRecipeDetail from './SocialRecipeDetail'
 import Feed from './Feed'
