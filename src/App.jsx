@@ -31,8 +31,9 @@ import { toast } from './ui'
 
 // Screens that always show a Back button, even when opened from a shared link
 const DETAIL_SCREENS = ['recipe', 'socialRecipe', 'friendRecipeDetail', 'friendProfile', 'followList', 'notifications']
-// Screens where swiping from the left edge should never go back (forms you could lose)
-const NO_SWIPE_SCREENS = ['feed', 'add', 'import', 'resetPassword']
+// Screens where swiping from the left edge should never go back (forms you could lose).
+// Add is allowed: its draft is saved, so swiping away keeps it for next time.
+const NO_SWIPE_SCREENS = ['feed', 'import', 'resetPassword']
 
 // Vercel preview links (and localhost) skip the App Store landing page so you can
 // sign in and test a branch on the web. nomrecipeapp.com always shows the landing page.
