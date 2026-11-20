@@ -7,6 +7,7 @@ import Onboarding from './Onboarding'
 import Profile from './Profile'
 import Cookbook from './Cookbook'
 import AddRecipe from './AddRecipe'
+import { loadSaved, addDraftKey } from './savedState'
 import BulkImport from './BulkImport'
 import RecipeDetail from './RecipeDetail'
 import SocialRecipeDetail from './SocialRecipeDetail'
@@ -46,6 +47,8 @@ export default function App() {
   // Sign-in and sign-up happen in the iOS app for now; the homepage only points to the App Store.
   const [showLanding, setShowLanding] = useState(() => !Capacitor.isNativePlatform() && !IS_PREVIEW_SITE)
   const [screen, setScreen] = useState('feed')
+  const screenRef = useRef('feed')
+  useEffect(() => { screenRef.current = screen }, [screen])
   // Add Recipe can open with "Log a Cook right away" already switched on (from Profile's empty state)
   const [addStartLogging, setAddStartLogging] = useState(false)
   // Bring your recipes: true when opened from the "links waiting" card
@@ -146,6 +149,24 @@ export default function App() {
 
     return () => subscription.unsubscribe()
   }, [])
+
+  // Keep your place: if iOS closed Nom while someone was in the middle of adding a
+  // recipe (in the last day), open Add again on launch. AddRecipe fills the draft back in.
+  const draftCheckedRef = useRef(null)
+  useEffect(() => {
+    const userId = session?.user?.id
+    if (!userId || !onboardingComplete || draftCheckedRef.current === userId) return
+    draftCheckedRef.current = userId
+    if (pendingRecipeId || pendingCookId) return
+    loadSaved(addDraftKey(userId)).then(d => {
+      if (!d || d.open === false || Date.now() - d.savedAt > 24 * 60 * 60 * 1000) return
+      // Only if they're still on the first screen (nothing tapped yet); Back lands on the Feed
+      if (screenRef.current !== 'feed' || navRef.current.length > 0) return
+      resetNav([{ screen: 'feed', scrollY: 0 }])
+      setAddStartLogging(false)
+      setScreen('add')
+    })
+  }, [session?.user?.id, onboardingComplete])
 
   // Push notifications: set up once per signed-in member (after onboarding).
   // Tapping a push opens Notifications; the ref keeps that pointing at the latest screen state.

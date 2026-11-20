@@ -12,6 +12,7 @@ import { PRESET_TAGS, tagChoices, addTag, hasTag, tagKey } from './tags'
 import { tap, success } from './haptics'
 import { missingStepsReason } from './recipeCheck'
 import { shrinkImage } from './shrinkImage'
+import { loadSaved, saveState, useSaveState, addDraftKey } from './savedState'
 
 const verdictOptions = [
   { value: 'would_make_again', label: 'Would Make Again', sub: 'A keeper', bg: '#EEF4E5', border: '#7A8C6E', color: '#4A5E42' },
@@ -95,6 +96,78 @@ export default function AddRecipe({ session, onSave, onCancel, onOpenImport, sta
     fetchUserTags()
     refreshImportStatus()
   }, [])
+
+  // ── Keep your place: save the draft on the phone so it survives iOS closing Nom ──
+  const draftKey = addDraftKey(session.user.id)
+  const [draftReady, setDraftReady] = useState(false)
+  const [restoredDraft, setRestoredDraft] = useState(false)
+  useEffect(() => {
+    let cancelled = false
+    loadSaved(draftKey).then(d => {
+      if (cancelled) return
+      if (d) {
+        setMode(d.mode || 'url')
+        setUrl(d.url || '')
+        setRecipe(d.recipe || null)
+        setImportCheck(d.importCheck || null)
+        setStepsCheckDismissed(!!d.stepsCheckDismissed)
+        setTitle(d.title || ''); setSourceName(d.sourceName || ''); setCookTime(d.cookTime || '')
+        setPrepTime(d.prepTime || ''); setDifficulty(d.difficulty || ''); setIngredients(d.ingredients || '')
+        setInstructions(d.instructions || ''); setNotes(d.notes || '')
+        setManualLogCook(!!d.manualLogCook)
+        setVerdict(d.verdict || null)
+        if (d.scores) setScores(d.scores)
+        setCookNotes(d.cookNotes || '')
+        setShareToFeed(d.shareToFeed !== false)
+        setRestoredDraft(true)
+      }
+      setDraftReady(true)
+    })
+    return () => { cancelled = true }
+  }, [draftKey])
+
+  const hasDraft = !!(url.trim() || recipe || title.trim() || sourceName.trim() || cookTime.trim() || prepTime.trim()
+    || difficulty || ingredients.trim() || instructions.trim() || notes.trim() || cookNotes.trim() || verdict)
+  // Picked photos can't be kept (iOS only lends us the file), and a local preview link won't work after a restart
+  const keepableRecipe = recipe && typeof recipe.image_url === 'string' && recipe.image_url.startsWith('blob:')
+    ? { ...recipe, image_url: null } : recipe
+  const draft = !draftReady ? null : !hasDraft ? false : {
+    open: true, mode, url, recipe: keepableRecipe, importCheck, stepsCheckDismissed,
+    title, sourceName, cookTime, prepTime, difficulty, ingredients, instructions, notes,
+    manualLogCook, verdict, scores, cookNotes, shareToFeed,
+  }
+  const finishDraft = useSaveState(draftKey, draft)
+
+  // Leaving Add without Save or Cancel (for example to Add recipes in bulk) keeps the draft
+  // for next time, but marks it closed so a restart doesn't jump back into Add
+  const draftRef = useRef(null)
+  useEffect(() => { draftRef.current = draft })
+  const draftFinishedRef = useRef(false)
+  useEffect(() => () => {
+    if (!draftFinishedRef.current && draftRef.current) saveState(draftKey, { ...draftRef.current, open: false })
+  }, [draftKey])
+
+  function endDraft() {
+    draftFinishedRef.current = true
+    finishDraft()
+  }
+
+  function startOver() {
+    setMode('url'); setUrl(''); setRecipe(null); setImportCheck(null); setStepsCheckDismissed(false)
+    setTitle(''); setSourceName(''); setCookTime(''); setPrepTime(''); setDifficulty('')
+    setIngredients(''); setInstructions(''); setNotes('')
+    setManualLogCook(startLogging); setVerdict(null)
+    setScores({ flavor: 0, effort: 0, would_share: 0, true_to_recipe: 0 })
+    setCookNotes(''); setShareToFeed(true)
+    setCookPhotoFiles([]); setCookPhotoPreviews([])
+    setPhotoPreview(null); setDuplicate(null); setError(null); setImportIssue(null)
+    setRestoredDraft(false)
+  }
+
+  function cancelAdd() {
+    endDraft()
+    onCancel()
+  }
 
   // Link imports take a few seconds: rotate the progress message while they run (photo import does its own)
   const linkImporting = loading && mode === 'url' && !recipe
@@ -355,9 +428,11 @@ export default function AddRecipe({ session, onSave, onCancel, onOpenImport, sta
       })
       success()
       maybeAskForRating(session.user.id, verdict)
+      endDraft()
       onSave(saved, true)
     } else {
       success()
+      endDraft()
       onSave()
     }
     setLoading(false)
@@ -715,20 +790,30 @@ export default function AddRecipe({ session, onSave, onCancel, onOpenImport, sta
     </div>
   )
 
+  // A moment while the saved draft loads, so the empty form doesn't flash first
+  if (!draftReady) return <div style={{ minHeight: '100vh', background: 'var(--cream)' }} />
+
   return (
     <div style={{ minHeight: '100vh', background: 'var(--cream)', padding: '24px', paddingTop: 'calc(24px + var(--safe-top))', paddingBottom: 'calc(60px + var(--safe-bottom))' }}>
       {/* Solid strip behind the iPhone status bar so content doesn't scroll under the clock */}
       <div style={{ position: 'fixed', top: 0, left: 0, right: 0, height: 'var(--safe-top)', background: 'var(--cream)', zIndex: 150 }} />
       <div style={{ maxWidth: '480px', margin: '0 auto' }}>
 
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '32px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: restoredDraft && hasDraft ? '12px' : '32px' }}>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: '24px', fontWeight: '500', color: 'var(--ink)' }}>Add recipe</div>
-          <button onClick={onCancel} style={{
+          <button onClick={cancelAdd} style={{
             padding: '8px 16px', background: 'transparent', color: 'var(--muted)',
             border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-pill)',
             fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600', cursor: 'pointer'
           }}>Cancel</button>
         </div>
+
+        {restoredDraft && hasDraft && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '20px', fontSize: '13px', color: 'var(--muted)' }}>
+            <span>Picked up where you left off.</span>
+            <button className="nom-hit" onClick={() => { tap(); startOver() }} style={{ background: 'none', border: 'none', padding: 0, fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: '600', color: 'var(--clay)', cursor: 'pointer' }}>Start over</button>
+          </div>
+        )}
 
         {!recipe && (
           <div style={{ display: 'flex', background: 'var(--parchment)', borderRadius: 'var(--radius-pill)', padding: '4px', marginBottom: '28px' }}>
@@ -760,7 +845,7 @@ export default function AddRecipe({ session, onSave, onCancel, onOpenImport, sta
                 <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--clay)', marginBottom: '4px' }}>Already in your Cookbook</div>
                 <div style={{ fontSize: '12px', color: 'var(--charcoal)', marginBottom: '10px' }}>"{duplicate.title}" is already saved.</div>
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <button onClick={onCancel} style={{ flex: 1, padding: '8px', background: 'var(--clay)', color: 'var(--cream)', border: 'none', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}>Go to Cookbook</button>
+                  <button onClick={cancelAdd} style={{ flex: 1, padding: '8px', background: 'var(--clay)', color: 'var(--cream)', border: 'none', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}>Go to Cookbook</button>
                   <button onClick={() => { setDuplicate(null); importFromUrl(true) }} style={{ flex: 1, padding: '8px', background: 'transparent', color: 'var(--muted)', border: '1.5px solid var(--tan)', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}>Add anyway</button>
                 </div>
               </div>

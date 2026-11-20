@@ -9,6 +9,13 @@ import { missingStepsReason } from './recipeCheck'
 import { IconCheck, IconChevronDown } from './icons'
 import { PasswordInput } from './ui'
 import { shrinkImage } from './shrinkImage'
+import { loadSaved, clearSaved, useSaveState } from './savedState'
+
+// Keep your place in onboarding if iOS closes Nom (see savedState.js).
+// Before the account exists: the sign-up form (never the password or the Terms tick).
+// After: which step you're on and what you've done so far.
+const SIGNUP_DRAFT_KEY = 'nom-signup-draft'
+const onboardingKey = (userId) => `nom-onboarding-${userId}`
 
 const TOTAL_STEPS = 5
 
@@ -159,6 +166,52 @@ export default function Onboarding({ onComplete, session, prefillInviteCode, sta
   const [importing, setImporting] = useState(false)
   const [importedRecipe, setImportedRecipe] = useState(null)
   const [importError, setImportError] = useState(null)
+
+  // ── Keep your place ──
+  const [restoreReady, setRestoreReady] = useState(false)
+  useEffect(() => {
+    let cancelled = false
+    const id = session?.user?.id
+    const restore = id
+      ? loadSaved(onboardingKey(id)).then(d => {
+          if (cancelled || !d) return
+          const savedStep = [2, 3, 4, 5].includes(d.step) ? d.step : 3
+          prevStepRef.current = savedStep // no slide-in when picking back up
+          setStep(savedStep)
+          setShowPhotoStep(savedStep === 2)
+          if (d.fullName) setFullName(d.fullName)
+          if (d.avatarUrl) setAvatarUrl(d.avatarUrl)
+          if (d.requested) setRequested(d.requested)
+          if (d.recipeUrl) setRecipeUrl(d.recipeUrl)
+          if (d.importedRecipe) setImportedRecipe(d.importedRecipe)
+          wantsImportRef.current = !!d.wantsImport
+        })
+      : startOnWaitlist ? Promise.resolve() : loadSaved(SIGNUP_DRAFT_KEY).then(d => {
+          if (cancelled || !d) return
+          setFullName(d.fullName || ''); setUsername(d.username || ''); setEmail(d.email || '')
+          if (!prefillInviteCode) setInviteCode(d.inviteCode || '')
+          setHeardAbout(d.heardAbout || ''); setHeardAboutOther(d.heardAboutOther || '')
+          if (d.step === 2) { prevStepRef.current = 2; setStep(2) }
+        })
+    restore.finally(() => { if (!cancelled) setRestoreReady(true) })
+    return () => { cancelled = true }
+    // Runs once: picking up only happens when Nom opens
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const signupHasContent = !!(fullName.trim() || username.trim() || email.trim() || inviteCode.trim() || heardAbout)
+  const signupDraft = !restoreReady || accountCreated || session ? null
+    : !signupHasContent ? false
+    : { step: step === 2 ? 2 : 1, fullName, username, email, inviteCode, heardAbout, heardAboutOther }
+  const finishSignupDraft = useSaveState(SIGNUP_DRAFT_KEY, signupDraft)
+  // The account exists now, so the sign-up form copy isn't needed any more
+  useEffect(() => { if (accountCreated) clearSaved(SIGNUP_DRAFT_KEY) }, [accountCreated])
+
+  const onboardingDraft = !restoreReady || !userId || !accountCreated ? null : {
+    step: step === 2 && !showPhotoStep ? 3 : step,
+    fullName, avatarUrl, requested, recipeUrl, importedRecipe, wantsImport: wantsImportRef.current,
+  }
+  const finishOnboardingDraft = useSaveState(userId ? onboardingKey(userId) : null, onboardingDraft)
 
   function validateStep2() {
     if (!fullName.trim()) return 'Please enter your name.'
@@ -321,6 +374,8 @@ export default function Onboarding({ onComplete, session, prefillInviteCode, sta
 
   async function finishOnboarding() {
     const id = userId || session?.user?.id
+    finishSignupDraft()
+    finishOnboardingDraft()
     const next = wantsImportRef.current ? 'import' : undefined
     if (!id) { onComplete(next); return }
 
@@ -360,6 +415,9 @@ export default function Onboarding({ onComplete, session, prefillInviteCode, sta
   }
 
   // ── INVITE WAITLIST (no code yet) ──
+  // A moment while a saved place loads, so step 1 doesn't flash first
+  if (!restoreReady) return <div style={{ minHeight: '100vh', background: 'var(--cream)' }} />
+
   if (showWaitlist && !session) return (
     <div style={{ minHeight: '100vh', background: 'var(--cream)', display: 'flex', flexDirection: 'column', maxWidth: '480px', margin: '0 auto', padding: 'calc(48px + var(--safe-top)) 28px calc(40px + var(--safe-bottom))' }}>
       <button onClick={() => setShowWaitlist(false)} style={{ alignSelf: 'flex-start', padding: '4px 0', background: 'none', border: 'none', fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: '600', color: 'var(--clay)', cursor: 'pointer', marginBottom: '32px' }}>Back</button>
